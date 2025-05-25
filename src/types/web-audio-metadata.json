@@ -1,0 +1,520 @@
+{
+  "AnalyserNode": {
+    "name": "AnalyserNode",
+    "description": "A node able to provide real-time frequency and time-domain analysis information. It is an AudioNode that passes the audio stream unchanged from the input to the output, but allows you to take the generated data, process it, and create audio visualizations.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AnalyserNode)",
+    "category": "analysis",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "AudioBufferSourceNode": {
+    "name": "AudioBufferSourceNode",
+    "description": "An AudioScheduledSourceNode which represents an audio source consisting of in-memory audio data, stored in an AudioBuffer. It's especially useful for playing back audio which has particularly stringent timing accuracy requirements, such as for sounds that must match a specific rhythm and can be kept in memory rather than being played from disk or the network.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AudioBufferSourceNode)",
+    "category": "source",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "detune",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1200,
+        "max": 1200
+      },
+      {
+        "name": "loop",
+        "type": "boolean",
+        "defaultValue": null
+      },
+      {
+        "name": "loopEnd",
+        "type": "number",
+        "defaultValue": 0
+      },
+      {
+        "name": "loopStart",
+        "type": "number",
+        "defaultValue": 0
+      },
+      {
+        "name": "playbackRate",
+        "type": "AudioParam",
+        "defaultValue": null
+      }
+    ],
+    "methods": ["start"],
+    "events": []
+  },
+  "AudioContext": {
+    "name": "AudioContext",
+    "description": "An audio-processing graph built from audio modules linked together, each represented by an AudioNode.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AudioContext)",
+    "category": "context",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "AudioDestinationNode": {
+    "name": "AudioDestinationNode",
+    "description": "AudioDestinationNode has no output (as it is the output, no more AudioNode can be linked after it in the audio graph) and one input. The number of channels in the input must be between 0 and the maxChannelCount value or an exception is raised.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AudioDestinationNode)",
+    "category": "destination",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "AudioWorkletNode": {
+    "name": "AudioWorkletNode",
+    "description": "Available only in secure contexts.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AudioWorkletNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "parameters",
+        "type": "AudioParam",
+        "defaultValue": null
+      }
+    ],
+    "methods": [],
+    "events": ["processorerror"]
+  },
+  "BiquadFilterNode": {
+    "name": "BiquadFilterNode",
+    "description": "A simple low-order filter, and is created using the AudioContext.createBiquadFilter() method. It is an AudioNode that can represent different kinds of filters, tone control devices, and graphic equalizers.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/BiquadFilterNode)",
+    "category": "effect",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "Q",
+        "type": "AudioParam",
+        "defaultValue": 1,
+        "min": 0.0001,
+        "max": 1000
+      },
+      {
+        "name": "detune",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1200,
+        "max": 1200
+      },
+      {
+        "name": "frequency",
+        "type": "AudioParam",
+        "defaultValue": 440,
+        "min": 0,
+        "max": 20000
+      },
+      {
+        "name": "gain",
+        "type": "AudioParam",
+        "defaultValue": 1,
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "type",
+        "type": "BiquadFilterType",
+        "defaultValue": "lowpass"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "ChannelMergerNode": {
+    "name": "ChannelMergerNode",
+    "description": "The ChannelMergerNode interface, often used in conjunction with its opposite, ChannelSplitterNode, reunites different mono inputs into a single output. Each input is used to fill a channel of the output. This is useful for accessing each channels separately, e.g. for performing channel mixing where gain must be separately controlled on each channel.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/ChannelMergerNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input0",
+        "type": "audio"
+      },
+      {
+        "name": "input1",
+        "type": "audio"
+      },
+      {
+        "name": "input2",
+        "type": "audio"
+      },
+      {
+        "name": "input3",
+        "type": "audio"
+      },
+      {
+        "name": "input4",
+        "type": "audio"
+      },
+      {
+        "name": "input5",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "ChannelSplitterNode": {
+    "name": "ChannelSplitterNode",
+    "description": "The ChannelSplitterNode interface, often used in conjunction with its opposite, ChannelMergerNode, separates the different channels of an audio source into a set of mono outputs. This is useful for accessing each channel separately, e.g. for performing channel mixing where gain must be separately controlled on each channel.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/ChannelSplitterNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output0",
+        "type": "audio"
+      },
+      {
+        "name": "output1",
+        "type": "audio"
+      },
+      {
+        "name": "output2",
+        "type": "audio"
+      },
+      {
+        "name": "output3",
+        "type": "audio"
+      },
+      {
+        "name": "output4",
+        "type": "audio"
+      },
+      {
+        "name": "output5",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "ConvolverNode": {
+    "name": "ConvolverNode",
+    "description": "An AudioNode that performs a Linear Convolution on a given AudioBuffer, often used to achieve a reverb effect. A ConvolverNode always has exactly one input and one output.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/ConvolverNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "DelayNode": {
+    "name": "DelayNode",
+    "description": "A delay-line; an AudioNode audio-processing module that causes a delay between the arrival of an input data and its propagation to the output.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/DelayNode)",
+    "category": "effect",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "delayTime",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": 0,
+        "max": 1
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "DynamicsCompressorNode": {
+    "name": "DynamicsCompressorNode",
+    "description": "Inherits properties from its parent, AudioNode.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/DynamicsCompressorNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "attack",
+        "type": "AudioParam",
+        "defaultValue": 0.003,
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "knee",
+        "type": "AudioParam",
+        "defaultValue": 30,
+        "min": 0,
+        "max": 40
+      },
+      {
+        "name": "ratio",
+        "type": "AudioParam",
+        "defaultValue": 12,
+        "min": 1,
+        "max": 20
+      },
+      {
+        "name": "release",
+        "type": "AudioParam",
+        "defaultValue": 0.25,
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "threshold",
+        "type": "AudioParam",
+        "defaultValue": -24,
+        "min": -100,
+        "max": 0
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "GainNode": {
+    "name": "GainNode",
+    "description": "A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)",
+    "category": "effect",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "gain",
+        "type": "AudioParam",
+        "defaultValue": 1,
+        "min": 0,
+        "max": 1
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "MediaElementAudioSourceNode": {
+    "name": "MediaElementAudioSourceNode",
+    "description": "A MediaElementSourceNode has no inputs and exactly one output, and is created using the AudioContext.createMediaElementSource method. The amount of channels in the output equals the number of channels of the audio referenced by the HTMLMediaElement used in the creation of the node, or is 1 if the HTMLMediaElement has no audio.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/MediaElementAudioSourceNode)",
+    "category": "source",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "MediaStreamAudioSourceNode": {
+    "name": "MediaStreamAudioSourceNode",
+    "description": "A type of AudioNode which operates as an audio source whose media is received from a MediaStream obtained using the WebRTC or Media Capture and Streams APIs.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/MediaStreamAudioSourceNode)",
+    "category": "source",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "OscillatorNode": {
+    "name": "OscillatorNode",
+    "description": "The OscillatorNode interface represents a periodic waveform, such as a sine wave. It is an AudioScheduledSourceNode audio-processing module that causes a specified frequency of a given wave to be created—in effect, a constant tone.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/OscillatorNode)",
+    "category": "source",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "detune",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1200,
+        "max": 1200
+      },
+      {
+        "name": "frequency",
+        "type": "AudioParam",
+        "defaultValue": 440,
+        "min": 0,
+        "max": 20000
+      },
+      {
+        "name": "type",
+        "type": "OscillatorType",
+        "defaultValue": "sine"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "ScriptProcessorNode": {
+    "name": "ScriptProcessorNode",
+    "description": "Allows the generation, processing, or analyzing of audio using JavaScript.",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": ["audioprocess"]
+  },
+  "StereoPannerNode": {
+    "name": "StereoPannerNode",
+    "description": "The pan property takes a unitless value between -1 (full left pan) and 1 (full right pan). This interface was introduced as a much simpler way to apply a simple panning effect than having to use a full PannerNode.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/StereoPannerNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "pan",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1,
+        "max": 1
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "WaveShaperNode": {
+    "name": "WaveShaperNode",
+    "description": "A WaveShaperNode always has exactly one input and one output.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/WaveShaperNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  }
+}

@@ -1,0 +1,10 @@
+dist/
+node_modules/
+*.min.js
+*.min.css
+package-lock.json
+.git/
+.vscode/
+.idea/
+*.log
+*.md 
