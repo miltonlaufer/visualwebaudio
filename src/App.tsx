@@ -20,7 +20,6 @@ import { createAudioGraphStore } from '~/stores/AudioGraphStore'
 import AudioNode from '~/components/AudioNode'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
-import ProjectModal from '~/components/ProjectModal'
 import Header from '~/components/Header'
 
 const nodeTypes: NodeTypes = {
@@ -32,7 +31,6 @@ const App: React.FC = observer(() => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
-  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
@@ -286,11 +284,7 @@ const App: React.FC = observer(() => {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Full-width Header */}
-      <Header
-        store={store}
-        onProjectModalOpen={() => setIsProjectModalOpen(true)}
-        onForceUpdate={handleForceUpdate}
-      />
+      <Header store={store} />
 
       {/* Three-column layout below header */}
       <div className="flex flex-1 h-0">
@@ -346,13 +340,6 @@ const App: React.FC = observer(() => {
           </div>
         </div>
       </div>
-
-      {/* Project Modal */}
-      <ProjectModal
-        store={store}
-        isOpen={isProjectModalOpen}
-        onClose={() => setIsProjectModalOpen(false)}
-      />
     </div>
   )
 })
