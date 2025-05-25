@@ -657,12 +657,12 @@ export const AudioGraphStore = types
         }
       }),
 
-      async addMicrophoneInput(position: { x: number; y: number }) {
+      addMicrophoneInput: flow(function* (position: { x: number; y: number }) {
         console.log('=== ADDING MICROPHONE INPUT ===')
 
         try {
           // Request microphone access
-          const stream = await navigator.mediaDevices.getUserMedia({
+          const stream = yield navigator.mediaDevices.getUserMedia({
             audio: {
               echoCancellation: false,
               autoGainControl: false,
@@ -726,7 +726,7 @@ export const AudioGraphStore = types
           console.error('Error adding microphone input:', error)
           throw error
         }
-      },
+      }),
     }
 
     return actions
