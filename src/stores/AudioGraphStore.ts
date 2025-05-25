@@ -656,6 +656,77 @@ export const AudioGraphStore = types
           self.isPlaying = true
         }
       }),
+
+      async addMicrophoneInput(position: { x: number; y: number }) {
+        console.log('=== ADDING MICROPHONE INPUT ===')
+
+        try {
+          // Request microphone access
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: false,
+              autoGainControl: false,
+              noiseSuppression: false,
+            },
+          })
+
+          if (!self.audioContext) {
+            actions.initializeAudioContext()
+          }
+
+          if (!self.audioContext) {
+            throw new Error('Failed to initialize audio context')
+          }
+
+          // Create MediaStreamAudioSourceNode
+          const micSource = self.audioContext.createMediaStreamSource(stream)
+
+          // Generate unique node ID
+          const nodeId = `MicrophoneInput-${Date.now()}`
+
+          // Get metadata for MediaStreamAudioSourceNode
+          const metadata = self.webAudioMetadata['MediaStreamAudioSourceNode']
+          if (!metadata) {
+            throw new Error('MediaStreamAudioSourceNode metadata not found')
+          }
+
+          // Create the visual node with MST-compatible structure
+          const visualNode = {
+            id: nodeId,
+            type: 'audioNode',
+            position: {
+              x: position.x,
+              y: position.y,
+            },
+            data: {
+              nodeType: 'MediaStreamAudioSourceNode',
+              metadata: {
+                name: 'Microphone Input',
+                description: 'Live microphone input',
+                category: metadata.category,
+                inputs: metadata.inputs,
+                outputs: metadata.outputs,
+                properties: metadata.properties,
+                methods: metadata.methods,
+                events: metadata.events,
+              },
+              properties: {},
+            },
+          }
+
+          // Add to store using MST action
+          self.visualNodes.push(visualNode)
+
+          // Store the actual audio node
+          self.audioNodes.set(nodeId, micSource)
+
+          console.log('Microphone input added successfully with ID:', nodeId)
+          return nodeId
+        } catch (error) {
+          console.error('Error adding microphone input:', error)
+          throw error
+        }
+      },
     }
 
     return actions

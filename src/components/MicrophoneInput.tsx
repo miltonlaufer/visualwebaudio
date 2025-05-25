@@ -15,52 +15,8 @@ const MicrophoneInput: React.FC<MicrophoneInputProps> = observer(({ store }) => 
     try {
       setError(null)
 
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          autoGainControl: false,
-          noiseSuppression: false,
-        },
-      })
-
-      if (!store.audioContext) {
-        store.initializeAudioContext()
-      }
-
-      if (!store.audioContext) {
-        throw new Error('Failed to initialize audio context')
-      }
-
-      // Create MediaStreamAudioSourceNode
-      const micSource = store.audioContext.createMediaStreamSource(stream)
-
-      // Add a visual node for the microphone
-      const nodeId = `MicrophoneInput-${Date.now()}`
-
-      // Create a custom visual node for microphone
-      const visualNode = {
-        id: nodeId,
-        type: 'audioNode',
-        position: { x: 50, y: 100 },
-        data: {
-          nodeType: 'MediaStreamAudioSourceNode',
-          metadata: {
-            name: 'Microphone Input',
-            category: 'source' as const,
-            inputs: [],
-            outputs: [{ name: 'output', type: 'audio' as const }],
-            properties: [],
-            methods: ['connect', 'disconnect'],
-            events: [],
-          },
-          properties: new Map(),
-        },
-      }
-
-      // Add to store
-      store.visualNodes.push(visualNode)
-      store.audioNodes.set(nodeId, micSource)
+      // Use the store action to add microphone input
+      const nodeId = await store.addMicrophoneInput({ x: 50, y: 100 })
 
       setMicNodeId(nodeId)
       setIsRecording(true)
