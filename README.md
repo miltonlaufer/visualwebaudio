@@ -62,7 +62,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 
 ```bash
 # Clone and install
-git clone <repository-url>
+git clone https://github.com/miltonlaufer/visualwebaudio.git
 cd visualwebaudio
 npm install
 
