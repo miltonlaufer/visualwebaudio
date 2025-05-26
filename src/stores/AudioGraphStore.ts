@@ -268,24 +268,46 @@ export const AudioGraphStore = types
         const audioNode = self.audioNodes.get(nodeId)
 
         if (audioNode) {
-          console.log('Found audio node, disconnecting...')
+          console.log('Found audio node, performing thorough cleanup...')
 
-          // Disconnect first
           try {
+            // First, disconnect all outputs
             audioNode.disconnect()
-            console.log('Audio node disconnected')
-          } catch (error) {
-            console.error('Error disconnecting audio node:', error)
-          }
+            console.log('Audio node outputs disconnected')
 
-          // Stop source nodes
-          if (self.audioNodeFactory) {
-            try {
-              self.audioNodeFactory.stopSourceNode(audioNode, nodeType)
-              console.log('Source node stopped')
-            } catch (error) {
-              console.error('Error stopping source node:', error)
+            // Stop source nodes properly
+            if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+              try {
+                ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+                console.log('Source node stopped')
+              } catch (stopError) {
+                // Node might already be stopped, which is fine
+                console.log('Source node already stopped or stopping failed:', stopError)
+              }
             }
+
+            // Handle MediaStreamAudioSourceNode specifically
+            if (audioNode.constructor.name === 'MediaStreamAudioSourceNode') {
+              const mediaNode = audioNode as MediaStreamAudioSourceNode
+              if (mediaNode.mediaStream) {
+                mediaNode.mediaStream.getTracks().forEach(track => {
+                  track.stop()
+                  console.log('Stopped media track')
+                })
+              }
+            }
+
+            // Additional cleanup using factory if available
+            if (self.audioNodeFactory) {
+              try {
+                self.audioNodeFactory.stopSourceNode(audioNode, nodeType)
+                console.log('Factory cleanup completed')
+              } catch (error) {
+                console.log('Factory cleanup error (non-critical):', error)
+              }
+            }
+          } catch (error) {
+            console.error('Error during audio node cleanup:', error)
           }
 
           // Remove from audio nodes map
@@ -295,7 +317,7 @@ export const AudioGraphStore = types
           console.log('No audio node found')
         }
 
-        // Remove all edges connected to this node
+        // Remove all edges connected to this node BEFORE removing the visual node
         const edgesToRemove = self.visualEdges.filter(
           edge => edge.source === nodeId || edge.target === nodeId
         )
@@ -305,11 +327,40 @@ export const AudioGraphStore = types
           actions.removeEdge(edge.id)
         })
 
+        // Remove any remaining audio connections
+        const connectionsToRemove = self.audioConnections.filter(
+          conn => conn.sourceNodeId === nodeId || conn.targetNodeId === nodeId
+        )
+
+        connectionsToRemove.forEach(conn => {
+          const connIndex = self.audioConnections.findIndex(
+            c =>
+              c.sourceNodeId === conn.sourceNodeId &&
+              c.targetNodeId === conn.targetNodeId &&
+              c.sourceOutput === conn.sourceOutput &&
+              c.targetInput === conn.targetInput
+          )
+          if (connIndex !== -1) {
+            self.audioConnections.splice(connIndex, 1)
+          }
+        })
+
         // Remove the visual node
         const nodeIndex = self.visualNodes.findIndex(node => node.id === nodeId)
         if (nodeIndex !== -1) {
           self.visualNodes.splice(nodeIndex, 1)
           console.log('Visual node removed')
+        }
+
+        // If this was the last node connected to destination, update play state
+        const hasDestinationConnections = self.audioConnections.some(conn => {
+          const targetNode = self.visualNodes.find(node => node.id === conn.targetNodeId)
+          return targetNode?.data.nodeType === 'AudioDestinationNode'
+        })
+
+        if (!hasDestinationConnections && self.isPlaying) {
+          console.log('No more destination connections, stopping playback')
+          self.isPlaying = false
         }
 
         console.log('=== NODE REMOVAL COMPLETE ===')
@@ -327,25 +378,13 @@ export const AudioGraphStore = types
           actions.removeNode(nodeId)
         })
 
+        // Perform comprehensive audio cleanup
+        actions.performComprehensiveAudioCleanup()
+
         // Double-check that everything is cleared
         if (self.visualNodes.length > 0) {
           console.warn('Some visual nodes were not removed, force clearing...')
           self.visualNodes.clear()
-        }
-
-        if (self.audioNodes.size > 0) {
-          console.warn('Some audio nodes were not removed, force clearing...')
-          self.audioNodes.forEach((audioNode, nodeId) => {
-            try {
-              audioNode.disconnect()
-              if ('stop' in audioNode && typeof audioNode.stop === 'function') {
-                ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
-              }
-            } catch (error) {
-              console.log('Error cleaning up remaining audio node:', nodeId, error)
-            }
-          })
-          self.audioNodes.clear()
         }
 
         if (self.visualEdges.length > 0) {
@@ -362,6 +401,97 @@ export const AudioGraphStore = types
 
         // Reset play state since no audio is playing
         self.isPlaying = false
+      },
+
+      performComprehensiveAudioCleanup() {
+        console.log('=== PERFORMING COMPREHENSIVE AUDIO CLEANUP ===')
+
+        // Stop and disconnect all remaining audio nodes
+        if (self.audioNodes.size > 0) {
+          console.log(`Cleaning up ${self.audioNodes.size} remaining audio nodes...`)
+
+          self.audioNodes.forEach((audioNode, nodeId) => {
+            try {
+              // Disconnect all connections
+              audioNode.disconnect()
+
+              // Stop source nodes (OscillatorNode, AudioBufferSourceNode)
+              if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+                try {
+                  ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+                } catch (stopError) {
+                  // Node might already be stopped, ignore
+                  console.log(`Node ${nodeId} already stopped or stopping failed:`, stopError)
+                }
+              }
+
+              // Close MediaStreamAudioSourceNode streams
+              if (audioNode.constructor.name === 'MediaStreamAudioSourceNode') {
+                const mediaNode = audioNode as MediaStreamAudioSourceNode
+                if (mediaNode.mediaStream) {
+                  mediaNode.mediaStream.getTracks().forEach(track => {
+                    track.stop()
+                    console.log(`Stopped media track for node ${nodeId}`)
+                  })
+                }
+              }
+            } catch (error) {
+              console.log(`Error cleaning up audio node ${nodeId}:`, error)
+            }
+          })
+
+          self.audioNodes.clear()
+        }
+
+        // Clean up global analyzer
+        if (self.globalAnalyzer) {
+          try {
+            self.globalAnalyzer.disconnect()
+            console.log('Global analyzer disconnected')
+          } catch (error) {
+            console.log('Error disconnecting global analyzer:', error)
+          }
+          self.globalAnalyzer = null
+        }
+
+        // Reinitialize audio context for a fresh start
+        if (self.audioContext) {
+          console.log('Reinitializing audio context for clean state...')
+
+          try {
+            // Close the current audio context
+            if (self.audioContext.state !== 'closed') {
+              self.audioContext.close()
+            }
+          } catch (error) {
+            console.log('Error closing audio context:', error)
+          }
+
+          // Reset audio context and factory
+          self.audioContext = null
+          self.audioNodeFactory = null
+
+          // Create new audio context
+          actions.initializeAudioContext()
+
+          console.log('Audio context reinitialized')
+        }
+
+        console.log('=== COMPREHENSIVE AUDIO CLEANUP COMPLETE ===')
+      },
+
+      forceAudioCleanup() {
+        console.log('=== FORCING AUDIO CLEANUP ===')
+
+        // Suspend audio context first to stop all processing
+        if (self.audioContext && self.audioContext.state === 'running') {
+          self.audioContext.suspend()
+        }
+
+        // Perform comprehensive cleanup
+        actions.performComprehensiveAudioCleanup()
+
+        console.log('=== FORCED AUDIO CLEANUP COMPLETE ===')
       },
 
       addEdge(source: string, target: string, sourceHandle?: string, targetHandle?: string) {
