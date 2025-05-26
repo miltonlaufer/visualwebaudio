@@ -71,7 +71,15 @@ npm run extract-types
 # Start development server
 npm run dev
 ```
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            npm run coverage     # Run tests with coverage report
+
+### Available Scripts
+
+```bash
+npm run dev          # Start development server with type extraction
+npm run build        # Build for production
+npm run test         # Run tests
+npm run test:ui      # Run tests with UI
+npm run coverage     # Run tests with coverage report
 npm run type-check   # TypeScript type checking without emit
 npm run lint         # Run ESLint
 npm run extract-types # Extract Web Audio API metadata from TypeScript definitions
