@@ -1,4 +1,4 @@
-# Visual Web Audio
+# Visual Web Audio (alpha)
 
 ![Visual Web Audio Preview](public/preview.png)
 

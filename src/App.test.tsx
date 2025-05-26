@@ -6,7 +6,7 @@ describe('App', () => {
   it('renders the main title', () => {
     render(<App />)
 
-    expect(screen.getByText('Visual Web Audio')).toBeInTheDocument()
+    expect(screen.getByText('Visual Web Audio (alpha)')).toBeInTheDocument()
   })
 
   it('renders the application layout', () => {
