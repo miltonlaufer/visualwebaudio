@@ -90,7 +90,7 @@ describe('Header', () => {
       expect(screen.getByText('Delay Effect')).toBeInTheDocument()
     })
 
-    it('should execute example and close mobile menu when example is selected', () => {
+    it('should execute example and close mobile menu when example is selected', async () => {
       render(<Header {...defaultProps} />)
 
       // Open mobile menu
@@ -110,7 +110,13 @@ describe('Header', () => {
       // Verify store methods were called
       expect(mockStore.clearAllNodes).toHaveBeenCalled()
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 150 })
       expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 400, y: 150 })
+
+      // Wait for setTimeout to complete
+      await waitFor(() => {
+        expect(mockStore.updateNodeProperty).toHaveBeenCalledWith(undefined, 'gain', 0.5)
+      })
 
       // Menu should be closed after selecting example (check mobile menu is gone)
       expect(screen.queryByTitle('More options')).toBeInTheDocument()
