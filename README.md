@@ -1,5 +1,12 @@
 # Visual Web Audio (alpha)
 
+[![CI](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/ci.yml/badge.svg)](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
+[![Tests](https://img.shields.io/badge/Tests-94%2F94%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 ![Visual Web Audio Preview](public/preview.png)
 
 🌐 **[Live Demo](https://www.miltonlaufer.com.ar/visualwebaudio/)** - Try the application online!
