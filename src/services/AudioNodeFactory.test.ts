@@ -52,6 +52,7 @@ describe('AudioNodeFactory', () => {
 
   const createMockMetadata = (nodeType: string): NodeMetadata => ({
     name: nodeType,
+    description: `Test ${nodeType} for unit testing`,
     category: 'source' as const,
     inputs: [{ name: 'input', type: 'audio' as const }],
     outputs: [{ name: 'output', type: 'audio' as const }],
@@ -84,6 +85,7 @@ describe('AudioNodeFactory', () => {
   it('creates a GainNode with default properties', () => {
     const metadata: NodeMetadata = {
       name: 'GainNode',
+      description: 'Test GainNode for unit testing',
       category: 'effect',
       inputs: [{ name: 'input', type: 'audio' }],
       outputs: [{ name: 'output', type: 'audio' }],
@@ -112,6 +114,7 @@ describe('AudioNodeFactory', () => {
   it('handles AudioDestinationNode correctly', () => {
     const metadata: NodeMetadata = {
       name: 'AudioDestinationNode',
+      description: 'Test AudioDestinationNode for unit testing',
       category: 'destination',
       inputs: [{ name: 'input', type: 'audio' }],
       outputs: [],
@@ -202,6 +205,7 @@ describe('AudioNodeFactory', () => {
   it('applies properties with different types correctly', () => {
     const metadata: NodeMetadata = {
       name: 'TestNode',
+      description: 'Test node for property type testing',
       category: 'effect',
       inputs: [],
       outputs: [],
@@ -236,6 +240,7 @@ describe('AudioNodeFactory', () => {
 
     const metadata: NodeMetadata = {
       name: 'TestNode',
+      description: 'Test node for property warning testing',
       category: 'effect',
       inputs: [],
       outputs: [],
@@ -257,6 +262,7 @@ describe('AudioNodeFactory', () => {
   it('should create nodes using dynamic method calls', () => {
     const metadata: NodeMetadata = {
       name: 'DelayNode',
+      description: 'Test DelayNode for dynamic method call testing',
       category: 'effect',
       inputs: [{ name: 'input', type: 'audio' }],
       outputs: [{ name: 'output', type: 'audio' }],
@@ -274,6 +280,7 @@ describe('AudioNodeFactory', () => {
   it('should handle unknown node types gracefully', () => {
     const metadata: NodeMetadata = {
       name: 'UnknownNode',
+      description: 'Test UnknownNode for error handling',
       category: 'effect',
       inputs: [],
       outputs: [],
