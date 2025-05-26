@@ -10,6 +10,11 @@
   background: white;
 }
 
+/* Mobile-responsive node sizing */
+.react-flow__node {
+  @apply md:min-w-0 max-md:min-w-[120px] max-md:text-sm;
+}
+
 /* Handle styles - different colors for different types */
 .react-flow__handle {
   width: 16px !important;
@@ -21,6 +26,15 @@
   opacity: 1 !important;
   visibility: visible !important;
   display: block !important;
+}
+
+/* Mobile: Larger touch targets for handles */
+@media (max-width: 768px) {
+  .react-flow__handle {
+    width: 20px !important;
+    height: 20px !important;
+    border: 4px solid #ffffff !important;
+  }
 }
 
 /* Audio handles - green */
@@ -48,10 +62,29 @@
   transform: translateY(-50%) !important;
 }
 
+/* Mobile: Adjust handle positioning for larger touch targets */
+@media (max-width: 768px) {
+  .react-flow__handle.react-flow__handle-left {
+    left: -10px !important;
+  }
+
+  .react-flow__handle.react-flow__handle-right {
+    right: -10px !important;
+  }
+}
+
 /* Make handles even more visible on hover */
 .react-flow__handle:hover {
   transform: translateY(-50%) scale(1.3) !important;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Mobile: Touch-friendly hover states */
+@media (max-width: 768px) {
+  .react-flow__handle:active {
+    transform: translateY(-50%) scale(1.2) !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4) !important;
+  }
 }
 
 /* Audio handles hover */
@@ -72,9 +105,22 @@
   stroke-width: 3;
 }
 
+/* Mobile: Thicker connection lines for better visibility */
+@media (max-width: 768px) {
+  .react-flow__edge-path {
+    stroke-width: 4;
+  }
+}
+
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #3b82f6;
   stroke-width: 4;
+}
+
+@media (max-width: 768px) {
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke-width: 5;
+  }
 }
 
 /* Connection states */
@@ -84,4 +130,109 @@
 
 .react-flow__handle-valid {
   background: #10b981 !important; /* green when valid connection */
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 768px) {
+  /* Larger touch targets for handles */
+  .react-flow__handle {
+    width: 20px !important;
+    height: 20px !important;
+    border: 4px solid #ffffff !important;
+  }
+
+  /* Adjust handle positioning for larger touch targets */
+  .react-flow__handle.react-flow__handle-left {
+    left: -10px !important;
+  }
+
+  .react-flow__handle.react-flow__handle-right {
+    right: -10px !important;
+  }
+
+  /* Touch-friendly hover states */
+  .react-flow__handle:active {
+    transform: translateY(-50%) scale(1.2) !important;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.4) !important;
+  }
+
+  /* Thicker connection lines for better visibility */
+  .react-flow__edge-path {
+    stroke-width: 4;
+  }
+
+  .react-flow__edge.selected .react-flow__edge-path {
+    stroke-width: 5;
+  }
+
+  /* Better touch scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent zoom on double tap for buttons */
+  button {
+    touch-action: manipulation;
+  }
+
+  /* Better tap targets for controls */
+  .react-flow__controls button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Hide minimap on mobile to save space */
+  .react-flow__minimap {
+    display: none;
+  }
+
+  /* Mobile-responsive node sizing */
+  .react-flow__node {
+    min-width: 120px;
+    font-size: 14px;
+  }
+}
+@media (max-width: 768px) {
+  /* Better touch scrolling */
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent zoom on double tap for buttons */
+  button {
+    touch-action: manipulation;
+  }
+
+  /* Better tap targets */
+  .react-flow__controls button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  /* Hide minimap on mobile to save space */
+  .react-flow__minimap {
+    display: none;
+  }
+}
+
+/* Tablet-specific improvements */
+@media (max-width: 1024px) {
+  /* Hide minimap on tablets too */
+  .react-flow__minimap {
+    display: none;
+  }
+}
+
+/* Smooth transitions for mobile panels */
+.mobile-panel-transition {
+  transition: transform 0.3s ease-in-out;
+}
+
+/* Ensure proper z-index stacking for mobile overlays */
+.mobile-overlay {
+  z-index: 50;
+}
+
+.mobile-backdrop {
+  z-index: 40;
 }

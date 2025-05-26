@@ -3,7 +3,11 @@ import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import MicrophoneInput from './MicrophoneInput'
 
-const NodePalette: React.FC = observer(() => {
+interface NodePaletteProps {
+  onClose?: () => void
+}
+
+const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   const store = useAudioGraphStore()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const [showScrollIndicator, setShowScrollIndicator] = useState(false)
@@ -137,7 +141,23 @@ const NodePalette: React.FC = observer(() => {
     <div className="flex flex-col h-full relative">
       {/* Scrollable content area */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Node Palette</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-800">Node Palette</h2>
+          <button
+            onClick={onClose}
+            className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded lg:hidden"
+            title="Close"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
 
         {/* Microphone Input */}
         <MicrophoneInput />

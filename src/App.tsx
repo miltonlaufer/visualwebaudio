@@ -44,6 +44,10 @@ const AppContent: React.FC = observer(() => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
 
+  // Mobile responsive state
+  const [isNodePaletteOpen, setIsNodePaletteOpen] = useState(false)
+  const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(false)
+
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
   }, [])
@@ -288,6 +292,8 @@ const AppContent: React.FC = observer(() => {
   const onNodeClick = useCallback(
     (_event: React.MouseEvent, node: Node) => {
       store.selectNode(node.id)
+      // Auto-open properties panel when a node is selected
+      setIsPropertyPanelOpen(true)
     },
     [store]
   )
@@ -418,14 +424,27 @@ const AppContent: React.FC = observer(() => {
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Full-width Header */}
-      <Header />
+      <Header
+        isNodePaletteOpen={isNodePaletteOpen}
+        isPropertyPanelOpen={isPropertyPanelOpen}
+        onToggleNodePalette={() => setIsNodePaletteOpen(!isNodePaletteOpen)}
+        onTogglePropertyPanel={() => setIsPropertyPanelOpen(!isPropertyPanelOpen)}
+      />
 
-      {/* Three-column layout below header */}
-      <div className="flex flex-1 h-0">
-        {/* Node Palette */}
-        <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
-          <div className="flex-1 overflow-y-auto p-4">
-            <NodePalette />
+      {/* Layout container */}
+      <div className="flex flex-1 h-0 relative">
+        {/* Node Palette - Desktop: sidebar, Mobile: overlay */}
+        <div
+          className={`
+          w-64 relative
+          md:w-64 md:relative md:translate-x-0
+          max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-80 max-md:transform max-md:transition-transform max-md:duration-300 max-md:ease-in-out
+          ${!isNodePaletteOpen ? 'max-md:-translate-x-full' : 'max-md:translate-x-0'}
+          bg-white border-r border-gray-200 flex flex-col h-full
+        `}
+        >
+          <div className="flex-1 overflow-y-auto">
+            <NodePalette onClose={() => setIsNodePaletteOpen(false)} />
           </div>
         </div>
 
@@ -434,7 +453,10 @@ const AppContent: React.FC = observer(() => {
           {/* React Flow Canvas */}
           <div className="flex-1 relative h-full">
             <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-sm text-gray-600">
-              Canvas Area - Click or drag nodes in the left panel to add them here
+              <span className="md:hidden">Canvas Area - Use menu buttons to access tools</span>
+              <span className="hidden md:inline">
+                Canvas Area - Click or drag nodes in the left panel to add them here
+              </span>
             </div>
             <ReactFlow
               nodes={nodes}
@@ -450,9 +472,8 @@ const AppContent: React.FC = observer(() => {
               connectionMode={ConnectionMode.Loose}
               connectOnClick={false}
               defaultEdgeOptions={{
-                type: 'default', // Use default bezier curves for more flowing connections
+                type: 'default',
                 animated: true,
-                // Remove default style since we set it per edge based on connection type
               }}
               className="bg-gray-50 w-full h-full"
               onInit={reactFlowInstance => {
@@ -467,12 +488,33 @@ const AppContent: React.FC = observer(() => {
           </div>
         </div>
 
-        {/* Property Panel */}
-        <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full">
+        {/* Property Panel - Desktop: sidebar, Tablet/Mobile: overlay */}
+        <div
+          className={`
+          w-80 relative
+          lg:w-80 lg:relative lg:translate-x-0
+          max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 max-lg:w-80 max-lg:transform max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out
+          ${!isPropertyPanelOpen ? 'max-lg:translate-x-full' : 'max-lg:translate-x-0'}
+          bg-white border-l border-gray-200 flex flex-col h-full
+        `}
+        >
           <div className="flex-1 overflow-y-auto">
-            <PropertyPanel />
+            <PropertyPanel onClose={() => setIsPropertyPanelOpen(false)} />
           </div>
         </div>
+
+        {/* Mobile/Tablet overlay backdrop */}
+        <div
+          className={`
+            fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300
+            lg:hidden
+            ${isNodePaletteOpen || isPropertyPanelOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+          `}
+          onClick={() => {
+            setIsNodePaletteOpen(false)
+            setIsPropertyPanelOpen(false)
+          }}
+        />
       </div>
     </div>
   )
