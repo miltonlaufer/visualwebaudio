@@ -7,16 +7,19 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   update-badges:
     name: Update README Badges
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -82,5 +85,5 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add README.md
-          git commit -m "docs: auto-update test count badges to ${{ steps.test-results.outputs.passed_tests }}/${{ steps.test-results.outputs.total_tests }}"
+          git commit -m "docs: auto-update test count badges to ${{ steps.test-results.outputs.passed_tests }}/${{ steps.test-results.outputs.total_tests }} [skip ci]"
           git push 
