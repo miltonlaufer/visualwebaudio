@@ -7,9 +7,40 @@
 [![Tests](https://img.shields.io/badge/Tests-118%2F118%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+## Table of Contents
+
+- [Live Demo](#live-demo)
+- [Core Innovation: Type-Driven Development](#core-innovation-type-driven-development)
+  - [How It Works](#how-it-works)
+- [Graphical Programming Interface: From Visual to Code](#graphical-programming-interface-from-visual-to-code)
+  - [Visual-to-Code Workflow](#visual-to-code-workflow)
+- [Features](#features)
+  - [Visual Audio Graph Editor](#visual-audio-graph-editor)
+  - [Metadata-Driven Architecture](#metadata-driven-architecture)
+  - [Project Management](#project-management)
+  - [Error Handling](#error-handling)
+  - [Audio Features](#audio-features)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Available Scripts](#available-scripts)
+- [Architecture](#architecture)
+  - [Type-Driven Workflow](#type-driven-workflow)
+  - [Key Components](#key-components)
+  - [File Structure](#file-structure)
+- [Examples](#examples)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Type-Driven Benefits](#type-driven-benefits)
+- [Tech Stack](#tech-stack)
+- [Contributing](#contributing)
+- [License](#license)
+
 ![Visual Web Audio Preview](public/preview.png)
 
-🌐 **[Live Demo](https://www.miltonlaufer.com.ar/visualwebaudio/)** - Try the application online!
+## Live Demo
+
+🌐 **[Try Visual Web Audio Online](https://www.miltonlaufer.com.ar/visualwebaudio/)** - Experience the application in your browser!
 
 A type-driven React TypeScript application for visual Web Audio API editing. This project demonstrates type-driven development by extracting all node information directly from the standard TypeScript definitions for the Web Audio API, ensuring the application stays current with API changes automatically.
 
