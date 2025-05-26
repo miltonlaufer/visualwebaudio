@@ -320,7 +320,7 @@ const PropertyPanel: React.FC = observer(() => {
 
       {/* Fixed Frequency Analyzer at bottom */}
       <div className="border-t border-gray-200">
-        <FrequencyAnalyzer store={store} />
+        <FrequencyAnalyzer />
       </div>
     </div>
   )

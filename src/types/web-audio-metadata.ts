@@ -3,6 +3,7 @@ import type { NodeMetadata } from './index'
 export const webAudioMetadata: Record<string, NodeMetadata> = {
   AudioContext: {
     name: 'AudioContext',
+    description: 'The main audio processing context that manages all audio nodes and connections',
     category: 'context',
     inputs: [],
     outputs: [
@@ -26,6 +27,7 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   AudioBufferSourceNode: {
     name: 'AudioBufferSourceNode',
+    description: 'A source node that plays back audio data from an AudioBuffer',
     category: 'source',
     inputs: [],
     outputs: [
@@ -40,6 +42,8 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   OscillatorNode: {
     name: 'OscillatorNode',
+    description:
+      'A source node that generates periodic waveforms (sine, square, sawtooth, triangle)',
     category: 'source',
     inputs: [],
     outputs: [
@@ -70,6 +74,7 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   GainNode: {
     name: 'GainNode',
+    description: 'A node that controls the volume of audio signals',
     category: 'effect',
     inputs: [
       {
@@ -95,6 +100,8 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   BiquadFilterNode: {
     name: 'BiquadFilterNode',
+    description:
+      'A node that implements various types of filters (lowpass, highpass, bandpass, etc.)',
     category: 'effect',
     inputs: [
       {
@@ -135,6 +142,7 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   DelayNode: {
     name: 'DelayNode',
+    description: 'A node that delays the incoming audio signal by a specified amount of time',
     category: 'effect',
     inputs: [
       {
@@ -160,6 +168,7 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   AnalyserNode: {
     name: 'AnalyserNode',
+    description: 'A node that provides real-time frequency and time-domain analysis of audio data',
     category: 'analysis',
     inputs: [
       {
@@ -179,6 +188,7 @@ export const webAudioMetadata: Record<string, NodeMetadata> = {
   },
   AudioDestinationNode: {
     name: 'AudioDestinationNode',
+    description: 'The final destination node that represents the audio output device',
     category: 'destination',
     inputs: [
       {
