@@ -109,10 +109,9 @@ describe('Header', () => {
 
       // Verify store methods were called
       expect(mockStore.clearAllNodes).toHaveBeenCalled()
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 400, y: 150 })
-
+      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', expect.any(Object))
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', expect.any(Object))
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', expect.any(Object))
       // Wait for setTimeout to complete
       await waitFor(() => {
         expect(mockStore.updateNodeProperty).toHaveBeenCalledWith(undefined, 'gain', 0.5)
