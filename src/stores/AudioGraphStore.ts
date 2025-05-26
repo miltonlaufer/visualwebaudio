@@ -5,6 +5,7 @@ import { VisualNodeModel, VisualEdgeModel, AudioConnectionModel } from '~/models
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 // Import the JSON metadata directly
 import webAudioMetadataJson from '~/types/web-audio-metadata.json'
+import { createContext, useContext } from 'react'
 
 // Use the imported metadata directly
 const getWebAudioMetadata = (): Record<string, NodeMetadata> => {
@@ -21,6 +22,8 @@ export const AudioGraphStore = types
     // Move undo/redo stacks to main model so they're observable
     undoStack: types.array(types.frozen()),
     redoStack: types.array(types.frozen()),
+    // Add a counter to track property changes for React re-renders
+    propertyChangeCounter: types.optional(types.number, 0),
   })
   .volatile(() => ({
     audioContext: null as AudioContext | null,
@@ -436,7 +439,12 @@ export const AudioGraphStore = types
         }
 
         // Check type compatibility
-        const isCompatible = sourceOutput.type === targetInput.type
+        // Allow: audio -> audio, audio -> control (for modulation), control -> control
+        // Disallow: control -> audio
+        const isCompatible =
+          (sourceOutput.type === 'audio' && targetInput.type === 'audio') ||
+          (sourceOutput.type === 'audio' && targetInput.type === 'control') ||
+          (sourceOutput.type === 'control' && targetInput.type === 'control')
 
         if (!isCompatible) {
           console.warn('Incompatible connection types:', {
@@ -476,13 +484,30 @@ export const AudioGraphStore = types
             const isDestinationConnection =
               targetVisualNode?.data.nodeType === 'AudioDestinationNode'
 
-            if (isDestinationConnection && self.globalAnalyzer) {
+            // Check if this is a control connection (to an AudioParam)
+            const targetMetadata = targetVisualNode?.data.metadata
+            const targetInputDef = targetMetadata?.inputs.find(input => input.name === targetInput)
+            const isControlConnection = targetInputDef?.type === 'control'
+
+            if (isControlConnection) {
+              // Connect to AudioParam
+              const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+              const audioParam = targetNodeWithParams[targetInput]
+
+              if (audioParam && typeof audioParam.value !== 'undefined') {
+                sourceNode.connect(audioParam)
+                console.log(`Connected to AudioParam: ${targetInput}`)
+              } else {
+                console.error(`AudioParam ${targetInput} not found on target node`)
+                return
+              }
+            } else if (isDestinationConnection && self.globalAnalyzer) {
               // Connect through the analyzer: source -> analyzer -> destination
               sourceNode.connect(self.globalAnalyzer)
               self.globalAnalyzer.connect(targetNode)
               console.log('Connected audio through global analyzer for frequency analysis')
             } else {
-              // Normal connection
+              // Normal audio connection
               sourceNode.connect(targetNode)
             }
 
@@ -515,14 +540,39 @@ export const AudioGraphStore = types
             const isDestinationConnection =
               targetVisualNode?.data.nodeType === 'AudioDestinationNode'
 
-            if (isDestinationConnection && self.globalAnalyzer) {
-              // Disconnect from analyzer: source -> analyzer -> destination
-              sourceNode.disconnect(self.globalAnalyzer)
-              // Note: We don't disconnect analyzer from destination as other sources might still be connected
-              console.log('Disconnected audio from global analyzer')
-            } else {
-              // Normal disconnection
-              sourceNode.disconnect(targetNode)
+            // Find the connection to determine the target input
+            const connection = self.audioConnections.find(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+
+            if (connection) {
+              // Check if this is a control connection
+              const targetMetadata = targetVisualNode?.data.metadata
+              const targetInputDef = targetMetadata?.inputs.find(
+                input => input.name === connection.targetInput
+              )
+              const isControlConnection = targetInputDef?.type === 'control'
+
+              if (isControlConnection) {
+                // Disconnect from AudioParam
+                const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+                const audioParam = targetNodeWithParams[connection.targetInput]
+
+                if (audioParam && typeof audioParam.value !== 'undefined') {
+                  sourceNode.disconnect(audioParam)
+                  console.log(`Disconnected from AudioParam: ${connection.targetInput}`)
+                } else {
+                  console.error(`AudioParam ${connection.targetInput} not found on target node`)
+                }
+              } else if (isDestinationConnection && self.globalAnalyzer) {
+                // Disconnect from analyzer: source -> analyzer -> destination
+                sourceNode.disconnect(self.globalAnalyzer)
+                // Note: We don't disconnect analyzer from destination as other sources might still be connected
+                console.log('Disconnected audio from global analyzer')
+              } else {
+                // Normal disconnection
+                sourceNode.disconnect(targetNode)
+              }
             }
 
             const connectionIndex = self.audioConnections.findIndex(
@@ -570,6 +620,9 @@ export const AudioGraphStore = types
           // Update the property using MST map API
           visualNode.data.properties.set(propertyName, value)
           console.log('Updated visual node property')
+
+          // Increment the property change counter to trigger React re-renders
+          self.propertyChangeCounter += 1
         }
 
         if (audioNode && visualNode && self.audioNodeFactory) {
@@ -810,5 +863,16 @@ export const createAudioGraphStore = () => {
     store.applyRedo()
   }
 
+  return store
+}
+
+// React Context for the store
+export const AudioGraphStoreContext = createContext<AudioGraphStoreType | null>(null)
+
+export const useAudioGraphStore = () => {
+  const store = useContext(AudioGraphStoreContext)
+  if (!store) {
+    throw new Error('useAudioGraphStore must be used within an AudioGraphStoreProvider')
+  }
   return store
 }

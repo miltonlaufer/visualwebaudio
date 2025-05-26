@@ -60,14 +60,25 @@ export class AudioNodeFactory {
     value: unknown,
     propertyType: string
   ): void {
+    // Skip if value is null or undefined
+    if (value === null || value === undefined) {
+      console.warn(`Skipping property ${propertyName} - value is null/undefined`)
+      return
+    }
+
     const nodeWithProperty = audioNode as unknown as Record<string, unknown>
 
     if (propertyName in nodeWithProperty) {
       if (propertyType === 'AudioParam') {
         const audioParam = nodeWithProperty[propertyName] as AudioParam
         if (audioParam && typeof audioParam.value !== 'undefined') {
-          audioParam.value = value as number
-          console.log(`Set AudioParam ${propertyName} to ${value}`)
+          const numValue = Number(value)
+          if (isNaN(numValue) || !isFinite(numValue)) {
+            console.error(`Cannot set AudioParam ${propertyName} to non-finite value: ${value}`)
+            return
+          }
+          audioParam.value = numValue
+          console.log(`Set AudioParam ${propertyName} to ${numValue}`)
         }
       } else {
         nodeWithProperty[propertyName] = value
@@ -134,9 +145,139 @@ export class AudioNodeFactory {
       return false
     }
 
+    // Validate the input value
+    const validatedValue = this.validatePropertyValue(value, propertyDef, propertyName)
+    if (validatedValue === null) {
+      console.error(`Invalid value for property ${propertyName}: ${value}`)
+      return false
+    }
+
     // Apply the property update
-    this.applyProperty(audioNode, propertyName, value, propertyDef.type)
+    this.applyProperty(audioNode, propertyName, validatedValue, propertyDef.type)
     return true // Successfully updated
+  }
+
+  private validatePropertyValue(
+    value: unknown,
+    propertyDef: { name: string; type: string; min?: number; max?: number; defaultValue?: unknown },
+    propertyName: string
+  ): unknown | null {
+    // Handle null/undefined values
+    if (value === null || value === undefined) {
+      return propertyDef.defaultValue ?? this.getTypeDefaultValue(propertyDef.type, propertyName)
+    }
+
+    // Validate based on property type
+    switch (propertyDef.type) {
+      case 'AudioParam':
+      case 'number': {
+        const numValue = Number(value)
+        if (isNaN(numValue) || !isFinite(numValue)) {
+          console.warn(`Property ${propertyName} expects a number, got: ${value}. Using default.`)
+          return (
+            propertyDef.defaultValue ?? this.getTypeDefaultValue(propertyDef.type, propertyName)
+          )
+        }
+
+        // Check min/max bounds
+        if (propertyDef.min !== undefined && numValue < propertyDef.min) {
+          console.warn(
+            `Property ${propertyName} value ${numValue} is below minimum ${propertyDef.min}`
+          )
+          return propertyDef.min
+        }
+        if (propertyDef.max !== undefined && numValue > propertyDef.max) {
+          console.warn(
+            `Property ${propertyName} value ${numValue} is above maximum ${propertyDef.max}`
+          )
+          return propertyDef.max
+        }
+
+        return numValue
+      }
+
+      case 'string':
+        return String(value)
+
+      case 'boolean':
+        return Boolean(value)
+
+      case 'OscillatorType':
+        if (!['sine', 'square', 'sawtooth', 'triangle'].includes(value as string)) {
+          console.warn(`Invalid oscillator type: ${value}. Using 'sine' instead.`)
+          return 'sine'
+        }
+        return value
+
+      case 'BiquadFilterType':
+        if (
+          ![
+            'lowpass',
+            'highpass',
+            'bandpass',
+            'lowshelf',
+            'highshelf',
+            'peaking',
+            'notch',
+            'allpass',
+          ].includes(value as string)
+        ) {
+          console.warn(`Invalid filter type: ${value}. Using 'lowpass' instead.`)
+          return 'lowpass'
+        }
+        return value
+
+      case 'DistanceModelType':
+        if (!['linear', 'inverse', 'exponential'].includes(value as string)) {
+          console.warn(`Invalid distance model: ${value}. Using 'inverse' instead.`)
+          return 'inverse'
+        }
+        return value
+
+      case 'PanningModelType':
+        if (!['equalpower', 'HRTF'].includes(value as string)) {
+          console.warn(`Invalid panning model: ${value}. Using 'equalpower' instead.`)
+          return 'equalpower'
+        }
+        return value
+
+      case 'OverSampleType':
+        if (!['none', '2x', '4x'].includes(value as string)) {
+          console.warn(`Invalid oversample type: ${value}. Using 'none' instead.`)
+          return 'none'
+        }
+        return value
+
+      default:
+        // For unknown types, just return the value as-is
+        console.warn(`Unknown property type: ${propertyDef.type} for property ${propertyName}`)
+        return value
+    }
+  }
+
+  private getTypeDefaultValue(type: string, propertyName: string): unknown {
+    // Provide sensible defaults for different property types
+    switch (type) {
+      case 'AudioParam':
+      case 'number':
+        // Special cases for known properties
+        if (propertyName === 'pan') return 0 // Pan should default to center
+        if (propertyName === 'gain') return 1 // Gain should default to unity
+        if (propertyName === 'frequency') return 440 // Frequency should default to A4
+        if (propertyName === 'Q') return 1 // Q should default to 1
+        if (propertyName === 'detune') return 0 // Detune should default to 0
+        return 0 // General default for numbers
+      case 'string':
+        return ''
+      case 'boolean':
+        return false
+      case 'OscillatorType':
+        return 'sine'
+      case 'BiquadFilterType':
+        return 'lowpass'
+      default:
+        return 0
+    }
   }
 
   private requiresRecreation(nodeType: string, propertyName: string): boolean {

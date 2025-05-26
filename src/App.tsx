@@ -11,12 +11,18 @@ import {
   Node,
   Edge,
   NodeChange,
+  EdgeChange,
+  ConnectionLineType,
 } from '@xyflow/react'
 import type { NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot } from 'mobx-state-tree'
-import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import {
+  createAudioGraphStore,
+  AudioGraphStoreContext,
+  useAudioGraphStore,
+} from '~/stores/AudioGraphStore'
 import AudioNode from '~/components/AudioNode'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
@@ -28,6 +34,16 @@ const nodeTypes: NodeTypes = {
 
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
+
+  return (
+    <AudioGraphStoreContext.Provider value={store}>
+      <AppContent />
+    </AudioGraphStoreContext.Provider>
+  )
+})
+
+const AppContent: React.FC = observer(() => {
+  const store = useAudioGraphStore()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
@@ -142,6 +158,7 @@ const App: React.FC = observer(() => {
   }, [
     store.visualNodes.length,
     store.selectedNodeId,
+    store.propertyChangeCounter,
     forceUpdate,
     setNodes,
     store.visualNodes,
@@ -155,12 +172,52 @@ const App: React.FC = observer(() => {
 
     const storeEdges: Edge[] = store.visualEdges.map((edge, index) => {
       console.log(`Processing edge ${index}:`, edge)
+
+      // Determine connection type by looking at the source and target handles
+      const sourceNode = store.visualNodes.find(node => node.id === edge.source)
+      const targetNode = store.visualNodes.find(node => node.id === edge.target)
+
+      let connectionType = 'audio' // default
+      let edgeColor = '#059669' // emerald-600 for audio
+      let edgeWidth = 3
+
+      if (sourceNode && targetNode) {
+        const sourceHandle = edge.sourceHandle || 'output'
+        const targetHandle = edge.targetHandle || 'input'
+
+        const sourceOutput = sourceNode.data.metadata.outputs.find(
+          output => output.name === sourceHandle
+        )
+        const targetInput = targetNode.data.metadata.inputs.find(
+          input => input.name === targetHandle
+        )
+
+        if (sourceOutput && targetInput) {
+          // Determine connection type based on target input type
+          connectionType = targetInput.type
+
+          if (connectionType === 'control') {
+            edgeColor = '#dc2626' // red-600 for control
+            edgeWidth = 2 // Slightly thinner for control signals
+          }
+        }
+      }
+
       return {
         id: edge.id,
         source: edge.source,
         target: edge.target,
         sourceHandle: edge.sourceHandle || undefined,
         targetHandle: edge.targetHandle || undefined,
+        type: ConnectionLineType.Bezier,
+        animated: true,
+        style: {
+          stroke: edgeColor,
+          strokeWidth: edgeWidth,
+        },
+        data: {
+          connectionType,
+        },
       }
     })
 
@@ -168,7 +225,7 @@ const App: React.FC = observer(() => {
     console.log('About to call setEdges with:', storeEdges)
     setEdges(storeEdges)
     console.log('setEdges called')
-  }, [store.visualEdges.length, store.visualEdges, forceUpdate, setEdges])
+  }, [store.visualEdges.length, store.visualEdges, forceUpdate, setEdges, store.visualNodes])
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -239,9 +296,45 @@ const App: React.FC = observer(() => {
       if (!nodeType) return
 
       const reactFlowBounds = (event.target as Element).getBoundingClientRect()
-      const position = {
+      let position = {
         x: event.clientX - reactFlowBounds.left,
         y: event.clientY - reactFlowBounds.top,
+      }
+
+      // Add automatic spacing to prevent overlapping
+      const nodeSpacing = 250 // Minimum distance between nodes
+      const existingNodes = store.visualNodes
+
+      // Check if position is too close to existing nodes
+      let attempts = 0
+      const maxAttempts = 20
+
+      while (attempts < maxAttempts) {
+        let tooClose = false
+
+        for (const existingNode of existingNodes) {
+          const distance = Math.sqrt(
+            Math.pow(position.x - existingNode.position.x, 2) +
+              Math.pow(position.y - existingNode.position.y, 2)
+          )
+
+          if (distance < nodeSpacing) {
+            tooClose = true
+            break
+          }
+        }
+
+        if (!tooClose) break
+
+        // Adjust position in a spiral pattern
+        const angle = attempts * 0.5 * Math.PI
+        const radius = nodeSpacing + attempts * 50
+        position = {
+          x: event.clientX - reactFlowBounds.left + Math.cos(angle) * radius,
+          y: event.clientY - reactFlowBounds.top + Math.sin(angle) * radius,
+        }
+
+        attempts++
       }
 
       store.addNode(nodeType, position)
@@ -272,6 +365,25 @@ const App: React.FC = observer(() => {
     [store, onNodesChange, handleForceUpdate]
   )
 
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      console.log('Edges changed:', changes)
+
+      // Update React Flow state
+      onEdgesChange(changes)
+
+      // Handle different types of changes
+      changes.forEach(change => {
+        if (change.type === 'remove') {
+          console.log('Removing edge from store:', change.id)
+          store.removeEdge(change.id)
+          handleForceUpdate() // Force update after removal
+        }
+      })
+    },
+    [store, onEdgesChange, handleForceUpdate]
+  )
+
   // Create a proper useCallback for the ReactFlow onNodesChange prop
   const reactFlowOnNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -281,17 +393,26 @@ const App: React.FC = observer(() => {
     [handleNodesChange]
   )
 
+  // Create a proper useCallback for the ReactFlow onEdgesChange prop
+  const reactFlowOnEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      console.log('React Flow onEdgesChange called with:', changes)
+      handleEdgesChange(changes)
+    },
+    [handleEdgesChange]
+  )
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Full-width Header */}
-      <Header store={store} />
+      <Header />
 
       {/* Three-column layout below header */}
       <div className="flex flex-1 h-0">
         {/* Node Palette */}
         <div className="w-64 bg-white border-r border-gray-200 flex flex-col h-full">
           <div className="flex-1 overflow-y-auto p-4">
-            <NodePalette store={store} />
+            <NodePalette />
           </div>
         </div>
 
@@ -306,7 +427,7 @@ const App: React.FC = observer(() => {
               nodes={nodes}
               edges={edges}
               onNodesChange={reactFlowOnNodesChange}
-              onEdgesChange={onEdgesChange}
+              onEdgesChange={reactFlowOnEdgesChange}
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               onPaneClick={onPaneClick}
@@ -316,9 +437,9 @@ const App: React.FC = observer(() => {
               connectionMode={ConnectionMode.Loose}
               connectOnClick={false}
               defaultEdgeOptions={{
-                type: 'smoothstep',
+                type: 'default', // Use default bezier curves for more flowing connections
                 animated: true,
-                style: { stroke: '#6b7280', strokeWidth: 2 },
+                // Remove default style since we set it per edge based on connection type
               }}
               className="bg-gray-50 w-full h-full"
               onInit={reactFlowInstance => {
@@ -336,7 +457,7 @@ const App: React.FC = observer(() => {
         {/* Property Panel */}
         <div className="w-80 bg-white border-l border-gray-200 flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
-            <PropertyPanel store={store} />
+            <PropertyPanel />
           </div>
         </div>
       </div>

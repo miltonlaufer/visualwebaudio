@@ -1,12 +1,9 @@
 import React, { useState, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
-interface MicrophoneInputProps {
-  store: AudioGraphStoreType
-}
-
-const MicrophoneInput: React.FC<MicrophoneInputProps> = observer(({ store }) => {
+const MicrophoneInput: React.FC = observer(() => {
+  const store = useAudioGraphStore()
   const [isRecording, setIsRecording] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [micNodeId, setMicNodeId] = useState<string | null>(null)

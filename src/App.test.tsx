@@ -22,7 +22,7 @@ describe('App', () => {
     const { container } = render(<App />)
 
     // Check for node palette content
-    expect(container).toHaveTextContent('Audio Nodes')
+    expect(container).toHaveTextContent('Node Palette')
     expect(container).toHaveTextContent('source')
     expect(container).toHaveTextContent('effect')
     expect(container).toHaveTextContent('destination')

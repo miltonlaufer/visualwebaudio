@@ -8,6 +8,7 @@ const mockNodeData: VisualNodeData = {
   nodeType: 'OscillatorNode',
   metadata: {
     name: 'OscillatorNode',
+    description: 'Test oscillator node',
     category: 'source',
     inputs: [],
     outputs: [{ name: 'output', type: 'audio' }],
@@ -15,10 +16,10 @@ const mockNodeData: VisualNodeData = {
       { name: 'frequency', type: 'AudioParam', defaultValue: 440 },
       { name: 'type', type: 'OscillatorType', defaultValue: 'sine' },
     ],
-    methods: ['connect', 'disconnect', 'start', 'stop'],
+    methods: ['start', 'stop'],
     events: ['ended'],
   },
-  properties: new Map<string, any>([
+  properties: new Map<string, unknown>([
     ['frequency', 440],
     ['type', 'sine'],
   ]),
@@ -28,6 +29,7 @@ const mockNodeDataWithInputs: VisualNodeData = {
   nodeType: 'GainNode',
   metadata: {
     name: 'GainNode',
+    description: 'Test gain node with inputs',
     category: 'effect',
     inputs: [{ name: 'input', type: 'audio' }],
     outputs: [{ name: 'output', type: 'audio' }],
@@ -35,7 +37,7 @@ const mockNodeDataWithInputs: VisualNodeData = {
     methods: ['connect', 'disconnect'],
     events: [],
   },
-  properties: new Map<string, any>([['gain', 0.5]]),
+  properties: new Map<string, unknown>([['gain', 0.5]]),
 }
 
 // Helper function to render with ReactFlow provider
@@ -94,7 +96,7 @@ describe('AudioNode', () => {
   })
 
   it('should limit displayed properties to 3', () => {
-    const dataWithManyProps: VisualNodeData = {
+    const dataWithManyProps = {
       ...mockNodeData,
       metadata: {
         ...mockNodeData.metadata,
@@ -105,12 +107,14 @@ describe('AudioNode', () => {
           { name: 'prop4', type: 'number', defaultValue: 4 },
           { name: 'prop5', type: 'number', defaultValue: 5 },
         ],
+        inputs: [], // No inputs so properties will be shown
+        outputs: [{ name: 'output', type: 'audio' as const }],
       },
-    }
+    } as VisualNodeData
 
     renderWithProvider(<AudioNode data={dataWithManyProps} />)
 
-    expect(screen.getByText('+2 more...')).toBeInTheDocument()
+    expect(screen.getByText('+3 more...')).toBeInTheDocument()
   })
 
   it('should handle missing metadata gracefully', () => {

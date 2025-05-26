@@ -1,12 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
-interface FrequencyAnalyzerProps {
-  store: AudioGraphStoreType
-}
-
-const FrequencyAnalyzer: React.FC<FrequencyAnalyzerProps> = observer(({ store }) => {
+const FrequencyAnalyzer: React.FC = observer(() => {
+  const store = useAudioGraphStore()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number | undefined>(undefined)
   const [isActive, setIsActive] = useState(false)

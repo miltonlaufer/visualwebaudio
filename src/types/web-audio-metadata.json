@@ -126,6 +126,18 @@
       {
         "name": "input",
         "type": "audio"
+      },
+      {
+        "name": "frequency",
+        "type": "control"
+      },
+      {
+        "name": "Q",
+        "type": "control"
+      },
+      {
+        "name": "gain",
+        "type": "control"
       }
     ],
     "outputs": [
@@ -280,6 +292,10 @@
       {
         "name": "input",
         "type": "audio"
+      },
+      {
+        "name": "delayTime",
+        "type": "control"
       }
     ],
     "outputs": [
@@ -308,6 +324,26 @@
       {
         "name": "input",
         "type": "audio"
+      },
+      {
+        "name": "threshold",
+        "type": "control"
+      },
+      {
+        "name": "knee",
+        "type": "control"
+      },
+      {
+        "name": "ratio",
+        "type": "control"
+      },
+      {
+        "name": "attack",
+        "type": "control"
+      },
+      {
+        "name": "release",
+        "type": "control"
       }
     ],
     "outputs": [
@@ -364,6 +400,10 @@
       {
         "name": "input",
         "type": "audio"
+      },
+      {
+        "name": "gain",
+        "type": "control"
       }
     ],
     "outputs": [
@@ -418,7 +458,16 @@
     "name": "OscillatorNode",
     "description": "The OscillatorNode interface represents a periodic waveform, such as a sine wave. It is an AudioScheduledSourceNode audio-processing module that causes a specified frequency of a given wave to be created—in effect, a constant tone.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/OscillatorNode)",
     "category": "source",
-    "inputs": [],
+    "inputs": [
+      {
+        "name": "frequency",
+        "type": "control"
+      },
+      {
+        "name": "detune",
+        "type": "control"
+      }
+    ],
     "outputs": [
       {
         "name": "output",
@@ -477,6 +526,10 @@
       {
         "name": "input",
         "type": "audio"
+      },
+      {
+        "name": "pan",
+        "type": "control"
       }
     ],
     "outputs": [

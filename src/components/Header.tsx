@@ -1,13 +1,10 @@
 import React, { useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import ProjectModal from './ProjectModal'
 
-interface HeaderProps {
-  store: AudioGraphStoreType
-}
-
-const Header: React.FC<HeaderProps> = observer(({ store }) => {
+const Header: React.FC = observer(() => {
+  const store = useAudioGraphStore()
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
   const [isExamplesOpen, setIsExamplesOpen] = useState(false)
 
@@ -17,11 +14,15 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
       create: () => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const destId = store.addNode('AudioDestinationNode', { x: 300, y: 100 })
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
+        const destId = store.addNode('AudioDestinationNode', { x: 400, y: 150 })
         setTimeout(() => {
+          console.log('Basic Oscillator: Connecting to destination...')
           store.addEdge(oscId, destId, 'output', 'input')
-        }, 100)
+        }, 200)
       },
     },
     {
@@ -29,25 +30,31 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
       name: 'Delay Effect',
       description: 'Oscillator with delay and feedback',
       create: () => {
-        const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-        const gainId = store.addNode('GainNode', { x: 200, y: 100 })
-        const delayId = store.addNode('DelayNode', { x: 350, y: 100 })
-        const feedbackId = store.addNode('GainNode', { x: 350, y: 200 })
-        const destId = store.addNode('AudioDestinationNode', { x: 500, y: 100 })
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
+        const gainId = store.addNode('GainNode', { x: 250, y: 150 })
+        const delayId = store.addNode('DelayNode', { x: 450, y: 150 })
+        const feedbackId = store.addNode('GainNode', { x: 450, y: 300 })
+        const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
 
         setTimeout(() => {
           // Set delay time and feedback gain
           store.updateNodeProperty(delayId, 'delayTime', 0.3)
-          store.updateNodeProperty(feedbackId, 'gain', 0.4)
+          store.updateNodeProperty(feedbackId, 'gain', 1)
           store.updateNodeProperty(gainId, 'gain', 0.7)
 
           // Connect the nodes
+          console.log('Delay Effect: Connecting main audio chain...')
           store.addEdge(oscId, gainId, 'output', 'input')
           store.addEdge(gainId, delayId, 'output', 'input')
           store.addEdge(delayId, destId, 'output', 'input')
+
+          console.log('Delay Effect: Connecting feedback loop...')
           store.addEdge(delayId, feedbackId, 'output', 'input')
           store.addEdge(feedbackId, delayId, 'output', 'input')
-        }, 100)
+        }, 200)
       },
     },
     {
@@ -55,11 +62,14 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
       name: 'Filter Sweep',
       description: 'Oscillator with animated lowpass filter',
       create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
         const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-        const filterId = store.addNode('BiquadFilterNode', { x: 200, y: 100 })
-        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 250 })
-        const lfoGainId = store.addNode('GainNode', { x: 200, y: 250 })
-        const destId = store.addNode('AudioDestinationNode', { x: 350, y: 100 })
+        const filterId = store.addNode('BiquadFilterNode', { x: 300, y: 100 })
+        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
+        const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
 
         setTimeout(() => {
           // Set up the main oscillator
@@ -73,16 +83,18 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
 
           // Set up the LFO for filter modulation
           store.updateNodeProperty(lfoId, 'frequency', 0.5)
-          store.updateNodeProperty(lfoGainId, 'gain', 400)
+          store.updateNodeProperty(lfoGainId, 'gain', 200)
 
           // Connect the audio chain
+          console.log('Filter Sweep: Connecting main audio chain...')
           store.addEdge(oscId, filterId, 'output', 'input')
           store.addEdge(filterId, destId, 'output', 'input')
 
           // Connect the LFO to modulate filter frequency
+          console.log('Filter Sweep: Connecting LFO modulation...')
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, filterId, 'output', 'frequency')
-        }, 100)
+        }, 200)
       },
     },
     {
@@ -90,10 +102,14 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
       name: 'Stereo Panning',
       description: 'Oscillator with stereo panning effect',
       create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
         const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-        const pannerId = store.addNode('StereoPannerNode', { x: 200, y: 100 })
-        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 250 })
-        const destId = store.addNode('AudioDestinationNode', { x: 350, y: 100 })
+        const pannerId = store.addNode('StereoPannerNode', { x: 300, y: 100 })
+        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
+        const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
 
         setTimeout(() => {
           // Set up the main oscillator
@@ -101,12 +117,17 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
 
           // Set up the LFO for panning
           store.updateNodeProperty(lfoId, 'frequency', 0.2)
+          store.updateNodeProperty(lfoGainId, 'gain', 0.8) // Pan range control
 
           // Connect the nodes
+          console.log('Stereo Panning: Connecting main audio chain...')
           store.addEdge(oscId, pannerId, 'output', 'input')
           store.addEdge(pannerId, destId, 'output', 'input')
-          store.addEdge(lfoId, pannerId, 'output', 'pan')
-        }, 100)
+
+          console.log('Stereo Panning: Connecting LFO modulation...')
+          store.addEdge(lfoId, lfoGainId, 'output', 'input')
+          store.addEdge(lfoGainId, pannerId, 'output', 'pan')
+        }, 200)
       },
     },
     {
@@ -114,10 +135,13 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
       name: 'Compressor Effect',
       description: 'Oscillator with dynamics compression',
       create: () => {
-        const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-        const gainId = store.addNode('GainNode', { x: 200, y: 100 })
-        const compId = store.addNode('DynamicsCompressorNode', { x: 350, y: 100 })
-        const destId = store.addNode('AudioDestinationNode', { x: 500, y: 100 })
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
+        const gainId = store.addNode('GainNode', { x: 250, y: 150 })
+        const compId = store.addNode('DynamicsCompressorNode', { x: 450, y: 150 })
+        const destId = store.addNode('AudioDestinationNode', { x: 700, y: 150 })
 
         setTimeout(() => {
           // Set up a louder signal to trigger compression
@@ -131,10 +155,11 @@ const Header: React.FC<HeaderProps> = observer(({ store }) => {
           store.updateNodeProperty(compId, 'release', 0.1)
 
           // Connect the nodes
+          console.log('Compressor Effect: Connecting audio chain...')
           store.addEdge(oscId, gainId, 'output', 'input')
           store.addEdge(gainId, compId, 'output', 'input')
           store.addEdge(compId, destId, 'output', 'input')
-        }, 100)
+        }, 200)
       },
     },
   ]

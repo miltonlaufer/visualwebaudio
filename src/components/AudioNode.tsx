@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState, useCallback } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import type { VisualNodeData } from '~/types'
 
@@ -10,7 +10,40 @@ interface AudioNodeProps {
 const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   console.log('AudioNode rendering:', data.nodeType)
 
+  const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+
   const { metadata, nodeType, properties } = data
+
+  // Memoized handlers for better performance
+  const handleMouseEnterHandle = useCallback((handleId: string) => {
+    return () => setHoveredHandle(handleId)
+  }, [])
+
+  const handleMouseLeaveHandle = useCallback(() => {
+    setHoveredHandle(null)
+  }, [])
+
+  const handleMouseEnterNode = useCallback(() => {
+    setIsConnecting(true)
+  }, [])
+
+  const handleMouseLeaveNode = useCallback(() => {
+    setIsConnecting(false)
+  }, [])
+
+  // Helper function to safely get property value whether properties is a Map or object
+  const getPropertyValue = (properties: unknown, propertyName: string): unknown => {
+    if (!properties) return undefined
+
+    // Check if it's a MobX State Tree Map or regular Map with .get method
+    if (typeof (properties as any).get === 'function') {
+      return (properties as any).get(propertyName)
+    } else if (typeof properties === 'object') {
+      return (properties as Record<string, unknown>)[propertyName]
+    }
+    return undefined
+  }
 
   // Error handling
   if (!metadata) {
@@ -42,72 +75,150 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
     }
   }
 
+  const getHandleColors = (type: string) => {
+    if (type === 'audio') {
+      return {
+        backgroundColor: '#059669', // emerald-600 (darker green)
+        borderColor: '#047857', // emerald-700 (even darker border)
+        labelColor: 'text-emerald-800',
+        badgeColor: 'bg-emerald-100 text-emerald-800',
+      }
+    } else {
+      return {
+        backgroundColor: '#dc2626', // red-600 (distinct red for control)
+        borderColor: '#b91c1c', // red-700 (darker red border)
+        labelColor: 'text-red-800',
+        badgeColor: 'bg-red-100 text-red-800',
+      }
+    }
+  }
+
+  // Calculate node height based on content
+  const maxHandles = Math.max(metadata.inputs.length, metadata.outputs.length)
+  const baseHeight = 80 // Base height for header and properties
+  const handleHeight = maxHandles * 30 // 30px per handle
+  const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
+
   return (
     <div
       className={`
-        relative min-w-32 p-3 rounded-lg shadow-md border-2 
+        relative min-w-48 p-3 rounded-lg shadow-md border-2 flex flex-col items-center justify-center
         ${getCategoryColor(metadata.category)}
         ${selected ? 'ring-2 ring-blue-500' : ''}
       `}
+      style={{ minHeight: `${nodeHeight}px` }}
+      onMouseEnter={handleMouseEnterNode}
+      onMouseLeave={handleMouseLeaveNode}
     >
-      {/* Input Handles */}
-      {metadata.inputs.map((input, index) => (
-        <Handle
-          key={`input-${input.name}`}
-          type="target"
-          position={Position.Left}
-          id={input.name}
-          style={{
-            top: `${30 + index * 25}px`,
-            backgroundColor: input.type === 'audio' ? '#10b981' : '#f59e0b',
-            border: `2px solid ${input.type === 'audio' ? '#059669' : '#d97706'}`,
-            width: '12px',
-            height: '12px',
-          }}
-          title={`${input.name} (${input.type})`}
-        />
-      ))}
+      {/* Input Handles and Labels */}
+      {metadata.inputs.map((input, index) => {
+        const colors = getHandleColors(input.type)
+        const topPosition = 35 + index * 30
+        const handleId = `input-${input.name}`
+        const showLabel = hoveredHandle === handleId || isConnecting
 
-      {/* Output Handles */}
-      {metadata.outputs.map((output, index) => (
-        <Handle
-          key={`output-${output.name}`}
-          type="source"
-          position={Position.Right}
-          id={output.name}
-          style={{
-            top: `${30 + index * 25}px`,
-            backgroundColor: output.type === 'audio' ? '#10b981' : '#f59e0b',
-            border: `2px solid ${output.type === 'audio' ? '#059669' : '#d97706'}`,
-            width: '12px',
-            height: '12px',
-          }}
-          title={`${output.name} (${output.type})`}
-        />
-      ))}
+        return (
+          <div key={handleId} className="absolute left-0" style={{ top: `${topPosition}px` }}>
+            <Handle
+              type="target"
+              position={Position.Left}
+              id={input.name}
+              data-handletype={input.type}
+              style={{
+                backgroundColor: colors.backgroundColor,
+                border: `2px solid ${colors.borderColor}`,
+                width: '14px',
+                height: '14px',
+                left: '-7px',
+                zIndex: 10,
+              }}
+              title={`${input.name} (${input.type})`}
+              onMouseEnter={handleMouseEnterHandle(handleId)}
+              onMouseLeave={handleMouseLeaveHandle}
+            />
+            {/* Input Label - Only show on hover or when connecting */}
+            {showLabel && (
+              <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none z-20">
+                <span
+                  className={`text-xs font-medium ${colors.labelColor} bg-white px-1 rounded shadow-sm`}
+                >
+                  {input.name}
+                </span>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Output Handles and Labels */}
+      {metadata.outputs.map((output, index) => {
+        const colors = getHandleColors(output.type)
+        const topPosition = 35 + index * 30
+        const handleId = `output-${output.name}`
+        const showLabel = hoveredHandle === handleId || isConnecting
+
+        return (
+          <div key={handleId} className="absolute right-0" style={{ top: `${topPosition}px` }}>
+            <Handle
+              type="source"
+              position={Position.Right}
+              id={output.name}
+              data-handletype={output.type}
+              style={{
+                backgroundColor: colors.backgroundColor,
+                border: `2px solid ${colors.borderColor}`,
+                width: '14px',
+                height: '14px',
+                right: '-7px',
+                zIndex: 10,
+              }}
+              title={`${output.name} (${output.type})`}
+              onMouseEnter={handleMouseEnterHandle(handleId)}
+              onMouseLeave={handleMouseLeaveHandle}
+            />
+            {/* Output Label - Only show on hover or when connecting */}
+            {showLabel && (
+              <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-end pointer-events-none z-20">
+                <span
+                  className={`text-xs font-medium ${colors.labelColor} bg-white px-1 rounded shadow-sm`}
+                >
+                  {output.name}
+                </span>
+              </div>
+            )}
+          </div>
+        )
+      })}
 
       {/* Node Header */}
-      <div className="text-sm font-semibold text-gray-800 mb-2">{nodeType.replace('Node', '')}</div>
+      <div className="text-sm font-semibold text-gray-800 mb-2 text-center">
+        {nodeType.replace('Node', '')}
+      </div>
 
-      {/* Node Properties */}
-      {metadata.properties.length > 0 && (
-        <div className="space-y-1">
-          {metadata.properties.slice(0, 3).map(prop => (
-            <div key={prop.name} className="text-xs text-gray-600">
-              <span className="font-medium">{prop.name}:</span>{' '}
-              <span className="text-gray-500">
-                {properties[prop.name]?.toString() || prop.defaultValue?.toString()}
-              </span>
-            </div>
-          ))}
-          {metadata.properties.length > 3 && (
-            <div className="text-xs text-gray-400">+{metadata.properties.length - 3} more...</div>
-          )}
-        </div>
-      )}
+      {/* Node Properties - Show properties for nodes with fewer handles or important properties */}
+      {metadata.properties.length > 0 &&
+        (maxHandles <= 3 ||
+          metadata.properties.some(p => p.name === 'type' || p.name === 'frequency')) && (
+          <div className="space-y-1 mt-4">
+            {metadata.properties.slice(0, maxHandles > 3 ? 1 : 2).map(prop => (
+              <div key={prop.name} className="text-xs text-gray-600 text-center">
+                <span className="font-medium">{prop.name}:</span>{' '}
+                <span className="text-gray-500">
+                  {getPropertyValue(properties, prop.name)?.toString() ||
+                    prop.defaultValue?.toString()}
+                </span>
+              </div>
+            ))}
+            {metadata.properties.length > (maxHandles > 3 ? 1 : 2) && (
+              <div className="text-xs text-gray-400 text-center">
+                +{metadata.properties.length - (maxHandles > 3 ? 1 : 2)} more...
+              </div>
+            )}
+          </div>
+        )}
 
       {/* Category Badge */}
-      <div className="mt-2">
+      <div className="w-full flex justify-center mt-2">
         <span className="inline-block px-2 py-1 text-xs font-medium text-gray-600 bg-white rounded-full">
           {metadata.category}
         </span>

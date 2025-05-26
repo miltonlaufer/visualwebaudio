@@ -1,30 +1,33 @@
 import React, { useState } from 'react'
 import { observer } from 'mobx-react-lite'
-import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import FrequencyAnalyzer from './FrequencyAnalyzer'
 
-interface PropertyPanelProps {
-  store: AudioGraphStoreType
-}
-
-const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ store }) => {
-  const selectedNode = store.selectedNode
+const PropertyPanel: React.FC = observer(() => {
+  const store = useAudioGraphStore()
+  const selectedNode = store.selectedNodeId
+    ? store.visualNodes.find(n => n.id === store.selectedNodeId)
+    : null
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+
+  // Helper function to safely get property value whether properties is a Map or object
+  const getPropertyValue = (properties: unknown, propertyName: string): unknown => {
+    if (!properties) return undefined
+
+    // Check if it's a MobX State Tree Map or regular Map with .get method
+    if (typeof (properties as any).get === 'function') {
+      return (properties as any).get(propertyName)
+    } else if (typeof properties === 'object') {
+      return (properties as Record<string, unknown>)[propertyName]
+    }
+    return undefined
+  }
 
   const handlePropertyChange = (propertyName: string, value: string | number) => {
     if (!selectedNode) return
 
-    // Convert string values to appropriate types
-    const convertedValue =
-      typeof value === 'string' && !isNaN(Number(value)) ? Number(value) : value
-
-    console.log(
-      `=== UPDATING NODE PROPERTY === ${selectedNode.id} ${propertyName} ${convertedValue}`
-    )
-
-    store.updateNodeProperty(selectedNode.id, propertyName, convertedValue)
-
-    console.log('=== PROPERTY UPDATE COMPLETE ===')
+    console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
+    store.updateNodeProperty(selectedNode.id, propertyName, value)
   }
 
   const renderDescription = (description: string) => {
@@ -70,14 +73,19 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ store }) => {
     min?: number
     max?: number
   }) => {
-    const currentValue = selectedNode?.data.properties.get(property.name) ?? property.defaultValue
+    const currentValue = selectedNode?.data.properties
+      ? (getPropertyValue(selectedNode.data.properties, property.name) ?? property.defaultValue)
+      : property.defaultValue
 
     switch (property.type) {
-      case 'AudioParam':
+      case 'AudioParam': {
+        // Ensure the value is always a number, never undefined
+        const numericValue =
+          typeof currentValue === 'number' ? currentValue : (property.defaultValue as number) || 0
         return (
           <input
             type="number"
-            value={currentValue}
+            value={numericValue}
             onChange={e => handlePropertyChange(property.name, parseFloat(e.target.value))}
             step="0.01"
             min={property.min}
@@ -85,11 +93,17 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ store }) => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         )
+      }
 
-      case 'OscillatorType':
+      case 'OscillatorType': {
+        // Ensure the value is always a string, never undefined
+        const oscValue =
+          typeof currentValue === 'string'
+            ? currentValue
+            : (property.defaultValue as string) || 'sine'
         return (
           <select
-            value={currentValue}
+            value={oscValue}
             onChange={e => handlePropertyChange(property.name, e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -99,11 +113,17 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ store }) => {
             <option value="triangle">Triangle</option>
           </select>
         )
+      }
 
-      case 'BiquadFilterType':
+      case 'BiquadFilterType': {
+        // Ensure the value is always a string, never undefined
+        const filterValue =
+          typeof currentValue === 'string'
+            ? currentValue
+            : (property.defaultValue as string) || 'lowpass'
         return (
           <select
-            value={currentValue}
+            value={filterValue}
             onChange={e => handlePropertyChange(property.name, e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
@@ -117,16 +137,23 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ store }) => {
             <option value="allpass">All Pass</option>
           </select>
         )
+      }
 
-      default:
+      default: {
+        // Ensure the value is always a string, never undefined
+        const stringValue =
+          currentValue !== undefined && currentValue !== null
+            ? currentValue.toString()
+            : property.defaultValue?.toString() || ''
         return (
           <input
             type="text"
-            value={currentValue?.toString() || ''}
+            value={stringValue}
             onChange={e => handlePropertyChange(property.name, e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         )
+      }
     }
   }
 

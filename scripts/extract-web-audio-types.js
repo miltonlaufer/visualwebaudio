@@ -270,20 +270,36 @@ function getNodeCategory(nodeType) {
 
 function getNodeInputs(nodeType) {
   // Most audio nodes have one audio input, except sources and context
-  if (nodeType.includes('Source') || nodeType === 'AudioContext' || nodeType === 'OscillatorNode') {
-    return []
+  const inputs = []
+
+  if (
+    !nodeType.includes('Source') &&
+    nodeType !== 'AudioContext' &&
+    nodeType !== 'OscillatorNode'
+  ) {
+    if (nodeType === 'ChannelMergerNode') {
+      inputs.push(
+        { name: 'input0', type: 'audio' },
+        { name: 'input1', type: 'audio' },
+        { name: 'input2', type: 'audio' },
+        { name: 'input3', type: 'audio' },
+        { name: 'input4', type: 'audio' },
+        { name: 'input5', type: 'audio' }
+      )
+    } else {
+      inputs.push({ name: 'input', type: 'audio' })
+    }
   }
-  if (nodeType === 'ChannelMergerNode') {
-    return [
-      { name: 'input0', type: 'audio' },
-      { name: 'input1', type: 'audio' },
-      { name: 'input2', type: 'audio' },
-      { name: 'input3', type: 'audio' },
-      { name: 'input4', type: 'audio' },
-      { name: 'input5', type: 'audio' },
-    ]
-  }
-  return [{ name: 'input', type: 'audio' }]
+
+  // Add AudioParam inputs for modulation
+  const properties = getNodeProperties(nodeType)
+  properties.forEach(prop => {
+    if (prop.type === 'AudioParam') {
+      inputs.push({ name: prop.name, type: 'control' })
+    }
+  })
+
+  return inputs
 }
 
 function getNodeOutputs(nodeType) {

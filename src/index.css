@@ -10,18 +10,32 @@
   background: white;
 }
 
-/* Handle styles - make them VERY visible */
+/* Handle styles - different colors for different types */
 .react-flow__handle {
   width: 16px !important;
   height: 16px !important;
   border: 3px solid #ffffff !important;
   border-radius: 50% !important;
-  background: #ef4444 !important; /* Bright red for maximum visibility */
   position: absolute !important;
   z-index: 1000 !important;
   opacity: 1 !important;
   visibility: visible !important;
   display: block !important;
+}
+
+/* Audio handles - green */
+.react-flow__handle[data-handletype='audio'] {
+  background: #10b981 !important; /* emerald-500 */
+}
+
+/* Control handles - orange */
+.react-flow__handle[data-handletype='control'] {
+  background: #f59e0b !important; /* amber-500 */
+}
+
+/* Default fallback - gray */
+.react-flow__handle:not([data-handletype]) {
+  background: #6b7280 !important; /* gray-500 */
 }
 
 .react-flow__handle.react-flow__handle-left {
@@ -36,10 +50,20 @@
 
 /* Make handles even more visible on hover */
 .react-flow__handle:hover {
-  background: #dc2626 !important;
-  border-color: #fbbf24 !important;
   transform: translateY(-50%) scale(1.3) !important;
-  box-shadow: 0 0 10px rgba(239, 68, 68, 0.5) !important;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Audio handles hover */
+.react-flow__handle[data-handletype='audio']:hover {
+  background: #059669 !important; /* emerald-600 */
+  border-color: #10b981 !important;
+}
+
+/* Control handles hover */
+.react-flow__handle[data-handletype='control']:hover {
+  background: #d97706 !important; /* amber-600 */
+  border-color: #f59e0b !important;
 }
 
 /* Connection line styles */
@@ -53,11 +77,11 @@
   stroke-width: 4;
 }
 
-/* Debug: make sure handles are visible */
+/* Connection states */
 .react-flow__handle-connecting {
-  background: #10b981 !important;
+  background: #3b82f6 !important; /* blue when connecting */
 }
 
 .react-flow__handle-valid {
-  background: #10b981 !important;
+  background: #10b981 !important; /* green when valid connection */
 }
