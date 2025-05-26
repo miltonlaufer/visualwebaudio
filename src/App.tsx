@@ -13,6 +13,7 @@ import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot } from 'mobx-state-tree'
+import { HelmetProvider } from 'react-helmet-async'
 import {
   createAudioGraphStore,
   AudioGraphStoreContext,
@@ -22,6 +23,8 @@ import AudioNode from '~/components/AudioNode'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
 import Header from '~/components/Header'
+import SEOHead from '~/components/SEOHead'
+import { useDynamicSEO } from '~/hooks/useDynamicSEO'
 
 const nodeTypes: NodeTypes = {
   audioNode: AudioNode,
@@ -31,9 +34,12 @@ const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
 
   return (
-    <AudioGraphStoreContext.Provider value={store}>
-      <AppContent />
-    </AudioGraphStoreContext.Provider>
+    <HelmetProvider>
+      <AudioGraphStoreContext.Provider value={store}>
+        <SEOHead />
+        <AppContent />
+      </AudioGraphStoreContext.Provider>
+    </HelmetProvider>
   )
 })
 
@@ -42,6 +48,9 @@ const AppContent: React.FC = observer(() => {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
+
+  // Dynamic SEO updates based on app state
+  useDynamicSEO()
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
