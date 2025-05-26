@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import ProjectModal from './ProjectModal'
+import ExportJSButton from './ExportJSButton'
 
 interface HeaderProps {
   isNodePaletteOpen?: boolean
@@ -781,6 +782,9 @@ const Header: React.FC<HeaderProps> = observer(
                   </svg>
                   <span className="ml-2">Project</span>
                 </button>
+
+                {/* Export JS Button */}
+                <ExportJSButton />
 
                 {/* Undo/Redo Buttons */}
                 <div className="flex space-x-1">
