@@ -1,7 +1,10 @@
 import type { NodeMetadata } from '~/types'
 
 export class AudioNodeFactory {
-  constructor(private audioContext: AudioContext) {}
+  public audioContext: AudioContext
+  constructor(audioContext: AudioContext) {
+    this.audioContext = audioContext
+  }
 
   createAudioNode(
     nodeType: string,

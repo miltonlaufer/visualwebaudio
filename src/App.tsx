@@ -7,14 +7,9 @@ import {
   useNodesState,
   useEdgesState,
   ConnectionMode,
-  Connection,
-  Node,
-  Edge,
-  NodeChange,
-  EdgeChange,
   ConnectionLineType,
 } from '@xyflow/react'
-import type { NodeTypes } from '@xyflow/react'
+import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot } from 'mobx-state-tree'

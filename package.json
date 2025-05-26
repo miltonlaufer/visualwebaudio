@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run extract-types && vite",
-    "build": "npm run extract-types && tsc -b && vite build",
+    "build": "npm run extract-types && tsc && vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
