@@ -2,7 +2,7 @@
 
 A **type-driven** React TypeScript application for visual Web Audio API editing. This project demonstrates true type-driven development (TDD) by extracting all node information directly from the **standard TypeScript definitions for the Web Audio API**, ensuring the application stays current with API changes automatically.
 
-## 🎯 Core Innovation: Type-Driven Development
+## Core Innovation: Type-Driven Development
 
 Unlike traditional audio editors that hardcode node definitions, this project:
 
@@ -18,7 +18,7 @@ Unlike traditional audio editors that hardcode node definitions, this project:
 3. **Dynamic Node Creation**: The `AudioNodeFactory` uses this metadata to create and configure audio nodes
 4. **Visual Representation**: React components render nodes based on extracted metadata
 
-## ✨ Features
+## Features
 
 ### 🎛️ Visual Audio Graph Editor
 - **Drag-and-drop** node creation from categorized palette
@@ -27,29 +27,29 @@ Unlike traditional audio editors that hardcode node definitions, this project:
 - **Color-coded handles** showing connection types
 - **Smart connection validation** prevents incompatible connections
 
-### 🔧 Metadata-Driven Architecture
+### Metadata-Driven Architecture
 - **18+ Web Audio API nodes** automatically discovered from TypeScript definitions
 - **Dynamic property handling** for AudioParams and regular properties
 - **Automatic node categorization** (source, effect, destination, analysis, processing)
 - **Type-safe property validation** and default value handling
 
-### 💾 Project Management
+### Project Management
 - **Export/Import projects** as JSON with full error handling
 - **Undo/Redo system** with automatic change tracking
 - **Safe file operations** with validation and recovery
 
-### 🛡️ Robust Error Handling
+### Error Handling
 - **Error Boundary** catches and displays React errors gracefully
 - **Connection validation** prevents invalid audio graph configurations
 - **Comprehensive error recovery** with user-friendly messages
 
-### 🎵 Audio Features
+### Audio Features
 - **Real-time audio processing** with Web Audio API
 - **Proper audio cleanup** prevents memory leaks and audio artifacts
 - **Source node lifecycle management** (start/stop oscillators, buffer sources)
 - **Smart node recreation** for properties requiring it (e.g., oscillator type changes)
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 - Node.js 18+ 
@@ -83,7 +83,7 @@ npm run lint         # Run ESLint
 npm run extract-types # Extract Web Audio API metadata from TypeScript definitions
 ```
 
-## 🏗️ Architecture
+## Architecture
 
 ### Type-Driven Workflow
 
@@ -132,7 +132,7 @@ src/
     └── extract-web-audio-types.js # Type extraction
 ```
 
-## 🧪 Testing
+## Testing
 
 The project includes comprehensive tests for:
 
@@ -147,16 +147,14 @@ npm run test        # Run all tests
 npm run test:ui     # Run tests with UI
 ```
 
-## 🔄 CI/CD
+## CI/CD
 
 GitHub Actions workflow automatically:
 - **Type checks** with TypeScript
 - **Runs comprehensive test suite**
 - **Lints code** with ESLint
-- **Builds project** for multiple Node.js versions
-- **Uploads build artifacts**
 
-## 🎯 Type-Driven Benefits
+## Type-Driven Benefits
 
 1. **Automatic API Updates**: When Web Audio API evolves, updating `@types/web` automatically brings new features
 2. **Type Safety**: Full TypeScript coverage ensures runtime reliability
@@ -164,7 +162,7 @@ GitHub Actions workflow automatically:
 4. **Comprehensive Coverage**: Discovers all available nodes, properties, and methods
 5. **Future-Proof**: Adapts to API changes without code modifications
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **React 19** with TypeScript
 - **Vite** for fast development and building
@@ -186,7 +184,3 @@ GitHub Actions workflow automatically:
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
-
----
-
-**Built with ❤️ and TypeScript's Web Audio API definitions**

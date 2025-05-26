@@ -83,7 +83,7 @@ const Header: React.FC = observer(() => {
 
           // Set up the LFO for filter modulation
           store.updateNodeProperty(lfoId, 'frequency', 0.5)
-          store.updateNodeProperty(lfoGainId, 'gain', 200)
+          store.updateNodeProperty(lfoGainId, 'gain', 1)
 
           // Connect the audio chain
           console.log('Filter Sweep: Connecting main audio chain...')
@@ -162,6 +162,390 @@ const Header: React.FC = observer(() => {
         }, 200)
       },
     },
+    {
+      id: 'tremolo-effect',
+      name: 'Tremolo Effect',
+      description: 'Amplitude modulation with LFO',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
+        const tremoloGainId = store.addNode('GainNode', { x: 300, y: 100 })
+        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 300 })
+        const lfoGainId = store.addNode('GainNode', { x: 300, y: 300 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
+
+        setTimeout(() => {
+          // Set up the main oscillator
+          store.updateNodeProperty(oscId, 'type', 'sine')
+          store.updateNodeProperty(oscId, 'frequency', 440)
+
+          // Set up the tremolo (amplitude modulation)
+          store.updateNodeProperty(tremoloGainId, 'gain', 0.5) // Base amplitude
+
+          // Set up the LFO for tremolo
+          store.updateNodeProperty(lfoId, 'frequency', 4) // 4 Hz tremolo
+          store.updateNodeProperty(lfoGainId, 'gain', 0.3) // Tremolo depth
+
+          // Connect the audio chain
+          console.log('Tremolo Effect: Connecting main audio chain...')
+          store.addEdge(oscId, tremoloGainId, 'output', 'input')
+          store.addEdge(tremoloGainId, destId, 'output', 'input')
+
+          // Connect the LFO for tremolo modulation
+          console.log('Tremolo Effect: Connecting LFO modulation...')
+          store.addEdge(lfoId, lfoGainId, 'output', 'input')
+          store.addEdge(lfoGainId, tremoloGainId, 'output', 'gain')
+        }, 200)
+      },
+    },
+    {
+      id: 'ring-modulation',
+      name: 'Ring Modulation',
+      description: 'Two oscillators creating metallic tones',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 })
+        const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 300 })
+        const modulatorGainId = store.addNode('GainNode', { x: 300, y: 300 })
+        const carrierGainId = store.addNode('GainNode', { x: 300, y: 100 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 200 })
+
+        setTimeout(() => {
+          // Set up carrier oscillator
+          store.updateNodeProperty(osc1Id, 'frequency', 440)
+          store.updateNodeProperty(carrierGainId, 'gain', 0.3)
+
+          // Set up modulator oscillator
+          store.updateNodeProperty(osc2Id, 'frequency', 30) // Low frequency modulator
+          store.updateNodeProperty(modulatorGainId, 'gain', 0.5)
+
+          // Connect for ring modulation
+          console.log('Ring Modulation: Connecting oscillators...')
+          store.addEdge(osc1Id, carrierGainId, 'output', 'input')
+          store.addEdge(osc2Id, modulatorGainId, 'output', 'input')
+          store.addEdge(modulatorGainId, carrierGainId, 'output', 'gain')
+          store.addEdge(carrierGainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'chord-synthesis',
+      name: 'Chord Synthesis',
+      description: 'Multiple oscillators creating a major chord',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        // Create three oscillators for a C major chord (C, E, G)
+        const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 }) // C
+        const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 250 }) // E
+        const osc3Id = store.addNode('OscillatorNode', { x: 50, y: 400 }) // G
+
+        // Single mixer gain and output
+        const mixerGainId = store.addNode('GainNode', { x: 350, y: 250 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 250 })
+
+        setTimeout(() => {
+          // Set up the chord frequencies (C major: C4, E4, G4)
+          store.updateNodeProperty(osc1Id, 'frequency', 261.63) // C4
+          store.updateNodeProperty(osc2Id, 'frequency', 329.63) // E4
+          store.updateNodeProperty(osc3Id, 'frequency', 392.0) // G4
+
+          // Set overall chord volume
+          store.updateNodeProperty(mixerGainId, 'gain', 0.2) // Lower volume since we're mixing 3 signals
+
+          // Connect all oscillators directly to the mixer
+          console.log('Chord Synthesis: Connecting oscillators to mixer...')
+          store.addEdge(osc1Id, mixerGainId, 'output', 'input')
+          store.addEdge(osc2Id, mixerGainId, 'output', 'input')
+          store.addEdge(osc3Id, mixerGainId, 'output', 'input')
+
+          // Connect mixer to destination
+          store.addEdge(mixerGainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'waveshaper-distortion',
+      name: 'Waveshaper Distortion',
+      description: 'Oscillator with waveshaping distortion',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
+        const preGainId = store.addNode('GainNode', { x: 200, y: 150 })
+        const waveshaperId = store.addNode('WaveShaperNode', { x: 350, y: 150 })
+        const postGainId = store.addNode('GainNode', { x: 500, y: 150 })
+        const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
+
+        setTimeout(() => {
+          // Set up the oscillator
+          store.updateNodeProperty(oscId, 'type', 'sine')
+          store.updateNodeProperty(oscId, 'frequency', 220)
+
+          // Boost signal before waveshaping for more distortion
+          store.updateNodeProperty(preGainId, 'gain', 3)
+
+          // Reduce output level after distortion
+          store.updateNodeProperty(postGainId, 'gain', 0.3)
+
+          // Set up waveshaper (oversample for better quality)
+          store.updateNodeProperty(waveshaperId, 'oversample', '4x')
+
+          // Connect the nodes
+          console.log('Waveshaper Distortion: Connecting audio chain...')
+          store.addEdge(oscId, preGainId, 'output', 'input')
+          store.addEdge(preGainId, waveshaperId, 'output', 'input')
+          store.addEdge(waveshaperId, postGainId, 'output', 'input')
+          store.addEdge(postGainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'phaser-effect',
+      name: 'Phaser Effect',
+      description: 'Multiple all-pass filters creating sweeping phase shifts',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 200 })
+        const filter1Id = store.addNode('BiquadFilterNode', { x: 250, y: 100 })
+        const filter2Id = store.addNode('BiquadFilterNode', { x: 250, y: 300 })
+        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 450 })
+        const lfoGainId = store.addNode('GainNode', { x: 250, y: 450 })
+        const mixGainId = store.addNode('GainNode', { x: 450, y: 200 })
+        const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+
+        setTimeout(() => {
+          // Set up the main oscillator
+          store.updateNodeProperty(oscId, 'type', 'sawtooth')
+          store.updateNodeProperty(oscId, 'frequency', 220)
+
+          // Set up all-pass filters for phasing
+          store.updateNodeProperty(filter1Id, 'type', 'allpass')
+          store.updateNodeProperty(filter1Id, 'frequency', 1000)
+          store.updateNodeProperty(filter1Id, 'Q', 10)
+
+          store.updateNodeProperty(filter2Id, 'type', 'allpass')
+          store.updateNodeProperty(filter2Id, 'frequency', 1500)
+          store.updateNodeProperty(filter2Id, 'Q', 10)
+
+          // Set up LFO for sweeping
+          store.updateNodeProperty(lfoId, 'frequency', 0.3)
+          store.updateNodeProperty(lfoGainId, 'gain', 500)
+
+          store.updateNodeProperty(mixGainId, 'gain', 0.7)
+
+          // Connect the phaser chain
+          console.log('Phaser Effect: Connecting filter chain...')
+          store.addEdge(oscId, filter1Id, 'output', 'input')
+          store.addEdge(filter1Id, filter2Id, 'output', 'input')
+          store.addEdge(filter2Id, mixGainId, 'output', 'input')
+          store.addEdge(mixGainId, destId, 'output', 'input')
+
+          // Connect LFO to modulate both filters
+          console.log('Phaser Effect: Connecting LFO modulation...')
+          store.addEdge(lfoId, lfoGainId, 'output', 'input')
+          store.addEdge(lfoGainId, filter1Id, 'output', 'frequency')
+          store.addEdge(lfoGainId, filter2Id, 'output', 'frequency')
+        }, 200)
+      },
+    },
+    {
+      id: 'white-noise',
+      name: 'White Noise',
+      description: 'True white noise using AudioBufferSourceNode',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const noiseId = store.addNode('AudioBufferSourceNode', { x: 100, y: 150 })
+        const filterId = store.addNode('BiquadFilterNode', { x: 350, y: 150 })
+        const gainId = store.addNode('GainNode', { x: 550, y: 150 })
+        const destId = store.addNode('AudioDestinationNode', { x: 750, y: 150 })
+
+        setTimeout(() => {
+          // Set up the filter for shaping the noise
+          store.updateNodeProperty(filterId, 'type', 'lowpass')
+          store.updateNodeProperty(filterId, 'frequency', 2000)
+          store.updateNodeProperty(filterId, 'Q', 0.5)
+
+          // Set volume
+          store.updateNodeProperty(gainId, 'gain', 0.1)
+
+          // Set loop to true for continuous noise
+          store.updateNodeProperty(noiseId, 'loop', true)
+
+          // Connect the nodes
+          console.log('White Noise: Connecting audio chain...')
+          store.addEdge(noiseId, filterId, 'output', 'input')
+          store.addEdge(filterId, gainId, 'output', 'input')
+          store.addEdge(gainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'amplitude-envelope',
+      name: 'Amplitude Envelope',
+      description: 'Oscillator with LFO creating repeating envelope effect',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
+        const envGainId = store.addNode('GainNode', { x: 300, y: 150 })
+        const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
+        const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
+        const destId = store.addNode('AudioDestinationNode', { x: 550, y: 150 })
+
+        setTimeout(() => {
+          // Set up the main oscillator
+          store.updateNodeProperty(oscId, 'type', 'sawtooth')
+          store.updateNodeProperty(oscId, 'frequency', 440)
+
+          // Set up the envelope gain (base level)
+          store.updateNodeProperty(envGainId, 'gain', 0.1)
+
+          // Set up the LFO for envelope automation (slow triangle wave)
+          store.updateNodeProperty(lfoId, 'type', 'triangle')
+          store.updateNodeProperty(lfoId, 'frequency', 0.5) // 0.5 Hz = 2 second cycle
+          store.updateNodeProperty(lfoGainId, 'gain', 0.4) // Envelope depth
+
+          // Connect the audio chain
+          console.log('Amplitude Envelope: Connecting main audio chain...')
+          store.addEdge(oscId, envGainId, 'output', 'input')
+          store.addEdge(envGainId, destId, 'output', 'input')
+
+          // Connect the LFO for envelope automation
+          console.log('Amplitude Envelope: Connecting LFO envelope...')
+          store.addEdge(lfoId, lfoGainId, 'output', 'input')
+          store.addEdge(lfoGainId, envGainId, 'output', 'gain')
+        }, 200)
+      },
+    },
+    {
+      id: 'beat-frequency',
+      name: 'Beat Frequency',
+      description: 'Two oscillators at 440Hz and 444Hz creating 4Hz beats',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 })
+        const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 300 })
+        const gain1Id = store.addNode('GainNode', { x: 250, y: 100 })
+        const gain2Id = store.addNode('GainNode', { x: 250, y: 300 })
+        const mixerGainId = store.addNode('GainNode', { x: 450, y: 200 })
+        const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+
+        setTimeout(() => {
+          // Set up oscillators with slight detuning for beat effect
+          store.updateNodeProperty(osc1Id, 'frequency', 440.0) // A4
+          store.updateNodeProperty(osc2Id, 'frequency', 444.0) // 4Hz higher = 4Hz beats
+
+          // Set individual volumes (lower to hear beats clearly)
+          store.updateNodeProperty(gain1Id, 'gain', 0.2)
+          store.updateNodeProperty(gain2Id, 'gain', 0.2)
+          store.updateNodeProperty(mixerGainId, 'gain', 1)
+
+          // Connect the oscillators
+          console.log('Beat Frequency: Connecting oscillators...')
+          store.addEdge(osc1Id, gain1Id, 'output', 'input')
+          store.addEdge(osc2Id, gain2Id, 'output', 'input')
+          store.addEdge(gain1Id, mixerGainId, 'output', 'input')
+          store.addEdge(gain2Id, mixerGainId, 'output', 'input')
+          store.addEdge(mixerGainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'convolution-reverb',
+      name: 'Convolution Reverb',
+      description: 'ConvolverNode creating realistic reverb effect',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
+        const dryGainId = store.addNode('GainNode', { x: 250, y: 100 })
+        const convolverId = store.addNode('ConvolverNode', { x: 250, y: 250 })
+        const wetGainId = store.addNode('GainNode', { x: 450, y: 250 })
+        const mixerGainId = store.addNode('GainNode', { x: 650, y: 175 })
+        const destId = store.addNode('AudioDestinationNode', { x: 850, y: 175 })
+
+        setTimeout(() => {
+          // Set up the oscillator
+          store.updateNodeProperty(oscId, 'type', 'triangle')
+          store.updateNodeProperty(oscId, 'frequency', 330)
+
+          // Set up dry/wet mix
+          store.updateNodeProperty(dryGainId, 'gain', 0.7) // Dry signal
+          store.updateNodeProperty(wetGainId, 'gain', 0.4) // Wet (reverb) signal
+          store.updateNodeProperty(mixerGainId, 'gain', 1)
+
+          // Connect the reverb chain
+          console.log('Convolution Reverb: Connecting dry signal...')
+          store.addEdge(oscId, dryGainId, 'output', 'input')
+          store.addEdge(dryGainId, mixerGainId, 'output', 'input')
+
+          console.log('Convolution Reverb: Connecting wet signal...')
+          store.addEdge(oscId, convolverId, 'output', 'input')
+          store.addEdge(convolverId, wetGainId, 'output', 'input')
+          store.addEdge(wetGainId, mixerGainId, 'output', 'input')
+
+          store.addEdge(mixerGainId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
+    {
+      id: 'stereo-effects',
+      name: 'Stereo Effects',
+      description: 'Oscillator with stereo panning and different channel processing',
+      create: () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const oscId = store.addNode('OscillatorNode', { x: 50, y: 200 })
+        const leftGainId = store.addNode('GainNode', { x: 250, y: 100 })
+        const rightGainId = store.addNode('GainNode', { x: 250, y: 300 })
+        const leftFilterId = store.addNode('BiquadFilterNode', { x: 450, y: 100 })
+        const rightFilterId = store.addNode('BiquadFilterNode', { x: 450, y: 300 })
+        const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+
+        setTimeout(() => {
+          // Set up the oscillator
+          store.updateNodeProperty(oscId, 'frequency', 440)
+
+          // Set up different processing for left and right
+          store.updateNodeProperty(leftGainId, 'gain', 0.3)
+          store.updateNodeProperty(rightGainId, 'gain', 0.3)
+
+          // Set up different filters for left and right channels
+          store.updateNodeProperty(leftFilterId, 'type', 'lowpass')
+          store.updateNodeProperty(leftFilterId, 'frequency', 800)
+
+          store.updateNodeProperty(rightFilterId, 'type', 'highpass')
+          store.updateNodeProperty(rightFilterId, 'frequency', 800)
+
+          // Connect the stereo processing chain
+          console.log('Stereo Effects: Connecting left channel...')
+          store.addEdge(oscId, leftGainId, 'output', 'input')
+          store.addEdge(leftGainId, leftFilterId, 'output', 'input')
+          store.addEdge(leftFilterId, destId, 'output', 'input')
+
+          console.log('Stereo Effects: Connecting right channel...')
+          store.addEdge(oscId, rightGainId, 'output', 'input')
+          store.addEdge(rightGainId, rightFilterId, 'output', 'input')
+          store.addEdge(rightFilterId, destId, 'output', 'input')
+        }, 200)
+      },
+    },
   ]
 
   const handleExampleSelect = (example: (typeof examples)[0]) => {
@@ -210,21 +594,23 @@ const Header: React.FC = observer(() => {
               </button>
 
               {isExamplesOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[80vh] overflow-y-auto">
                   <div className="p-2">
-                    <div className="text-sm font-medium text-gray-700 px-3 py-2 border-b border-gray-100">
+                    <div className="text-sm font-medium text-gray-700 px-3 py-2 border-b border-gray-100 sticky top-0 bg-white">
                       Choose an example to add to your canvas:
                     </div>
-                    {examples.map(example => (
-                      <button
-                        key={example.id}
-                        onClick={() => handleExampleSelect(example)}
-                        className="w-full text-left px-3 py-3 hover:bg-gray-50 rounded-md transition-colors"
-                      >
-                        <div className="font-medium text-gray-900">{example.name}</div>
-                        <div className="text-sm text-gray-500 mt-1">{example.description}</div>
-                      </button>
-                    ))}
+                    <div className="max-h-[calc(80vh-4rem)] overflow-y-auto">
+                      {examples.map(example => (
+                        <button
+                          key={example.id}
+                          onClick={() => handleExampleSelect(example)}
+                          className="w-full text-left px-3 py-3 hover:bg-gray-50 rounded-md transition-colors"
+                        >
+                          <div className="font-medium text-gray-900">{example.name}</div>
+                          <div className="text-sm text-gray-500 mt-1">{example.description}</div>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}

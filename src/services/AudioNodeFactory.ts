@@ -17,6 +17,10 @@ export class AudioNodeFactory {
       case 'AudioDestinationNode':
         audioNode = this.audioContext.destination
         break
+      case 'AudioBufferSourceNode':
+        // Create AudioBufferSourceNode with white noise buffer
+        audioNode = this.createWhiteNoiseSource()
+        break
       case 'MediaElementAudioSourceNode':
       case 'MediaStreamAudioSourceNode':
       case 'ScriptProcessorNode':
@@ -104,9 +108,9 @@ export class AudioNodeFactory {
         ;(audioNode as OscillatorNode).start()
         console.log(`Started ${nodeType}`)
       } else if (nodeType === 'AudioBufferSourceNode') {
-        // AudioBufferSourceNode needs a buffer before it can start
-        // We'll skip auto-starting for now
-        console.log(`${nodeType} requires buffer before starting`)
+        // AudioBufferSourceNode now has a buffer, so we can start it
+        ;(audioNode as AudioBufferSourceNode).start()
+        console.log(`Started ${nodeType} with white noise buffer`)
       }
     } catch (error) {
       console.error(`Failed to start ${nodeType}:`, error)
@@ -288,5 +292,22 @@ export class AudioNodeFactory {
     }
 
     return recreationMap[nodeType]?.includes(propertyName) ?? false
+  }
+
+  private createWhiteNoiseSource(): AudioBufferSourceNode {
+    const bufferSize = this.audioContext.sampleRate * 2 // 2 seconds of noise
+    const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate)
+    const output = buffer.getChannelData(0)
+
+    // Generate white noise
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1 // Random values between -1 and 1
+    }
+
+    const source = this.audioContext.createBufferSource()
+    source.buffer = buffer
+    source.loop = true // Loop the noise for continuous playback
+
+    return source
   }
 }

@@ -830,6 +830,16 @@ export const createAudioGraphStore = () => {
       return
     }
 
+    // Don't record play/pause state changes in undo history
+    if (patch.path === '/isPlaying') {
+      return
+    }
+
+    // Don't record property change counter updates (these are just for React re-renders)
+    if (patch.path === '/propertyChangeCounter') {
+      return
+    }
+
     // Start recording if not already
     if (!isRecording) {
       isRecording = true
