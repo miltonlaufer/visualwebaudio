@@ -13,6 +13,7 @@ import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot } from 'mobx-state-tree'
+
 import {
   createAudioGraphStore,
   AudioGraphStoreContext,
@@ -50,22 +51,39 @@ const AppContent: React.FC = observer(() => {
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when not in an input field
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
+      // Undo: Cmd/Ctrl + Z (without Shift)
       if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
         event.preventDefault()
+        event.stopPropagation()
         store.undo()
         handleForceUpdate()
-      } else if (
-        (event.metaKey || event.ctrlKey) &&
-        (event.key === 'y' || (event.key === 'z' && event.shiftKey))
-      ) {
+        return
+      }
+
+      // Redo: Cmd/Ctrl + Y (primary and most reliable redo shortcut)
+      if ((event.metaKey || event.ctrlKey) && event.key === 'y' && !event.shiftKey) {
         event.preventDefault()
+        event.stopPropagation()
         store.redo()
         handleForceUpdate()
+        return
       }
     }
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
+    // Use capture phase and multiple event listeners for maximum compatibility
+    document.addEventListener('keydown', handleKeyDown, true)
+    window.addEventListener('keydown', handleKeyDown, true)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+      window.removeEventListener('keydown', handleKeyDown, true)
+    }
   }, [store, handleForceUpdate])
 
   // Load metadata on mount

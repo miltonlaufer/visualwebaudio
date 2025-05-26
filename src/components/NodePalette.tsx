@@ -1,10 +1,55 @@
-import React from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import MicrophoneInput from './MicrophoneInput'
 
 const NodePalette: React.FC = observer(() => {
   const store = useAudioGraphStore()
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false)
+
+  // Check if scroll indicator should be shown
+  const checkScrollIndicator = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const isScrollable = scrollHeight > clientHeight
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10 // 10px threshold
+
+    setShowScrollIndicator(isScrollable && !isAtBottom)
+  }, [])
+
+  // Set up scroll detection
+  useEffect(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Initial check
+    checkScrollIndicator()
+
+    // Add scroll listener
+    container.addEventListener('scroll', checkScrollIndicator)
+
+    // Add resize observer to detect content changes
+    const resizeObserver = new ResizeObserver(checkScrollIndicator)
+    resizeObserver.observe(container)
+
+    return () => {
+      container.removeEventListener('scroll', checkScrollIndicator)
+      resizeObserver.disconnect()
+    }
+  }, [checkScrollIndicator, store.availableNodeTypes]) // Re-run when node types change
+
+  const handleScrollDown = useCallback(() => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [])
 
   const handleDragStart = (event: React.DragEvent, nodeType: string) => {
     event.dataTransfer.setData('application/reactflow', nodeType)
@@ -89,9 +134,9 @@ const NodePalette: React.FC = observer(() => {
   )
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full relative">
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Node Palette</h2>
 
         {/* Microphone Input */}
@@ -176,6 +221,26 @@ const NodePalette: React.FC = observer(() => {
           </div>
         ))}
       </div>
+
+      {/* Floating scroll indicator */}
+      {showScrollIndicator && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
+          <button
+            onClick={handleScrollDown}
+            className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-full shadow-lg transition-all duration-200 hover:scale-110 animate-bounce"
+            title="Scroll down to see more nodes"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 14l-7 7m0 0l-7-7m7 7V3"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   )
 })
