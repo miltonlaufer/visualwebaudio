@@ -27,6 +27,8 @@ describe('Header', () => {
     addNode: vi.fn(),
     addEdge: vi.fn(),
     updateNodeProperty: vi.fn(),
+    visualNodes: [],
+    visualEdges: [],
   }
 
   const defaultProps = {

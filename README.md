@@ -29,6 +29,20 @@ Unlike traditional audio editors that hardcode node definitions, this project:
 3. **Dynamic Node Creation**: The `AudioNodeFactory` uses this metadata to create and configure audio nodes
 4. **Visual Representation**: React components render nodes based on extracted metadata
 
+## Graphical Programming Interface: From Visual to Code
+
+Visual Web Audio bridges the gap between visual audio engineering and code generation, offering a unique **Graphical Programming Interface** that transforms visual audio graphs into executable JavaScript code.
+
+### Visual-to-Code Workflow
+
+- **Visual Design**: Create complex audio graphs using an intuitive drag-and-drop interface
+- **Real-time Validation**: Visual feedback ensures connections are valid and properties are correctly configured
+- **Code Generation**: Export your visual audio graph as clean, executable JavaScript code
+- **Copy-to-Clipboard**: One-click copying for immediate use in your projects
+- **Syntax Highlighting**: Beautiful code preview with proper JavaScript syntax highlighting
+
+This approach democratizes audio programming by allowing both visual thinkers and traditional programmers to work with the same audio concepts, whether through visual manipulation or direct code implementation.
+
 ## Features
 
 ### Visual Audio Graph Editor
