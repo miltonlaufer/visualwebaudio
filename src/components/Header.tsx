@@ -681,7 +681,7 @@ const Header: React.FC = observer(() => {
                 onClick={() => store.undo()}
                 disabled={!store.canUndo}
                 className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Undo"
+                title="Undo (⌘Z)"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -696,7 +696,7 @@ const Header: React.FC = observer(() => {
                 onClick={() => store.redo()}
                 disabled={!store.canRedo}
                 className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Redo"
+                title="Redo (⌘Y)"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
