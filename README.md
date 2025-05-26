@@ -1,6 +1,6 @@
 # Visual Web Audio (alpha)
 
-[![CI](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/ci.yml/badge.svg)](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/ci.yml)
+[![CI](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/pr-checks.yml/badge.svg)](https://github.com/miltonlaufer/visualwebaudio/actions/workflows/pr-checks.yml)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
