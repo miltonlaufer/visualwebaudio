@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-94%2F94%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-118%2F118%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ![Visual Web Audio Preview](public/preview.png)
@@ -195,7 +195,7 @@ npm run test:ui     # Run tests with UI
 npm run coverage    # Generate coverage report
 ```
 
-Current test coverage: 51.95% overall with 94/94 tests passing.
+Current test coverage: 51.95% overall with 118/118 tests passing.
 
 ## CI/CD
 
