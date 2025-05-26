@@ -68,8 +68,8 @@ const Header: React.FC<HeaderProps> = observer(
           store.clearAllNodes()
 
           const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 250, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 400, y: 150 })
+          const gainId = store.addNode('GainNode', { x: 400, y: 150 })
+          const destId = store.addNode('AudioDestinationNode', { x: 750, y: 150 })
           setTimeout(() => {
             console.log('Basic Oscillator: Setting gain value...')
             store.updateNodeProperty(gainId, 'gain', 0.5)
