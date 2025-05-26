@@ -48,13 +48,12 @@ export const AudioGraphStore = types
         }
       },
 
-      // Placeholder actions - will be overridden in factory
       undo() {
-        // Implementation provided by factory function
+        actions.applyUndo()
       },
 
       redo() {
-        // Implementation provided by factory function
+        actions.applyRedo()
       },
 
       // Actions to manage undo/redo stacks
@@ -864,14 +863,7 @@ export const createAudioGraphStore = () => {
     patchRecorder.push({ forward: patch, inverse: reversePatch })
   })
 
-  // Override undo/redo actions to use the new stack management
-  store.undo = () => {
-    store.applyUndo()
-  }
-
-  store.redo = () => {
-    store.applyRedo()
-  }
+  // Undo/redo actions are now properly implemented in the MST model
 
   return store
 }
