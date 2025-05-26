@@ -50,13 +50,16 @@ const AppContent: React.FC = observer(() => {
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Undo: Cmd/Ctrl + Z (without Shift)
       if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
         event.preventDefault()
         store.undo()
         handleForceUpdate()
-      } else if (
+      }
+      // Redo: Cmd/Ctrl + Shift + Z or Cmd/Ctrl + Y
+      else if (
         (event.metaKey || event.ctrlKey) &&
-        (event.key === 'y' || (event.key === 'z' && event.shiftKey))
+        ((event.key === 'z' && event.shiftKey) || event.key === 'y')
       ) {
         event.preventDefault()
         store.redo()
