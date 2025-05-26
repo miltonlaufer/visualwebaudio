@@ -9,4 +9,20 @@ export default defineConfig({
       '~': '/src',
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React and React DOM
+          'react-vendor': ['react', 'react-dom'],
+          // MobX state management
+          'mobx-vendor': ['mobx', 'mobx-react-lite', 'mobx-state-tree'],
+          // React Flow library
+          'reactflow-vendor': ['@xyflow/react'],
+        },
+      },
+    },
+    // Increase chunk size warning limit to 1MB since we're now splitting chunks
+    chunkSizeWarningLimit: 1000,
+  },
 })
