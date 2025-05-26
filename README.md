@@ -1,5 +1,9 @@
 # Visual Web Audio
 
+![Visual Web Audio Preview](public/preview.png)
+
+🌐 **[Live Demo](http://visualwebaudio.miltonlaufer.com.ar/)** - Try the application online!
+
 A type-driven React TypeScript application for visual Web Audio API editing. This project demonstrates type-driven development by extracting all node information directly from the standard TypeScript definitions for the Web Audio API, ensuring the application stays current with API changes automatically.
 
 ## Core Innovation: Type-Driven Development
