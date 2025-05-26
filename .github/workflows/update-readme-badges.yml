@@ -18,7 +18,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -84,6 +84,27 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
+          
+          # Try direct push first
           git add README.md
           git commit -m "docs: auto-update test count badges to ${{ steps.test-results.outputs.passed_tests }}/${{ steps.test-results.outputs.total_tests }} [skip ci]"
-          git push 
+          
+          if ! git push; then
+            echo "Direct push failed, trying branch approach..."
+            
+            # Create a temporary branch
+            BRANCH_NAME="auto-update-badges-$(date +%s)"
+            git checkout -b "$BRANCH_NAME"
+            git push origin "$BRANCH_NAME"
+            
+            # Create and auto-merge PR
+            gh pr create \
+              --title "Auto-update README test count badges" \
+              --body "🤖 Automated update of test count badges to ${{ steps.test-results.outputs.passed_tests }}/${{ steps.test-results.outputs.total_tests }}" \
+              --base main \
+              --head "$BRANCH_NAME"
+            
+            gh pr merge "$BRANCH_NAME" --auto --squash
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
