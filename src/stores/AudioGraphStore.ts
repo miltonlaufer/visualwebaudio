@@ -32,6 +32,8 @@ export const AudioGraphStore = types
     audioNodeFactory: null as AudioNodeFactory | null,
     // Keep only the patch application flag in volatile
     isApplyingPatch: false,
+    // Flag to disable undo/redo recording (for examples)
+    isCreatingExample: false,
     // Global analyzer for frequency analysis
     globalAnalyzer: null as AnalyserNode | null,
     // Counter to ensure unique node IDs
@@ -90,6 +92,11 @@ export const AudioGraphStore = types
       // Actions to manage patch application
       setApplyingPatch(value: boolean) {
         self.isApplyingPatch = value
+      },
+
+      // Actions to manage example creation
+      setCreatingExample(value: boolean) {
+        self.isCreatingExample = value
       },
 
       applyUndo() {
@@ -958,6 +965,9 @@ export const createAudioGraphStore = () => {
   onPatch(store, (patch, reversePatch) => {
     // Don't record patches when we're applying undo/redo
     if (store.isApplyingPatch) return
+
+    // Don't record patches when creating examples
+    if (store.isCreatingExample) return
 
     // Don't record patches to the history stacks themselves (prevents recursion)
     if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {

@@ -10,12 +10,25 @@ export interface Example {
 export const useExamples = () => {
   const store = useAudioGraphStore()
 
+  // Helper function to create examples without undo/redo recording
+  const createExample = (exampleFn: () => void | Promise<void>) => {
+    return async () => {
+      store.setCreatingExample(true)
+      try {
+        await exampleFn()
+      } finally {
+        // Always reset the flag, even if there's an error
+        store.setCreatingExample(false)
+      }
+    }
+  }
+
   const examples: Example[] = [
     {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -29,13 +42,13 @@ export const useExamples = () => {
           store.addEdge(oscId, gainId, 'output', 'input')
           store.addEdge(gainId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'microphone-input',
       name: 'Microphone Input with Delay',
       description: 'Live microphone input with delay and feedback',
-      create: async () => {
+      create: createExample(async () => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -71,13 +84,13 @@ export const useExamples = () => {
             'Microphone access denied or not available. Please allow microphone access and try again.'
           )
         }
-      },
+      }),
     },
     {
       id: 'delay-effect',
       name: 'Delay Effect',
       description: 'Oscillator with delay and feedback',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -103,13 +116,13 @@ export const useExamples = () => {
           store.addEdge(delayId, feedbackId, 'output', 'input')
           store.addEdge(feedbackId, delayId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'filter-sweep',
       name: 'Filter Sweep',
       description: 'Oscillator with animated lowpass filter',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -143,13 +156,13 @@ export const useExamples = () => {
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, filterId, 'output', 'frequency')
         }, 200)
-      },
+      }),
     },
     {
       id: 'stereo-panner',
       name: 'Stereo Panning',
       description: 'Oscillator with stereo panning effect',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -170,13 +183,13 @@ export const useExamples = () => {
           store.addEdge(oscId, pannerId, 'output', 'input')
           store.addEdge(pannerId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'compressor-effect',
       name: 'Compressor Effect',
       description: 'Oscillator with dynamic range compression',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -201,13 +214,13 @@ export const useExamples = () => {
           store.addEdge(oscId, compressorId, 'output', 'input')
           store.addEdge(compressorId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'tremolo-effect',
       name: 'Tremolo Effect',
       description: 'Oscillator with amplitude modulation',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -239,13 +252,13 @@ export const useExamples = () => {
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, gainId, 'output', 'gain')
         }, 200)
-      },
+      }),
     },
     {
       id: 'ring-modulation',
       name: 'Ring Modulation',
       description: 'Two oscillators with ring modulation effect',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -272,13 +285,13 @@ export const useExamples = () => {
           store.addEdge(osc2Id, gainId, 'output', 'gain')
           store.addEdge(gainId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'chord-synthesis',
       name: 'Chord Synthesis',
       description: 'Multiple oscillators creating a chord',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -320,13 +333,13 @@ export const useExamples = () => {
           store.addEdge(gain3Id, mixerId, 'output', 'input')
           store.addEdge(mixerId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'waveshaper-distortion',
       name: 'Waveshaper Distortion',
       description: 'Oscillator with waveshaper distortion effect',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -354,13 +367,13 @@ export const useExamples = () => {
           store.addEdge(waveshaperId, outputGainId, 'output', 'input')
           store.addEdge(outputGainId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'phaser-effect',
       name: 'Phaser Effect',
       description: 'Oscillator with phaser effect using multiple filters',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -406,13 +419,13 @@ export const useExamples = () => {
           store.addEdge(lfoGainId, filter1Id, 'output', 'frequency')
           store.addEdge(lfoGainId, filter2Id, 'output', 'frequency')
         }, 200)
-      },
+      }),
     },
     {
       id: 'simple-noise',
       name: 'Simple Noise',
       description: 'White noise generator with filter',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -437,13 +450,13 @@ export const useExamples = () => {
           store.addEdge(filterId, gainId, 'output', 'input')
           store.addEdge(gainId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'amplitude-envelope',
       name: 'Amplitude Envelope',
       description: 'Oscillator with LFO envelope modulation',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -475,13 +488,13 @@ export const useExamples = () => {
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, envelopeId, 'output', 'gain')
         }, 200)
-      },
+      }),
     },
     {
       id: 'beat-frequency',
       name: 'Beat Frequency',
       description: 'Two slightly detuned oscillators creating beats',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -516,13 +529,13 @@ export const useExamples = () => {
           store.addEdge(gain2Id, mixerId, 'output', 'input')
           store.addEdge(mixerId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'convolution-reverb',
       name: 'Convolution Reverb',
       description: 'Oscillator with convolution reverb effect',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -565,13 +578,13 @@ export const useExamples = () => {
           // Output
           store.addEdge(mixerId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
     {
       id: 'microphone-reverb',
       name: 'Microphone Reverb',
       description: 'Live microphone input with convolution reverb effect',
-      create: async () => {
+      create: createExample(async () => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -619,13 +632,13 @@ export const useExamples = () => {
             'Microphone access denied or not available. Please allow microphone access and try again.'
           )
         }
-      },
+      }),
     },
     {
       id: 'stereo-effects',
       name: 'Stereo Effects',
       description: 'Stereo processing with channel splitting and merging',
-      create: () => {
+      create: createExample(() => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -662,7 +675,7 @@ export const useExamples = () => {
           // Connect merger to destination
           store.addEdge(mergerId, destId, 'output', 'input')
         }, 200)
-      },
+      }),
     },
   ]
 

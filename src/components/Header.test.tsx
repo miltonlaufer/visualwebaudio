@@ -27,6 +27,7 @@ describe('Header', () => {
     addNode: vi.fn(),
     addEdge: vi.fn(),
     updateNodeProperty: vi.fn(),
+    setCreatingExample: vi.fn(),
     visualNodes: [],
     visualEdges: [],
   }
