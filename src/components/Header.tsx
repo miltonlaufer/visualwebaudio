@@ -82,7 +82,7 @@ const Header: React.FC<HeaderProps> = observer(
       },
       {
         id: 'microphone-input',
-        name: 'Microphone Input',
+        name: 'Microphone Input with Delay',
         description: 'Live microphone input with delay and feedback',
         create: async () => {
           // Clear existing nodes first to avoid conflicts
