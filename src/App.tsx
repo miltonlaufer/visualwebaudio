@@ -176,6 +176,7 @@ const AppContent: React.FC = observer(() => {
     store.visualNodes.length,
     store.selectedNodeId,
     store.propertyChangeCounter,
+    store.graphChangeCounter,
     forceUpdate,
     setNodes,
     store.visualNodes,
@@ -242,7 +243,14 @@ const AppContent: React.FC = observer(() => {
     console.log('About to call setEdges with:', storeEdges)
     setEdges(storeEdges)
     console.log('setEdges called')
-  }, [store.visualEdges.length, store.visualEdges, forceUpdate, setEdges, store.visualNodes])
+  }, [
+    store.visualEdges.length,
+    store.visualEdges,
+    forceUpdate,
+    setEdges,
+    store.visualNodes,
+    store.graphChangeCounter,
+  ])
 
   const onConnect = useCallback(
     (params: Connection) => {

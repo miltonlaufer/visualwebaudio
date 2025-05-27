@@ -24,6 +24,8 @@ export const AudioGraphStore = types
     redoStack: types.array(types.frozen()),
     // Add a counter to track property changes for React re-renders
     propertyChangeCounter: types.optional(types.number, 0),
+    // Add a counter to track graph structure changes for React re-renders
+    graphChangeCounter: types.optional(types.number, 0),
   })
   .volatile(() => ({
     audioContext: null as AudioContext | null,
@@ -34,6 +36,10 @@ export const AudioGraphStore = types
     isApplyingPatch: false,
     // Flag to disable undo/redo recording (for examples)
     isCreatingExample: false,
+    // Flag to disable undo/redo recording (for clearing all nodes)
+    isClearingAllNodes: false,
+    // Flag to disable undo/redo recording (for automatic play state changes)
+    isUpdatingPlayState: false,
     // Global analyzer for frequency analysis
     globalAnalyzer: null as AnalyserNode | null,
     // Counter to ensure unique node IDs
@@ -97,6 +103,16 @@ export const AudioGraphStore = types
       // Actions to manage example creation
       setCreatingExample(value: boolean) {
         self.isCreatingExample = value
+      },
+
+      // Actions to manage clearing all nodes
+      setClearingAllNodes(value: boolean) {
+        self.isClearingAllNodes = value
+      },
+
+      // Actions to manage automatic play state updates
+      setUpdatingPlayState(value: boolean) {
+        self.isUpdatingPlayState = value
       },
 
       applyUndo() {
@@ -224,6 +240,9 @@ export const AudioGraphStore = types
         } catch (error) {
           console.error('STORE: Error creating audio node:', error)
         }
+
+        // Increment graph change counter to force React re-render
+        self.graphChangeCounter += 1
 
         return nodeId
       },
@@ -371,7 +390,9 @@ export const AudioGraphStore = types
 
         if (!hasDestinationConnections && self.isPlaying) {
           console.log('No more destination connections, stopping playback')
+          actions.setUpdatingPlayState(true)
           self.isPlaying = false
+          actions.setUpdatingPlayState(false)
         }
 
         console.log('=== NODE REMOVAL COMPLETE ===')
@@ -379,6 +400,9 @@ export const AudioGraphStore = types
 
       clearAllNodes() {
         console.log('=== CLEARING ALL NODES ===')
+
+        // Set flag to prevent recording this operation in undo history
+        actions.setClearingAllNodes(true)
 
         // Get all node IDs first to avoid modifying array while iterating
         const nodeIds = self.visualNodes.map(node => node.id)
@@ -410,8 +434,22 @@ export const AudioGraphStore = types
 
         console.log('=== ALL NODES CLEARED ===')
 
+        // Clear undo/redo history since there's nothing left to undo to
+        self.undoStack.clear()
+        self.redoStack.clear()
+        console.log('Undo/redo history cleared')
+
         // Reset play state since no audio is playing
+        actions.setUpdatingPlayState(true)
         self.isPlaying = false
+        actions.setUpdatingPlayState(false)
+
+        // Increment graph change counter to force React re-render
+        // (do this before resetting flag to avoid recording in undo history)
+        self.graphChangeCounter += 1
+
+        // Reset flag to allow recording future operations
+        actions.setClearingAllNodes(false)
       },
 
       performComprehensiveAudioCleanup() {
@@ -548,6 +586,9 @@ export const AudioGraphStore = types
         } catch (error) {
           console.error('Error creating audio connection:', error)
         }
+
+        // Increment graph change counter to force React re-render
+        self.graphChangeCounter += 1
       },
 
       isValidConnection(
@@ -661,7 +702,9 @@ export const AudioGraphStore = types
             if (isDestinationConnection) {
               // Audio is now playing through the destination, update play state
               console.log('Audio connected to destination - setting play state to true')
+              actions.setUpdatingPlayState(true)
               self.isPlaying = true
+              actions.setUpdatingPlayState(false)
             }
           } catch (error) {
             console.error('Failed to connect audio nodes:', error)
@@ -731,7 +774,9 @@ export const AudioGraphStore = types
 
               if (remainingDestinationConnections.length === 0) {
                 console.log('No audio connected to destination - setting play state to false')
+                actions.setUpdatingPlayState(true)
                 self.isPlaying = false
+                actions.setUpdatingPlayState(false)
 
                 // Disconnect analyzer from destination when no more sources
                 if (self.globalAnalyzer) {
@@ -969,6 +1014,12 @@ export const createAudioGraphStore = () => {
     // Don't record patches when creating examples
     if (store.isCreatingExample) return
 
+    // Don't record patches when clearing all nodes
+    if (store.isClearingAllNodes) return
+
+    // Don't record patches when updating play state automatically
+    if (store.isUpdatingPlayState) return
+
     // Don't record patches to the history stacks themselves (prevents recursion)
     if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {
       return
@@ -976,6 +1027,11 @@ export const createAudioGraphStore = () => {
 
     // Don't record play/pause state changes in undo history
     if (patch.path === '/isPlaying') {
+      return
+    }
+
+    // Don't record node selection changes in undo history
+    if (patch.path === '/selectedNodeId') {
       return
     }
 

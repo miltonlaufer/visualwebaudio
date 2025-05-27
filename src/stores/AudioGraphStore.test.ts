@@ -275,4 +275,129 @@ describe('AudioGraphStore', () => {
       expect(audioNode.frequency.value).toBe(880)
     })
   })
+
+  describe('AudioGraphStore - Undo/Redo History', () => {
+    it('should clear undo/redo history when clearing all nodes', async () => {
+      // Add some nodes to create history
+      const nodeId1 = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId2 = store.addNode('GainNode', { x: 200, y: 100 })
+
+      // Wait for patches to be recorded
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify we have undo history
+      expect(store.canUndo).toBe(true)
+      expect(store.undoStack.length).toBeGreaterThan(0)
+
+      // Add an edge to create more history
+      store.addEdge(nodeId1, nodeId2, 'output', 'input')
+
+      // Wait for patches to be recorded
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify we have more undo history
+      expect(store.undoStack.length).toBeGreaterThan(1)
+
+      // Perform an undo to create redo history
+      store.undo()
+
+      // Wait for undo to complete
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify we have both undo and redo history
+      expect(store.canUndo).toBe(true)
+      expect(store.canRedo).toBe(true)
+      expect(store.undoStack.length).toBeGreaterThan(0)
+      expect(store.redoStack.length).toBeGreaterThan(0)
+
+      // Clear all nodes
+      store.clearAllNodes()
+
+      // Verify that undo/redo history is cleared
+      expect(store.canUndo).toBe(false)
+      expect(store.canRedo).toBe(false)
+      expect(store.undoStack.length).toBe(0)
+      expect(store.redoStack.length).toBe(0)
+
+      // Verify nodes are actually cleared
+      expect(store.visualNodes.length).toBe(0)
+      expect(store.visualEdges.length).toBe(0)
+    })
+
+    it('should not record clearAllNodes operation in undo history', async () => {
+      // Add a node
+      store.addNode('OscillatorNode', { x: 100, y: 100 })
+
+      // Wait for patches to be recorded
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify we have undo history
+      expect(store.canUndo).toBe(true)
+
+      // Clear all nodes
+      store.clearAllNodes()
+
+      // Wait for any potential patches
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify that clearAllNodes itself didn't add to undo history
+      // (since history was cleared, it should be 0)
+      expect(store.undoStack.length).toBe(0)
+      expect(store.redoStack.length).toBe(0)
+    })
+
+    it('should maintain clean state after clearing nodes and adding new ones', async () => {
+      // Add some nodes and create history
+      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addNode('GainNode', { x: 200, y: 100 })
+
+      // Wait for patches
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Clear all nodes (this clears history)
+      store.clearAllNodes()
+
+      // Add new nodes after clearing
+      const newNodeId = store.addNode('DelayNode', { x: 300, y: 100 })
+
+      // Wait for patches
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify we have a clean slate with new history
+      expect(store.visualNodes.length).toBe(1)
+      expect(store.visualNodes[0].id).toBe(newNodeId)
+      expect(store.canUndo).toBe(true) // New action should be undoable
+      expect(store.canRedo).toBe(false) // No redo history yet
+    })
+
+    it('should not record play/stop operations in undo history', async () => {
+      // Add a node to create some initial history
+      store.addNode('OscillatorNode', { x: 100, y: 100 })
+
+      // Wait for patches to be recorded
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Record initial undo stack length
+      const initialUndoLength = store.undoStack.length
+      expect(store.canUndo).toBe(true)
+
+      // Toggle playback multiple times
+      await store.togglePlayback() // Start
+      await store.togglePlayback() // Stop
+      await store.togglePlayback() // Start again
+      await store.togglePlayback() // Stop again
+
+      // Wait for any potential patches
+      await new Promise(resolve => setTimeout(resolve, 10))
+
+      // Verify that play/stop operations didn't add to undo history
+      expect(store.undoStack.length).toBe(initialUndoLength)
+      expect(store.canUndo).toBe(true) // Should still be able to undo the node addition
+      expect(store.canRedo).toBe(false) // No redo history should be created
+
+      // Verify that we can still undo the original node addition
+      store.undo()
+      expect(store.visualNodes.length).toBe(0)
+    })
+  })
 })

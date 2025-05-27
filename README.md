@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-118%2F118%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-147%2F147%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
@@ -72,7 +72,7 @@ npm run dev
 
 # Other useful commands
 npm run build        # Build for production
-npm run test         # Run tests (118/118 passing)
+npm run test         # Run tests (147/147 passing)
 npm run type-check   # TypeScript type checking
 npm run lint         # ESLint code quality
 ```
