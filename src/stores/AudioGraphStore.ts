@@ -882,16 +882,65 @@ export const AudioGraphStore = types
       },
 
       togglePlayback: flow(function* () {
-        if (!self.audioContext) {
-          actions.initializeAudioContext()
-        }
-
         if (self.isPlaying) {
-          yield self.audioContext!.suspend()
+          // STOP: Close the entire audio context
+          console.log('=== STOPPING PLAYBACK ===')
+
+          if (self.audioContext) {
+            try {
+              yield self.audioContext.close()
+              console.log('Audio context closed')
+            } catch (error) {
+              console.log('Error closing audio context:', error)
+            }
+          }
+
+          // Clear everything
+          self.audioContext = null
+          self.audioNodeFactory = null
+          self.globalAnalyzer = null
+          self.audioNodes.clear()
+
           self.isPlaying = false
+          console.log('Playback stopped - fresh state ready')
         } else {
-          yield self.audioContext!.resume()
+          // START: Create fresh audio context and rebuild everything
+          console.log('=== STARTING PLAYBACK ===')
+
+          // Create brand new audio context
+          actions.initializeAudioContext()
+
+          if (!self.audioContext) {
+            console.error('Failed to create audio context')
+            return
+          }
+
+          // Recreate all audio nodes from scratch
+          console.log('Recreating audio graph from scratch...')
+          self.visualNodes.forEach(node => {
+            try {
+              actions.createAudioNode(node.id, node.data.nodeType)
+            } catch (error) {
+              console.error('Error recreating audio node:', error)
+            }
+          })
+
+          // Recreate all connections
+          self.visualEdges.forEach(edge => {
+            try {
+              actions.connectAudioNodes(
+                edge.source,
+                edge.target,
+                edge.sourceHandle || 'output',
+                edge.targetHandle || 'input'
+              )
+            } catch (error) {
+              console.error('Error recreating audio connection:', error)
+            }
+          })
+
           self.isPlaying = true
+          console.log('Playback started with fresh audio context')
         }
       }),
 
