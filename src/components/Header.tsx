@@ -81,6 +81,48 @@ const Header: React.FC<HeaderProps> = observer(
         },
       },
       {
+        id: 'microphone-input',
+        name: 'Microphone Input',
+        description: 'Live microphone input with delay and feedback',
+        create: async () => {
+          // Clear existing nodes first to avoid conflicts
+          store.clearAllNodes()
+
+          try {
+            // Use the store's microphone input action which handles permissions
+            const micId = await store.addMicrophoneInput({ x: 50, y: 150 })
+            const gainId = store.addNode('GainNode', { x: 250, y: 150 })
+            const delayId = store.addNode('DelayNode', { x: 450, y: 150 })
+            const feedbackId = store.addNode('GainNode', { x: 450, y: 300 })
+            const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
+
+            setTimeout(() => {
+              console.log('Microphone Input: Setting up delay effect...')
+              // Set delay time and feedback gain
+              store.updateNodeProperty(delayId, 'delayTime', 0.3)
+              store.updateNodeProperty(feedbackId, 'gain', 0.7)
+              store.updateNodeProperty(gainId, 'gain', 0.7)
+
+              // Connect the nodes
+              console.log('Microphone Input: Connecting main audio chain...')
+              store.addEdge(micId, gainId, 'output', 'input')
+              store.addEdge(gainId, delayId, 'output', 'input')
+              store.addEdge(delayId, destId, 'output', 'input')
+
+              console.log('Microphone Input: Connecting feedback loop...')
+              store.addEdge(delayId, feedbackId, 'output', 'input')
+              store.addEdge(feedbackId, delayId, 'output', 'input')
+            }, 200)
+          } catch (error) {
+            console.error('Failed to create microphone input example:', error)
+            // Show user-friendly error message
+            alert(
+              'Microphone access denied or not available. Please allow microphone access and try again.'
+            )
+          }
+        },
+      },
+      {
         id: 'delay-effect',
         name: 'Delay Effect',
         description: 'Oscillator with delay and feedback',
@@ -603,8 +645,8 @@ const Header: React.FC<HeaderProps> = observer(
       },
     ]
 
-    const handleExampleSelect = (example: (typeof examples)[0]) => {
-      example.create()
+    const handleExampleSelect = async (example: (typeof examples)[0]) => {
+      await example.create()
       setIsDesktopExamplesOpen(false)
       setIsMenuOpen(false)
       setIsMobileExamplesOpen(false)
@@ -900,8 +942,8 @@ const Header: React.FC<HeaderProps> = observer(
                             {examples.map(example => (
                               <button
                                 key={example.id}
-                                onClick={() => {
-                                  example.create()
+                                onClick={async () => {
+                                  await example.create()
                                   setIsMenuOpen(false)
                                   setIsMobileExamplesOpen(false)
                                 }}
