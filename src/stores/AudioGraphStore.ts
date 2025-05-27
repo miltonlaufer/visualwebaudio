@@ -44,6 +44,8 @@ export const AudioGraphStore = types
     globalAnalyzer: null as AnalyserNode | null,
     // Counter to ensure unique node IDs
     nodeIdCounter: 0,
+    // Store media streams for microphone nodes
+    mediaStreams: new Map<string, MediaStream>(),
   }))
   .actions(self => {
     const actions = {
@@ -266,6 +268,25 @@ export const AudioGraphStore = types
           return
         }
 
+        // Special handling for MediaStreamAudioSourceNode
+        if (nodeType === 'MediaStreamAudioSourceNode') {
+          const mediaStream = self.mediaStreams.get(nodeId)
+          if (mediaStream) {
+            try {
+              const micSource = self.audioContext.createMediaStreamSource(mediaStream)
+              self.audioNodes.set(nodeId, micSource)
+              console.log(`Successfully recreated MediaStreamAudioSourceNode: ${nodeId}`)
+              return
+            } catch (error) {
+              console.error('Error recreating MediaStreamAudioSourceNode:', error)
+              return
+            }
+          } else {
+            console.error(`No media stream found for microphone node: ${nodeId}`)
+            return
+          }
+        }
+
         // Get the visual node to extract properties
         const visualNode = self.visualNodes.find(node => node.id === nodeId)
         const properties = visualNode
@@ -380,6 +401,19 @@ export const AudioGraphStore = types
         if (nodeIndex !== -1) {
           self.visualNodes.splice(nodeIndex, 1)
           console.log('Visual node removed')
+        }
+
+        // Clean up stored media stream if this is a microphone node
+        if (nodeType === 'MediaStreamAudioSourceNode') {
+          const mediaStream = self.mediaStreams.get(nodeId)
+          if (mediaStream) {
+            mediaStream.getTracks().forEach(track => {
+              track.stop()
+              console.log('Stopped media track from stored stream')
+            })
+            self.mediaStreams.delete(nodeId)
+            console.log('Removed stored media stream')
+          }
         }
 
         // If this was the last node connected to destination, update play state
@@ -501,6 +535,23 @@ export const AudioGraphStore = types
             console.log('Error disconnecting global analyzer:', error)
           }
           self.globalAnalyzer = null
+        }
+
+        // Clean up all stored media streams
+        if (self.mediaStreams.size > 0) {
+          console.log(`Cleaning up ${self.mediaStreams.size} stored media streams...`)
+          self.mediaStreams.forEach((stream, nodeId) => {
+            try {
+              stream.getTracks().forEach(track => {
+                track.stop()
+                console.log(`Stopped media track for node ${nodeId}`)
+              })
+            } catch (error) {
+              console.log(`Error stopping media stream for node ${nodeId}:`, error)
+            }
+          })
+          self.mediaStreams.clear()
+          console.log('All media streams cleaned up')
         }
 
         // Reinitialize audio context for a fresh start
@@ -1007,6 +1058,9 @@ export const AudioGraphStore = types
 
           // Store the actual audio node
           self.audioNodes.set(nodeId, micSource)
+
+          // Store the media stream
+          self.mediaStreams.set(nodeId, stream)
 
           console.log('Microphone input added successfully with ID:', nodeId)
           return nodeId
