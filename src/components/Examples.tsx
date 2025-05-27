@@ -586,15 +586,15 @@ export const useExamples = () => {
           const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 150 })
 
           setTimeout(() => {
-            // Set up the input gain
-            store.updateNodeProperty(gainId, 'gain', 0.8)
+            // Set up the input gain (lower to prevent feedback)
+            store.updateNodeProperty(gainId, 'gain', 0.3)
 
-            // Set up dry/wet mix
-            store.updateNodeProperty(dryGainId, 'gain', 0.5) // Dry signal
-            store.updateNodeProperty(wetGainId, 'gain', 0.5) // Wet signal (more reverb for mic)
+            // Set up dry/wet mix (less wet signal to prevent feedback)
+            store.updateNodeProperty(dryGainId, 'gain', 0.7) // Dry signal
+            store.updateNodeProperty(wetGainId, 'gain', 0.2) // Wet signal (reduced to prevent feedback)
 
-            // Set up the mixer
-            store.updateNodeProperty(mixerId, 'gain', 1)
+            // Set up the mixer (lower overall volume)
+            store.updateNodeProperty(mixerId, 'gain', 0.6)
 
             // Connect the audio chain
             console.log('Microphone Reverb: Connecting audio chain...')
