@@ -1,22 +1,30 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 const MicrophoneInput: React.FC = observer(() => {
   const store = useAudioGraphStore()
-  const [isRecording, setIsRecording] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [micNodeId, setMicNodeId] = useState<string | null>(null)
+
+  // Find any existing microphone nodes in the store
+  const microphoneNodes = store.visualNodes.filter(
+    node => node.data.nodeType === 'MediaStreamAudioSourceNode'
+  )
+  const isRecording = microphoneNodes.length > 0
+
+  // Clear error when microphone state changes
+  useEffect(() => {
+    if (isRecording) {
+      setError(null)
+    }
+  }, [isRecording])
 
   const startMicrophone = useCallback(async () => {
     try {
       setError(null)
 
       // Use the store action to add microphone input
-      const nodeId = await store.addMicrophoneInput({ x: 50, y: 100 })
-
-      setMicNodeId(nodeId)
-      setIsRecording(true)
+      await store.addMicrophoneInput({ x: 50, y: 100 })
 
       console.log('Microphone input started successfully')
     } catch (err) {
@@ -36,17 +44,14 @@ const MicrophoneInput: React.FC = observer(() => {
   }, [store])
 
   const stopMicrophone = useCallback(() => {
-    if (micNodeId) {
-      // Remove the microphone node
-      store.removeNode(micNodeId)
-      setMicNodeId(null)
-    }
+    // Stop all microphone nodes
+    microphoneNodes.forEach(node => {
+      store.removeNode(node.id)
+    })
 
-    setIsRecording(false)
     setError(null)
-
     console.log('Microphone input stopped')
-  }, [store, micNodeId])
+  }, [store, microphoneNodes])
 
   return (
     <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
@@ -73,7 +78,9 @@ const MicrophoneInput: React.FC = observer(() => {
           {isRecording ? (
             <span className="flex items-center">
               <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse"></span>
-              Recording from microphone
+              {microphoneNodes.length === 1
+                ? 'Recording from microphone'
+                : `Recording from ${microphoneNodes.length} microphones`}
             </span>
           ) : (
             'Click to start microphone input'
@@ -94,7 +101,9 @@ const MicrophoneInput: React.FC = observer(() => {
 
       {isRecording && (
         <div className="mt-2 text-xs text-blue-600">
-          Connect the microphone output to other audio nodes to process the live audio.
+          {microphoneNodes.length === 1
+            ? 'Connect the microphone output to other audio nodes to process the live audio.'
+            : 'Multiple microphone inputs detected. Use "Stop" to stop all microphones.'}
         </div>
       )}
     </div>

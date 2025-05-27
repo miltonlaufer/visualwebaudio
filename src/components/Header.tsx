@@ -69,8 +69,8 @@ const Header: React.FC<HeaderProps> = observer(
           store.clearAllNodes()
 
           const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 400, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 750, y: 150 })
+          const gainId = store.addNode('GainNode', { x: 600, y: 150 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 150 })
           setTimeout(() => {
             console.log('Basic Oscillator: Setting gain value...')
             store.updateNodeProperty(gainId, 'gain', 0.5)
@@ -90,11 +90,11 @@ const Header: React.FC<HeaderProps> = observer(
 
           try {
             // Use the store's microphone input action which handles permissions
-            const micId = await store.addMicrophoneInput({ x: 50, y: 150 })
-            const gainId = store.addNode('GainNode', { x: 250, y: 150 })
-            const delayId = store.addNode('DelayNode', { x: 450, y: 150 })
-            const feedbackId = store.addNode('GainNode', { x: 450, y: 300 })
-            const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
+            const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
+            const gainId = store.addNode('GainNode', { x: 500, y: 150 })
+            const delayId = store.addNode('DelayNode', { x: 900, y: 150 })
+            const feedbackId = store.addNode('GainNode', { x: 900, y: 400 })
+            const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 150 })
 
             setTimeout(() => {
               console.log('Microphone Input: Setting up delay effect...')
@@ -130,11 +130,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 250, y: 150 })
-          const delayId = store.addNode('DelayNode', { x: 450, y: 150 })
-          const feedbackId = store.addNode('GainNode', { x: 450, y: 300 })
-          const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
+          const gainId = store.addNode('GainNode', { x: 500, y: 150 })
+          const delayId = store.addNode('DelayNode', { x: 900, y: 150 })
+          const feedbackId = store.addNode('GainNode', { x: 900, y: 400 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 150 })
 
           setTimeout(() => {
             // Set delay time and feedback gain
@@ -162,11 +162,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-          const filterId = store.addNode('BiquadFilterNode', { x: 300, y: 100 })
-          const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
-          const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+          const filterId = store.addNode('BiquadFilterNode', { x: 600, y: 100 })
+          const lfoId = store.addNode('OscillatorNode', { x: 100, y: 450 })
+          const lfoGainId = store.addNode('GainNode', { x: 600, y: 450 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 100 })
 
           setTimeout(() => {
             // Set up the main oscillator
@@ -202,11 +202,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-          const pannerId = store.addNode('StereoPannerNode', { x: 300, y: 100 })
-          const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
-          const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+          const pannerId = store.addNode('StereoPannerNode', { x: 600, y: 100 })
+          const lfoId = store.addNode('OscillatorNode', { x: 100, y: 450 })
+          const lfoGainId = store.addNode('GainNode', { x: 600, y: 450 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 100 })
 
           setTimeout(() => {
             // Set up the main oscillator
@@ -235,10 +235,10 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 250, y: 150 })
-          const compId = store.addNode('DynamicsCompressorNode', { x: 450, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 700, y: 150 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
+          const gainId = store.addNode('GainNode', { x: 500, y: 150 })
+          const compId = store.addNode('DynamicsCompressorNode', { x: 900, y: 150 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1400, y: 150 })
 
           setTimeout(() => {
             // Set up a louder signal to trigger compression
@@ -267,11 +267,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 100 })
-          const tremoloGainId = store.addNode('GainNode', { x: 300, y: 100 })
-          const lfoId = store.addNode('OscillatorNode', { x: 50, y: 300 })
-          const lfoGainId = store.addNode('GainNode', { x: 300, y: 300 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 100 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+          const tremoloGainId = store.addNode('GainNode', { x: 600, y: 100 })
+          const lfoId = store.addNode('OscillatorNode', { x: 100, y: 400 })
+          const lfoGainId = store.addNode('GainNode', { x: 600, y: 400 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 100 })
 
           setTimeout(() => {
             // Set up the main oscillator
@@ -305,11 +305,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 })
-          const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 300 })
-          const modulatorGainId = store.addNode('GainNode', { x: 300, y: 300 })
-          const carrierGainId = store.addNode('GainNode', { x: 300, y: 100 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 200 })
+          const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 })
+          const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 400 })
+          const modulatorGainId = store.addNode('GainNode', { x: 600, y: 400 })
+          const carrierGainId = store.addNode('GainNode', { x: 600, y: 100 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 250 })
 
           setTimeout(() => {
             // Set up carrier oscillator
@@ -338,13 +338,13 @@ const Header: React.FC<HeaderProps> = observer(
           store.clearAllNodes()
 
           // Create three oscillators for a C major chord (C, E, G)
-          const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 }) // C
-          const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 250 }) // E
-          const osc3Id = store.addNode('OscillatorNode', { x: 50, y: 400 }) // G
+          const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 }) // C
+          const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 300 }) // E
+          const osc3Id = store.addNode('OscillatorNode', { x: 100, y: 500 }) // G
 
           // Single mixer gain and output
-          const mixerGainId = store.addNode('GainNode', { x: 350, y: 250 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 250 })
+          const mixerGainId = store.addNode('GainNode', { x: 700, y: 300 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1200, y: 300 })
 
           setTimeout(() => {
             // Set up the chord frequencies (C major: C4, E4, G4)
@@ -374,11 +374,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
-          const preGainId = store.addNode('GainNode', { x: 200, y: 150 })
-          const waveshaperId = store.addNode('WaveShaperNode', { x: 350, y: 150 })
-          const postGainId = store.addNode('GainNode', { x: 500, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 650, y: 150 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
+          const preGainId = store.addNode('GainNode', { x: 400, y: 150 })
+          const waveshaperId = store.addNode('WaveShaperNode', { x: 700, y: 150 })
+          const postGainId = store.addNode('GainNode', { x: 1000, y: 150 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 150 })
 
           setTimeout(() => {
             // Set up the oscillator
@@ -411,13 +411,13 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 200 })
-          const filter1Id = store.addNode('BiquadFilterNode', { x: 250, y: 100 })
-          const filter2Id = store.addNode('BiquadFilterNode', { x: 250, y: 300 })
-          const lfoId = store.addNode('OscillatorNode', { x: 50, y: 450 })
-          const lfoGainId = store.addNode('GainNode', { x: 250, y: 450 })
-          const mixGainId = store.addNode('GainNode', { x: 450, y: 200 })
-          const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 250 })
+          const filter1Id = store.addNode('BiquadFilterNode', { x: 500, y: 150 })
+          const filter2Id = store.addNode('BiquadFilterNode', { x: 500, y: 350 })
+          const lfoId = store.addNode('OscillatorNode', { x: 100, y: 550 })
+          const lfoGainId = store.addNode('GainNode', { x: 500, y: 550 })
+          const mixGainId = store.addNode('GainNode', { x: 900, y: 250 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 250 })
 
           setTimeout(() => {
             // Set up the main oscillator
@@ -463,9 +463,9 @@ const Header: React.FC<HeaderProps> = observer(
           store.clearAllNodes()
 
           const noiseId = store.addNode('AudioBufferSourceNode', { x: 100, y: 150 })
-          const filterId = store.addNode('BiquadFilterNode', { x: 350, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 550, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 750, y: 150 })
+          const filterId = store.addNode('BiquadFilterNode', { x: 600, y: 150 })
+          const gainId = store.addNode('GainNode', { x: 1100, y: 150 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 150 })
 
           setTimeout(() => {
             // Set up the filter for shaping the noise
@@ -495,11 +495,11 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
-          const envGainId = store.addNode('GainNode', { x: 300, y: 150 })
-          const lfoId = store.addNode('OscillatorNode', { x: 50, y: 350 })
-          const lfoGainId = store.addNode('GainNode', { x: 300, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 550, y: 150 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
+          const envGainId = store.addNode('GainNode', { x: 600, y: 150 })
+          const lfoId = store.addNode('OscillatorNode', { x: 100, y: 450 })
+          const lfoGainId = store.addNode('GainNode', { x: 600, y: 450 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 150 })
 
           setTimeout(() => {
             // Set up the main oscillator
@@ -534,12 +534,12 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const osc1Id = store.addNode('OscillatorNode', { x: 50, y: 100 })
-          const osc2Id = store.addNode('OscillatorNode', { x: 50, y: 300 })
-          const gain1Id = store.addNode('GainNode', { x: 250, y: 100 })
-          const gain2Id = store.addNode('GainNode', { x: 250, y: 300 })
-          const mixerGainId = store.addNode('GainNode', { x: 450, y: 200 })
-          const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+          const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 })
+          const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 400 })
+          const gain1Id = store.addNode('GainNode', { x: 500, y: 100 })
+          const gain2Id = store.addNode('GainNode', { x: 500, y: 400 })
+          const mixerGainId = store.addNode('GainNode', { x: 900, y: 250 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 250 })
 
           setTimeout(() => {
             // Set up oscillators with slight detuning for beat effect
@@ -569,12 +569,12 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 150 })
-          const dryGainId = store.addNode('GainNode', { x: 250, y: 100 })
-          const convolverId = store.addNode('ConvolverNode', { x: 250, y: 250 })
-          const wetGainId = store.addNode('GainNode', { x: 450, y: 250 })
-          const mixerGainId = store.addNode('GainNode', { x: 650, y: 175 })
-          const destId = store.addNode('AudioDestinationNode', { x: 850, y: 175 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 200 })
+          const dryGainId = store.addNode('GainNode', { x: 500, y: 100 })
+          const convolverId = store.addNode('ConvolverNode', { x: 500, y: 300 })
+          const wetGainId = store.addNode('GainNode', { x: 900, y: 300 })
+          const mixerGainId = store.addNode('GainNode', { x: 1300, y: 200 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1700, y: 200 })
 
           setTimeout(() => {
             // Set up the oscillator
@@ -608,12 +608,12 @@ const Header: React.FC<HeaderProps> = observer(
           // Clear existing nodes first to avoid conflicts
           store.clearAllNodes()
 
-          const oscId = store.addNode('OscillatorNode', { x: 50, y: 200 })
-          const leftGainId = store.addNode('GainNode', { x: 250, y: 100 })
-          const rightGainId = store.addNode('GainNode', { x: 250, y: 300 })
-          const leftFilterId = store.addNode('BiquadFilterNode', { x: 450, y: 100 })
-          const rightFilterId = store.addNode('BiquadFilterNode', { x: 450, y: 300 })
-          const destId = store.addNode('AudioDestinationNode', { x: 650, y: 200 })
+          const oscId = store.addNode('OscillatorNode', { x: 100, y: 250 })
+          const leftGainId = store.addNode('GainNode', { x: 500, y: 150 })
+          const rightGainId = store.addNode('GainNode', { x: 500, y: 350 })
+          const leftFilterId = store.addNode('BiquadFilterNode', { x: 900, y: 150 })
+          const rightFilterId = store.addNode('BiquadFilterNode', { x: 900, y: 350 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 250 })
 
           setTimeout(() => {
             // Set up the oscillator
