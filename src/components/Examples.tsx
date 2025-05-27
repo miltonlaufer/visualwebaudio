@@ -579,9 +579,9 @@ export const useExamples = () => {
           // Use the store's microphone input action which handles permissions
           const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
           const gainId = store.addNode('GainNode', { x: 350, y: 150 })
-          const reverbId = store.addNode('ConvolverNode', { x: 600, y: 250 })
+          const reverbId = store.addNode('ConvolverNode', { x: 600, y: 150 })
           const dryGainId = store.addNode('GainNode', { x: 600, y: 50 })
-          const wetGainId = store.addNode('GainNode', { x: 600, y: 250 })
+          const wetGainId = store.addNode('GainNode', { x: 600, y: 300 })
           const mixerId = store.addNode('GainNode', { x: 850, y: 150 })
           const destId = store.addNode('AudioDestinationNode', { x: 1100, y: 150 })
 
