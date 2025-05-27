@@ -6,7 +6,11 @@ describe('App', () => {
   it('renders the main title', () => {
     render(<App />)
 
-    expect(screen.getByText('Visual Web Audio (alpha)')).toBeInTheDocument()
+    // Check for the mobile version (VWA)
+    expect(screen.getByText('VWA')).toBeInTheDocument()
+    // Check for the desktop version (Visual Web Audio + alpha badge)
+    expect(screen.getByText('Visual Web Audio')).toBeInTheDocument()
+    expect(screen.getByText('alpha')).toBeInTheDocument()
   })
 
   it('renders the application layout', () => {
