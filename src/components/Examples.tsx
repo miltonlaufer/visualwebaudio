@@ -170,7 +170,7 @@ export const useExamples = () => {
         store.updateNodeProperty(oscId, 'type', 'sine')
 
         // Set up the LFO for panning automation
-        store.updateNodeProperty(lfoId, 'frequency', 0.5) // Slow panning
+        store.updateNodeProperty(lfoId, 'frequency', 0.2) // Slow panning
         store.updateNodeProperty(lfoGainId, 'gain', 1) // Full range panning
 
         // Set initial panning (will be modulated by LFO)
