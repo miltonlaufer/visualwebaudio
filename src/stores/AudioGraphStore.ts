@@ -34,6 +34,8 @@ export const AudioGraphStore = types
     isApplyingPatch: false,
     // Global analyzer for frequency analysis
     globalAnalyzer: null as AnalyserNode | null,
+    // Counter to ensure unique node IDs
+    nodeIdCounter: 0,
   }))
   .actions(self => {
     const actions = {
@@ -164,7 +166,9 @@ export const AudioGraphStore = types
           throw new Error(`Unknown node type: ${nodeType}`)
         }
 
-        const nodeId = `${nodeType}-${Date.now()}`
+        // Increment counter and use it with timestamp to ensure uniqueness
+        self.nodeIdCounter += 1
+        const nodeId = `${nodeType}-${Date.now()}-${self.nodeIdCounter}`
         console.log('STORE: Generated nodeId:', nodeId)
 
         // Create properties from metadata
@@ -863,8 +867,9 @@ export const AudioGraphStore = types
           // Create MediaStreamAudioSourceNode
           const micSource = self.audioContext.createMediaStreamSource(stream)
 
-          // Generate unique node ID
-          const nodeId = `MicrophoneInput-${Date.now()}`
+          // Generate unique node ID with counter
+          self.nodeIdCounter += 1
+          const nodeId = `MicrophoneInput-${Date.now()}-${self.nodeIdCounter}`
 
           // Get metadata for MediaStreamAudioSourceNode
           const metadata = self.webAudioMetadata['MediaStreamAudioSourceNode']
