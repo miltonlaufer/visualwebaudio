@@ -11,6 +11,7 @@
 
 - [Live Demo](#live-demo)
 - [Overview](#overview)
+- [Graphical Programming Interface: Exportable to JavaScript Code](#graphical-programming-interface-exportable-to-javascript-code)
 - [Key Features](#key-features)
 - [Getting Started](#getting-started)
 - [Architecture](#architecture)
@@ -36,7 +37,7 @@ Unlike traditional audio editors that hardcode node definitions, this project:
 - Ensures type safety throughout the entire application
 - Stays current with Web Audio API evolution without manual updates
 
-### Graphical Programming Interface
+## Graphical Programming Interface: Exportable to JavaScript Code
 
 Visual Web Audio offers a unique **Graphical Programming Interface** that transforms visual audio graphs into executable JavaScript code:
 - **Visual Design**: Create complex audio graphs using drag-and-drop interface
