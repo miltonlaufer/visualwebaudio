@@ -887,100 +887,11 @@ export const AudioGraphStore = types
         }
 
         if (self.isPlaying) {
-          // STOP: Suspend audio context and stop all source nodes
-          console.log('=== STOPPING PLAYBACK ===')
-
-          // First suspend the audio context
           yield self.audioContext!.suspend()
-
-          // Stop all source nodes (they cannot be restarted)
-          self.audioNodes.forEach((audioNode, nodeId) => {
-            const visualNode = self.visualNodes.find(node => node.id === nodeId)
-            if (visualNode) {
-              const nodeType = visualNode.data.nodeType
-              if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
-                try {
-                  if ('stop' in audioNode && typeof audioNode.stop === 'function') {
-                    ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
-                    console.log(`Stopped ${nodeType} ${nodeId}`)
-                  }
-                } catch (error) {
-                  // Node might already be stopped, which is fine
-                  console.log(`${nodeType} ${nodeId} already stopped:`, error)
-                }
-              }
-            }
-          })
-
           self.isPlaying = false
-          console.log('Playback stopped')
         } else {
-          // START: Resume audio context and recreate source nodes
-          console.log('=== STARTING PLAYBACK ===')
-
-          // Set flag to prevent automatic play state changes during reconnection
-          actions.setUpdatingPlayState(true)
-
-          // First resume the audio context
           yield self.audioContext!.resume()
-
-          // Recreate all source nodes (since stopped ones cannot be restarted)
-          const sourceNodesToRecreate: Array<{ nodeId: string; nodeType: string }> = []
-
-          self.audioNodes.forEach((audioNode, nodeId) => {
-            const visualNode = self.visualNodes.find(node => node.id === nodeId)
-            if (visualNode) {
-              const nodeType = visualNode.data.nodeType
-              if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
-                sourceNodesToRecreate.push({ nodeId, nodeType })
-              }
-            }
-          })
-
-          // Recreate each source node
-          for (const { nodeId, nodeType } of sourceNodesToRecreate) {
-            try {
-              console.log(`Recreating ${nodeType} ${nodeId}`)
-
-              // Remove the old stopped node
-              const oldNode = self.audioNodes.get(nodeId)
-              if (oldNode) {
-                try {
-                  oldNode.disconnect()
-                } catch (error) {
-                  console.log(`Error disconnecting old ${nodeType}:`, error)
-                }
-                self.audioNodes.delete(nodeId)
-              }
-
-              // Create new source node
-              actions.createAudioNode(nodeId, nodeType)
-
-              console.log(`Successfully recreated ${nodeType} ${nodeId}`)
-            } catch (error) {
-              console.error(`Failed to recreate ${nodeType} ${nodeId}:`, error)
-            }
-          }
-
-          // Reconnect all audio connections (while preventing automatic play state changes)
-          console.log('Reconnecting audio graph...')
-          for (const connection of self.audioConnections) {
-            try {
-              actions.connectAudioNodes(
-                connection.sourceNodeId,
-                connection.targetNodeId,
-                connection.sourceOutput,
-                connection.targetInput
-              )
-            } catch (error) {
-              console.error('Error reconnecting audio nodes:', error)
-            }
-          }
-
-          // Now manually set the play state and reset the flag
           self.isPlaying = true
-          actions.setUpdatingPlayState(false)
-          console.log('Playback started with fresh source nodes')
         }
       }),
 
