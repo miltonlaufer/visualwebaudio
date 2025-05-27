@@ -82,8 +82,27 @@ const ExportJSButton: React.FC = observer(() => {
     // Create a mapping of original IDs to sanitized IDs
     const idMap = new Map(nodes.map(node => [node.id, sanitizeId(node.id)]))
 
+    // Check if there are any MediaStreamAudioSourceNode nodes
+    const hasMicrophoneInput = nodes.some(
+      node => node.data.nodeType === 'MediaStreamAudioSourceNode'
+    )
+
     const code = `// Generated Audio Graph Code
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+${
+  hasMicrophoneInput
+    ? `// Note: This code includes microphone input. To use it:
+// 1. Wrap the code in an async function
+// 2. Request microphone permission using getUserMedia
+// 3. Create MediaStreamAudioSourceNode with the stream
+
+async function createAudioGraph() {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  
+  // Request microphone access
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+`
+    : 'const audioContext = new (window.AudioContext || window.webkitAudioContext)();'
+}
 
 // Create nodes
 ${nodes
@@ -94,6 +113,11 @@ ${nodes
     // Special case for destination node
     if (node.data.nodeType === 'AudioDestinationNode') {
       return `const ${nodeId} = audioContext.destination;`
+    }
+
+    // Special case for MediaStreamAudioSourceNode - requires getUserMedia
+    if (node.data.nodeType === 'MediaStreamAudioSourceNode') {
+      return `const ${nodeId} = audioContext.createMediaStreamSource(stream);`
     }
 
     // Special cases for nodes that require parameters in constructor
@@ -162,6 +186,14 @@ ${nodes
 
 // Start audio context
 audioContext.resume();
+${
+  hasMicrophoneInput
+    ? `}
+
+// Call the function to create the audio graph
+createAudioGraph().catch(console.error);`
+    : ''
+}
 `
     return code
   }
