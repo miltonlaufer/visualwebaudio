@@ -84,7 +84,7 @@ describe('Examples Structure Tests', () => {
       await example.create()
 
       // Check LFO frequency is set for slow panning
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.5)
+      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.2)
       // Check LFO gain is set for full range
       expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 1)
     })
