@@ -114,8 +114,8 @@ TypeScript Web Audio API Definitions (@types/web)
 
 ## Examples
 
-The application includes 16+ working audio examples:
-**Basic Oscillator**, **Microphone Input with Delay**, **Delay Effect**, **Filter Sweep**, **Stereo Panning**, **Compressor Effect**, **Tremolo Effect**, **Ring Modulation**, **Chord Synthesis**, **Waveshaper Distortion**, **Phaser Effect**, **Simple Noise**, **Amplitude Envelope**, **Beat Frequency**, **Convolution Reverb**, **Stereo Effects**
+The application includes 17+ working audio examples:
+**Basic Oscillator**, **Microphone Input with Delay**, **Delay Effect**, **Filter Sweep**, **Stereo Panning**, **Compressor Effect**, **Tremolo Effect**, **Ring Modulation**, **Chord Synthesis**, **Waveshaper Distortion**, **Phaser Effect**, **Simple Noise**, **Amplitude Envelope**, **Beat Frequency**, **Convolution Reverb**, **Microphone Reverb**, **Stereo Effects**
 
 ## Development
 
