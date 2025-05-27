@@ -49,6 +49,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 
 - **Visual Audio Graph Editor**: Drag-and-drop node creation with type validation and color-coded connections
 - **Metadata-Driven Architecture**: 18+ Web Audio API nodes automatically discovered from TypeScript definitions
+- **Voice Effects Processing**: Real-time microphone input with robot voice, vocoder, harmonizer, and transformer effects
 - **Project Management**: Export/Import projects as JSON with error handling and undo/redo system
 - **Real-time Audio Processing**: Web Audio API integration with memory leak prevention and lifecycle management
 - **Error Handling**: Comprehensive error boundaries and connection validation
@@ -114,8 +115,11 @@ TypeScript Web Audio API Definitions (@types/web)
 
 ## Examples
 
-The application includes 17+ working audio examples:
-**Basic Oscillator**, **Microphone Input with Delay**, **Delay Effect**, **Filter Sweep**, **Stereo Panning**, **Compressor Effect**, **Tremolo Effect**, **Ring Modulation**, **Chord Synthesis**, **Waveshaper Distortion**, **Phaser Effect**, **Simple Noise**, **Amplitude Envelope**, **Beat Frequency**, **Convolution Reverb**, **Microphone Reverb**, **Stereo Effects**
+The application includes 21+ working audio examples:
+
+**Basic Audio Processing**: **Basic Oscillator**, **Microphone Input with Delay**, **Delay Effect**, **Filter Sweep**, **Stereo Panning**, **Compressor Effect**, **Tremolo Effect**, **Ring Modulation**, **Chord Synthesis**, **Waveshaper Distortion**, **Phaser Effect**, **Simple Noise**, **Amplitude Envelope**, **Beat Frequency**, **Convolution Reverb**, **Microphone Reverb**, **Stereo Effects**
+
+**Voice Effects** (NEW): **Robot Voice (Ring Mod)**, **Vocoder Voice**, **Voice Harmonizer**, **Voice Pitch Shifter** - Transform your voice with real-time microphone processing
 
 ## Development
 
