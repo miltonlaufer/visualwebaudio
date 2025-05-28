@@ -15,7 +15,8 @@
     "test:ui": "vitest --ui",
     "extract-types": "node scripts/extract-web-audio-types.js",
     "type-check": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "generate-icons": "pwa-asset-generator public/logo.png public/icons --icon-only --opaque false --purpose any --type png"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
@@ -61,10 +62,12 @@
     "lint-staged": "^16.0.0",
     "postcss": "^8.5.3",
     "prettier": "^3.4.2",
+    "pwa-asset-generator": "^8.0.5",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.0.0",
     "vitest": "^3.1.4"
   }
 }
