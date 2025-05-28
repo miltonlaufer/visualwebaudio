@@ -892,10 +892,8 @@ export const useExamples = () => {
           const harmony3rdGainId = store.addNode('GainNode', { x: 250, y: 350 })
           const harmony5thGainId = store.addNode('GainNode', { x: 250, y: 500 })
 
-          // Create gain nodes for each voice (simplified - no redundant gains)
+          // Create gain node for voice level control
           const voiceGainId = store.addNode('GainNode', { x: 400, y: 200 })
-          const harmony3rdMixGainId = store.addNode('GainNode', { x: 400, y: 350 })
-          const harmony5thMixGainId = store.addNode('GainNode', { x: 400, y: 500 })
 
           // Create mixer and output
           const mixerId = store.addNode('GainNode', { x: 600, y: 350 })
@@ -911,33 +909,29 @@ export const useExamples = () => {
           store.updateNodeProperty(harmony5thId, 'frequency', 392.0) // G4 (perfect 5th)
           store.updateNodeProperty(harmony5thId, 'type', 'sine')
 
-          // Set oscillator gains to 0.5 (sound generator rule)
-          store.updateNodeProperty(harmony3rdGainId, 'gain', 0.5)
-          store.updateNodeProperty(harmony5thGainId, 'gain', 0.5)
+          // Set oscillator gains to 0.5 (sound generator rule) but adjust harmony levels
+          store.updateNodeProperty(harmony3rdGainId, 'gain', 0.15) // Lower harmony level
+          store.updateNodeProperty(harmony5thGainId, 'gain', 0.15) // Lower harmony level
 
-          // Set up voice levels (much lower harmony gains to avoid overwhelming)
+          // Set up voice levels
           store.updateNodeProperty(voiceGainId, 'gain', 0.7) // Original voice
-          store.updateNodeProperty(harmony3rdMixGainId, 'gain', 0.15) // 3rd harmony (very low)
-          store.updateNodeProperty(harmony5thMixGainId, 'gain', 0.15) // 5th harmony (very low)
 
           // Set up mixer
           store.updateNodeProperty(mixerId, 'gain', 0.8)
 
-          // Connect the harmonizer chain (simplified)
+          // Connect the harmonizer chain (no redundant gains)
           console.log('Voice Harmonizer: Connecting audio chain...')
 
-          // Direct connections - no redundant gains
+          // Voice path
           store.addEdge(micId, micGainId, 'output', 'input')
           store.addEdge(micGainId, voiceGainId, 'output', 'input')
           store.addEdge(voiceGainId, mixerId, 'output', 'input')
 
-          // Harmony paths
+          // Harmony paths - direct connection from oscillator gains to mixer
           store.addEdge(harmony3rdId, harmony3rdGainId, 'output', 'input')
           store.addEdge(harmony5thId, harmony5thGainId, 'output', 'input')
-          store.addEdge(harmony3rdGainId, harmony3rdMixGainId, 'output', 'input')
-          store.addEdge(harmony5thGainId, harmony5thMixGainId, 'output', 'input')
-          store.addEdge(harmony3rdMixGainId, mixerId, 'output', 'input')
-          store.addEdge(harmony5thMixGainId, mixerId, 'output', 'input')
+          store.addEdge(harmony3rdGainId, mixerId, 'output', 'input')
+          store.addEdge(harmony5thGainId, mixerId, 'output', 'input')
 
           // Output
           store.addEdge(mixerId, destId, 'output', 'input')
