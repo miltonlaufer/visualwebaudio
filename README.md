@@ -13,6 +13,7 @@
 - [Overview](#overview)
 - [Graphical Programming Interface: Exportable to JavaScript Code](#graphical-programming-interface-exportable-to-javascript-code)
 - [Key Features](#key-features)
+- [PWA Support](#pwa-support)
 - [Getting Started](#getting-started)
 - [Architecture](#architecture)
 - [Examples](#examples)
@@ -53,6 +54,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 - **Project Management**: Export/Import projects as JSON with error handling and undo/redo system
 - **Real-time Audio Processing**: Web Audio API integration with memory leak prevention and lifecycle management
 - **Error Handling**: Comprehensive error boundaries and connection validation
+- **Progressive Web App**: Installable on mobile devices with offline support and caching
 
 ## Getting Started
 
