@@ -30,6 +30,7 @@
   "dependencies": {
     "@types/web": "^0.0.235",
     "@xyflow/react": "^12.6.4",
+    "dexie": "^4.0.11",
     "mobx": "^6.13.7",
     "mobx-react-lite": "^4.1.0",
     "mobx-state-tree": "^7.0.2",
