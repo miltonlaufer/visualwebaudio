@@ -102,10 +102,10 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(5)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 300, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 550, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 550, y: 350 }) // Feedback gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 800, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 350, y: 150 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 650, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 350 }) // Feedback gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 950, y: 150 })
     })
 
     it('should create feedback loop connections', async () => {
@@ -244,10 +244,10 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addMicrophoneInput).toHaveBeenCalledTimes(1)
       expect(mockStore.addNode).toHaveBeenCalledTimes(4) // Mic gain, Delay, Feedback, Destination
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 300, y: 150 }) // Mic gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 550, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 550, y: 350 }) // Feedback
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 800, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 350, y: 150 }) // Mic gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 650, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 350 }) // Feedback
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 950, y: 150 })
     })
   })
 

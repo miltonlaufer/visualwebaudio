@@ -54,10 +54,10 @@ export const useExamples = () => {
         try {
           // Use the store's microphone input action which handles permissions
           const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
-          const micGainId = store.addNode('GainNode', { x: 300, y: 150 })
-          const delayId = store.addNode('DelayNode', { x: 550, y: 150 })
-          const feedbackId = store.addNode('GainNode', { x: 550, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 800, y: 150 })
+          const micGainId = store.addNode('GainNode', { x: 350, y: 150 })
+          const delayId = store.addNode('DelayNode', { x: 650, y: 150 })
+          const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
+          const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
 
           console.log('Microphone Input: Setting up delay effect...')
           // Set microphone gain to 0.5 (sound generator rule)
@@ -93,10 +93,10 @@ export const useExamples = () => {
         store.clearAllNodes()
 
         const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 300, y: 150 })
-        const delayId = store.addNode('DelayNode', { x: 550, y: 150 })
-        const feedbackId = store.addNode('GainNode', { x: 550, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 800, y: 150 })
+        const oscGainId = store.addNode('GainNode', { x: 350, y: 150 })
+        const delayId = store.addNode('DelayNode', { x: 650, y: 150 })
+        const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
+        const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
 
         // Set oscillator gain to 0.5 (sound generator rule)
         store.updateNodeProperty(oscGainId, 'gain', 0.5)
