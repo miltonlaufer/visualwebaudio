@@ -66,11 +66,11 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(6)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('StereoPannerNode', { x: 400, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 150 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('StereoPannerNode', { x: 700, y: 150 })
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 350 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 650, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 150 })
     })
 
     it('should create exactly 5 connections (main chain + LFO modulation)', async () => {
@@ -125,11 +125,11 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(6)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 100 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('BiquadFilterNode', { x: 400, y: 100 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('BiquadFilterNode', { x: 700, y: 100 })
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 350 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 650, y: 100 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 100 })
     })
 
     it('should configure filter and LFO properly', async () => {
@@ -157,11 +157,11 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(6)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 100 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Tremolo gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 300 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 300 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 650, y: 100 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 100 }) // Tremolo gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 100 })
     })
 
     it('should configure tremolo LFO at 5Hz', async () => {
@@ -184,11 +184,11 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(6)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Carrier
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 100 }) // Carrier gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 300 }) // Modulator
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 300 }) // Modulator gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 200 }) // Ring mod gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 650, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Carrier gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // Modulator
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // Modulator gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 225 }) // Ring mod gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 225 })
     })
 
     it('should configure carrier and modulator frequencies', async () => {
@@ -212,15 +212,15 @@ describe('Examples Structure Tests', () => {
       expect(mockStore.addNode).toHaveBeenCalledTimes(8)
       // 3 oscillators
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 50 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 225 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 400 })
       // 3 individual gains (updated positions)
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 50 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 350 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 50 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 225 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 400 })
       // Mixer and destination (updated positions)
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 500, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 750, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 225 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 225 })
     })
 
     it('should configure C major chord frequencies', async () => {
@@ -260,13 +260,13 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(8)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 150 }) // Input gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ConvolverNode', { x: 650, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 50 }) // Dry gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 250 }) // Wet gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 900, y: 150 }) // Mixer
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1150, y: 150 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 150 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 150 }) // Input gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('ConvolverNode', { x: 1000, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 50 }) // Dry gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 350 }) // Wet gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1300, y: 150 }) // Mixer
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1600, y: 150 })
     })
   })
 
@@ -279,12 +279,12 @@ describe('Examples Structure Tests', () => {
 
       expect(mockStore.addNode).toHaveBeenCalledTimes(7)
       expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 250, y: 200 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelSplitterNode', { x: 450, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 750, y: 100 }) // Left gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 750, y: 300 }) // Right gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelMergerNode', { x: 1050, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1350, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 200 }) // Osc gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelSplitterNode', { x: 700, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 100 }) // Left gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 300 }) // Right gain
+      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelMergerNode', { x: 1300, y: 200 })
+      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1600, y: 200 })
     })
   })
 
