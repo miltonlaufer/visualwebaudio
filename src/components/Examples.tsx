@@ -882,22 +882,22 @@ export const useExamples = () => {
         try {
           // Use microphone input
           const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
-          const micGainId = store.addNode('GainNode', { x: 250, y: 200 })
+          const micGainId = store.addNode('GainNode', { x: 300, y: 200 })
 
           // Create harmony oscillators (3rd and 5th intervals)
           const harmony3rdId = store.addNode('OscillatorNode', { x: 100, y: 350 })
           const harmony5thId = store.addNode('OscillatorNode', { x: 100, y: 500 })
 
           // Create gain nodes for oscillators (sound generator rule)
-          const harmony3rdGainId = store.addNode('GainNode', { x: 250, y: 350 })
-          const harmony5thGainId = store.addNode('GainNode', { x: 250, y: 500 })
+          const harmony3rdGainId = store.addNode('GainNode', { x: 300, y: 350 })
+          const harmony5thGainId = store.addNode('GainNode', { x: 300, y: 500 })
 
           // Create gain node for voice level control
-          const voiceGainId = store.addNode('GainNode', { x: 400, y: 200 })
+          const voiceGainId = store.addNode('GainNode', { x: 500, y: 200 })
 
           // Create mixer and output
-          const mixerId = store.addNode('GainNode', { x: 600, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 800, y: 350 })
+          const mixerId = store.addNode('GainNode', { x: 700, y: 350 })
+          const destId = store.addNode('AudioDestinationNode', { x: 900, y: 350 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
