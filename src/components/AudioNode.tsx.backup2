@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef } from 'react'
 import { Handle, Position, useNodeId } from '@xyflow/react'
 import type { VisualNodeData } from '~/types'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
@@ -12,9 +12,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   console.log('AudioNode rendering:', data.nodeType)
   
   const store = useAudioGraphStore()
-  const nodeId = useNodeId() // Get the node ID from React Flow
+  const nodeId = useNodeId()
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [sliderValue, setSliderValue] = useState(50)
   const customUIRef = useRef<HTMLDivElement>(null)
 
   const { metadata, nodeType, properties } = data
@@ -22,23 +23,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   // Check if this is a custom node type
   const customNodeTypes = [
     'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
-    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
+    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'SoundFileNode'
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
-// Initialize custom UI elements for custom nodes
-useEffect(() => {
-  console.log(`AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`)
-  if (isCustomNode && customUIRef.current && nodeId) {
-    // Get the unified node from the store
-    const customNode = store.customNodes.get(nodeId)
-    if (customNode && 'createUIElement' in customNode && typeof customNode.createUIElement === 'function') {
-      // Clear any existing content
-      customUIRef.current.innerHTML = ''
-      // Create the custom UI elements
-      customNode.createUIElement(customUIRef.current)
-    }
-  }
-}, [isCustomNode, nodeId, store.customNodes, data.nodeType]) 
+
   // Memoized handlers for better performance
   const handleMouseEnterHandle = useCallback((handleId: string) => {
     return () => setHoveredHandle(handleId)
@@ -55,6 +43,16 @@ useEffect(() => {
   const handleMouseLeaveNode = useCallback(() => {
     setIsConnecting(false)
   }, [])
+
+  const handleButtonClick = useCallback(() => {
+    console.log('🎯 Button clicked for node:', nodeId)
+  }, [nodeId])
+
+  const handleSliderChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value)
+    setSliderValue(value)
+    console.log('🎚️ Slider changed to:', value, 'for node:', nodeId)
+  }, [nodeId])
 
   // Helper function to safely get property value whether properties is a Map or object
   const getPropertyValue = (properties: unknown, propertyName: string): unknown => {
@@ -111,15 +109,15 @@ useEffect(() => {
   const getHandleColors = (type: string) => {
     if (type === 'audio') {
       return {
-        backgroundColor: '#059669', // emerald-600 (darker green)
-        borderColor: '#047857', // emerald-700 (even darker border)
+        backgroundColor: '#059669',
+        borderColor: '#047857',
         labelColor: 'text-emerald-800',
         badgeColor: 'bg-emerald-100 text-emerald-800',
       }
     } else {
       return {
-        backgroundColor: '#dc2626', // red-600 (distinct red for control)
-        borderColor: '#b91c1c', // red-700 (darker red border)
+        backgroundColor: '#dc2626',
+        borderColor: '#b91c1c',
         labelColor: 'text-red-800',
         badgeColor: 'bg-red-100 text-red-800',
       }
@@ -131,6 +129,36 @@ useEffect(() => {
   const baseHeight = isCustomNode ? 120 : 80 // More height for custom nodes with UI
   const handleHeight = maxHandles * 30 // 30px per handle
   const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
+
+  // Custom UI render functions
+  const renderCustomUI = () => {
+    if (nodeType === 'ButtonNode') {
+      return (
+        <button
+          onClick={handleButtonClick}
+          className="px-4 py-2 bg-indigo-600 text-white border-none rounded cursor-pointer text-sm m-1 hover:bg-indigo-700"
+        >
+          Trigger
+        </button>
+      )
+    } else if (nodeType === 'SliderNode') {
+      return (
+        <div className="p-2 flex flex-col gap-1">
+          <span className="text-xs text-gray-600">Value: {sliderValue}</span>
+          <input
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value={sliderValue}
+            onChange={handleSliderChange}
+            className="w-30"
+          />
+        </div>
+      )
+    }
+    return null
+  }
 
   return (
     <div
@@ -230,7 +258,9 @@ useEffect(() => {
 
       {/* Custom Node UI Container */}
       {isCustomNode && (
-        <div ref={customUIRef} className="w-full flex justify-center items-center my-2" />
+        <div className="w-full flex justify-center items-center my-2">
+          {renderCustomUI()}
+        </div>
       )}
 
       {/* Node Properties - Show properties for nodes with fewer handles or important properties (only for non-custom nodes) */}

@@ -59,7 +59,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       // Reset modification state when project is cleared
       store.setProjectModified(false)
     }
-  }, [store.visualNodes.length, currentProjectId, currentProjectName])
+  }, [store.visualNodes.length, currentProjectId, currentProjectName, store])
 
   // Handle beforeunload warning
   useEffect(() => {
@@ -74,7 +74,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [store.visualNodes.length, store.isProjectModified])
+  }, [store.visualNodes.length, store.isProjectModified, store])
 
   const loadSavedProjects = async () => {
     try {

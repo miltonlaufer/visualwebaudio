@@ -25,6 +25,43 @@ export const useExamples = () => {
 
   const examples: Example[] = [
     {
+      id: 'midi-to-frequency',
+      name: 'MIDI to Frequency',
+      description: 'Control oscillator frequency with a slider via MIDI note conversion',
+      create: createExample(() => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const sliderId = store.addNode('SliderNode', { x: -296.62006604649963, y: 178.86761051567646 })
+        const displayNode1Id = store.addNode('DisplayNode', { x: -0.683888634989259, y: 194.5119899292198 })
+        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 222.03647005056547, y: 95.11144879676417 })
+        const displayNode2Id = store.addNode('DisplayNode', { x: 497.60216452982104, y: 252.40628596561203 })
+        const oscId = store.addNode('OscillatorNode', { x: 728.047959716879, y: -12.436677674416607 })
+        const destId = store.addNode('AudioDestinationNode', { x: 991.3458360566071, y: 179.84633631951323 })
+
+        console.log('MIDI to Frequency: Setting up slider for MIDI note range...')
+        store.updateNodeProperty(sliderId, 'min', 0)
+        store.updateNodeProperty(sliderId, 'max', 100)
+        store.updateNodeProperty(sliderId, 'value', 50)
+        store.updateNodeProperty(sliderId, 'label', 'Slider')
+
+        console.log('MIDI to Frequency: Setting up MIDI to frequency converter...')
+        store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
+        store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        console.log('MIDI to Frequency: Setting up oscillator...')
+        store.updateNodeProperty(oscId, 'frequency', 440)
+        store.updateNodeProperty(oscId, 'type', 'sine')
+
+        console.log('MIDI to Frequency: Connecting slider to display nodes and oscillator...')
+        store.addEdge(sliderId, displayNode1Id, 'value', 'input')
+        store.addEdge(displayNode1Id, midiToFreqId, 'output', 'midiNote')
+        store.addEdge(midiToFreqId, displayNode2Id, 'frequency', 'input')
+        store.addEdge(displayNode2Id, oscId, 'output', 'frequency')
+        store.addEdge(oscId, destId, 'output', 'input')
+      }),
+    },
+    {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',

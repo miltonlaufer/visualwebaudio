@@ -63,6 +63,8 @@ export const AudioGraphStore = types
     nodeIdCounter: 0,
     // Store media streams for microphone nodes
     mediaStreams: new Map<string, MediaStream>(),
+    // New field for custom node bridges
+    customNodeBridges: null as Map<string, ConstantSourceNode> | null,
   }))
   .actions(self => {
     const actions = {
@@ -307,6 +309,20 @@ export const AudioGraphStore = types
         if (self.customNodeFactory.isCustomNodeType(nodeType)) {
           try {
             const customNode = self.customNodeFactory.createCustomNode(nodeType, metadata, properties)
+            
+            // Set up callback to update bridges when output values change
+            customNode.onOutputChange = (outputName: string, value: any) => {
+              // Update any bridges connected to this custom node
+              if (self.customNodeBridges) {
+                self.customNodeBridges.forEach((bridge, key) => {
+                  if (key.startsWith(`${nodeId}-`)) {
+                    bridge.offset.value = value as number
+                    console.log(`🌉 Updated bridge for ${nodeId} output ${outputName}: ${value}`)
+                  }
+                })
+              }
+            }
+            
             self.customNodes.set(nodeId, customNode)
             console.log(`Successfully created custom node: ${nodeType}`)
           } catch (error) {
@@ -768,7 +784,112 @@ export const AudioGraphStore = types
       ) {
         const sourceNode = self.audioNodes.get(sourceId)
         const targetNode = self.audioNodes.get(targetId)
+        const sourceCustomNode = self.customNodes.get(sourceId)
+        const targetCustomNode = self.customNodes.get(targetId)
 
+        // Handle custom node to custom node connections
+        if (sourceCustomNode && targetCustomNode) {
+          try {
+            // Connect the custom nodes directly
+            sourceCustomNode.connect(targetCustomNode, sourceOutput, targetInput)
+            
+            self.audioConnections.push({
+              sourceNodeId: sourceId,
+              targetNodeId: targetId,
+              sourceOutput,
+              targetInput,
+            })
+
+            console.log(`Connected custom node ${sourceId} to custom node ${targetId}`)
+          } catch (error) {
+            console.error('Failed to connect custom node to custom node:', error)
+          }
+          return
+        }
+
+        // Handle custom node to audio node connections
+        if (sourceCustomNode && targetNode) {
+          try {
+            // Check if we're connecting to the destination node
+            const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
+            const isDestinationConnection =
+              targetVisualNode?.data.nodeType === 'AudioDestinationNode'
+
+            // Check if this is a control connection (to an AudioParam)
+            const targetMetadata = targetVisualNode?.data.metadata
+            const targetInputDef = targetMetadata?.inputs.find(input => input.name === targetInput)
+            const isControlConnection = targetInputDef?.type === 'control'
+
+            if (isControlConnection) {
+              // Create a ConstantSourceNode bridge for custom node control output
+              const constantSource = self.audioContext!.createConstantSource()
+              
+              // Get current output value from custom node
+              const currentValue = sourceCustomNode.outputs.get(sourceOutput) || 0
+              constantSource.offset.value = currentValue
+              
+              // Connect to AudioParam
+              const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+              const audioParam = targetNodeWithParams[targetInput]
+
+              if (audioParam && typeof audioParam.value !== 'undefined') {
+                constantSource.connect(audioParam)
+                constantSource.start()
+                
+                // Get the source node info to determine connection type
+                const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
+                const sourceNodeType = sourceVisualNode?.data.nodeType
+                
+                // Smart base value handling based on parameter and source type
+                if (targetInput === 'frequency') {
+                  // For frequency parameters, check the source type
+                  if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
+                    // Direct frequency control - these nodes output frequency values
+                    audioParam.value = 0
+                    console.log(`Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`)
+                  } else {
+                    // Default: keep base value for modulation
+                    console.log(`Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`)
+                  }
+                } else {
+                  // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
+                  audioParam.value = 0
+                  console.log(`Connected custom node to AudioParam: ${targetInput}, set base value to 0`)
+                }
+                
+                // Store the bridge source for updates and cleanup
+                if (!self.customNodeBridges) {
+                  self.customNodeBridges = new Map()
+                }
+                self.customNodeBridges.set(`${sourceId}-${targetId}`, constantSource)
+                
+                // Set up notification when custom node output changes
+                // We'll handle this through the updateNodeProperty method instead
+                console.log(`Bridge created for custom node ${sourceNodeType} → ${targetInput}`)
+              } else {
+                console.error(`AudioParam ${targetInput} not found on target node`)
+                return
+              }
+            } else {
+              console.error('Custom nodes can only connect to control inputs (AudioParams)')
+              return
+            }
+
+            self.audioConnections.push({
+              sourceNodeId: sourceId,
+              targetNodeId: targetId,
+              sourceOutput,
+              targetInput,
+            })
+
+            console.log(`Connected custom node ${sourceId} to audio node ${targetId}`)
+          } catch (error) {
+            console.error('Failed to connect custom node to audio node:', error)
+          }
+          return
+        }
+
+        // Handle audio node to audio node connections (existing logic)
         if (sourceNode && targetNode) {
           try {
             // Check if we're connecting to the destination node
@@ -788,7 +909,30 @@ export const AudioGraphStore = types
 
               if (audioParam && typeof audioParam.value !== 'undefined') {
                 sourceNode.connect(audioParam)
-                console.log(`Connected to AudioParam: ${targetInput}`)
+                
+                // Get the source node info to determine connection type
+                const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
+                const sourceNodeType = sourceVisualNode?.data.nodeType
+                
+                // Smart base value handling based on parameter and source type
+                if (targetInput === 'frequency') {
+                  // For frequency parameters, check the source type
+                  if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
+                    // Direct frequency control - these nodes output frequency values
+                    audioParam.value = 0
+                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`)
+                  } else if (sourceNodeType === 'OscillatorNode') {
+                    // LFO modulation - oscillator output adds to base frequency
+                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`)
+                  } else {
+                    // Default: keep base value for modulation
+                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`)
+                  }
+                } else {
+                  // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
+                  audioParam.value = 0
+                  console.log(`Connected to AudioParam: ${targetInput}, set base value to 0`)
+                }
               } else {
                 console.error(`AudioParam ${targetInput} not found on target node`)
                 return
@@ -820,12 +964,88 @@ export const AudioGraphStore = types
           } catch (error) {
             console.error('Failed to connect audio nodes:', error)
           }
-        },
+        }
+      },
 
       disconnectAudioNodes(sourceId: string, targetId: string) {
         const sourceNode = self.audioNodes.get(sourceId)
         const targetNode = self.audioNodes.get(targetId)
+        const sourceCustomNode = self.customNodes.get(sourceId)
+        const targetCustomNode = self.customNodes.get(targetId)
 
+        // Handle custom node disconnections
+        if (sourceCustomNode && targetCustomNode) {
+          try {
+            // Disconnect the custom nodes directly
+            sourceCustomNode.disconnect()
+            
+            const connectionIndex = self.audioConnections.findIndex(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+            if (connectionIndex !== -1) {
+              self.audioConnections.splice(connectionIndex, 1)
+            }
+
+            console.log(`Disconnected custom node ${sourceId} from custom node ${targetId}`)
+          } catch (error) {
+            console.error('Failed to disconnect custom node from custom node:', error)
+          }
+          return
+        }
+
+        // Handle custom node to audio node disconnections  
+        if (sourceCustomNode && targetNode) {
+          try {
+            // Clean up the bridge
+            if (self.customNodeBridges) {
+              const bridgeKey = `${sourceId}-${targetId}`
+              const bridge = self.customNodeBridges.get(bridgeKey)
+              if (bridge) {
+                bridge.stop()
+                bridge.disconnect()
+                self.customNodeBridges.delete(bridgeKey)
+                console.log(`Cleaned up bridge for custom node ${sourceId}`)
+              }
+            }
+
+            // Find the connection to determine the target input
+            const connection = self.audioConnections.find(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+
+            if (connection) {
+              // Restore the default value for this AudioParam
+              const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
+              const targetMetadata = targetVisualNode?.data.metadata
+              const paramMetadata = targetMetadata?.properties.find(
+                prop => prop.name === connection.targetInput && prop.type === 'AudioParam'
+              )
+              
+              if (paramMetadata && paramMetadata.defaultValue !== null) {
+                const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+                const audioParam = targetNodeWithParams[connection.targetInput]
+                if (audioParam && typeof audioParam.value !== 'undefined') {
+                  audioParam.value = paramMetadata.defaultValue
+                  console.log(`Disconnected custom node: restored ${connection.targetInput} to default value: ${paramMetadata.defaultValue}`)
+                }
+              }
+            }
+
+            const connectionIndex = self.audioConnections.findIndex(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+            if (connectionIndex !== -1) {
+              self.audioConnections.splice(connectionIndex, 1)
+            }
+
+            console.log(`Disconnected custom node ${sourceId} from audio node ${targetId}`)
+          } catch (error) {
+            console.error('Failed to disconnect custom node from audio node:', error)
+          }
+          return
+        }
+
+        // Handle audio node to audio node disconnections (existing logic)
         if (sourceNode && targetNode) {
           try {
             // Check if we're disconnecting from the destination node
@@ -853,7 +1073,17 @@ export const AudioGraphStore = types
 
                 if (audioParam && typeof audioParam.value !== 'undefined') {
                   sourceNode.disconnect(audioParam)
-                  console.log(`Disconnected from AudioParam: ${connection.targetInput}`)
+                  
+                  // Restore the default value for this AudioParam
+                  const paramMetadata = targetMetadata?.properties.find(
+                    prop => prop.name === connection.targetInput && prop.type === 'AudioParam'
+                  )
+                  if (paramMetadata && paramMetadata.defaultValue !== null) {
+                    audioParam.value = paramMetadata.defaultValue
+                    console.log(`Disconnected from AudioParam: ${connection.targetInput}, restored default value: ${paramMetadata.defaultValue}`)
+                  } else {
+                    console.log(`Disconnected from AudioParam: ${connection.targetInput}`)
+                  }
                 } else {
                   console.error(`AudioParam ${connection.targetInput} not found on target node`)
                 }
@@ -902,13 +1132,15 @@ export const AudioGraphStore = types
           } catch (error) {
             console.error('Failed to disconnect audio nodes:', error)
           }
-        },
+        }
+      },
 
       updateNodeProperty(nodeId: string, propertyName: string, value: unknown) {
         console.log('=== UPDATING NODE PROPERTY ===', nodeId, propertyName, value)
 
         const visualNode = self.visualNodes.find(node => node.id === nodeId)
         const audioNode = self.audioNodes.get(nodeId)
+        const customNode = self.customNodes.get(nodeId)
 
         if (visualNode) {
           // Update the property using MST map API
@@ -919,11 +1151,51 @@ export const AudioGraphStore = types
           self.propertyChangeCounter += 1
         }
 
+        // Handle custom node property updates
+        if (customNode && visualNode) {
+          // Update the custom node's property
+          customNode.properties.set(propertyName, value)
+          
+          // Update custom node output if this is a value property
+          if (propertyName === 'value') {
+            customNode.outputs.set('value', value)
+            
+            // Update any bridges connected to this custom node
+            if (self.customNodeBridges) {
+              self.customNodeBridges.forEach((bridge, key) => {
+                if (key.startsWith(`${nodeId}-`)) {
+                  bridge.offset.value = value as number
+                  console.log(`Updated bridge for ${nodeId}: ${value}`)
+                }
+              })
+            }
+          }
+          
+          console.log('Updated custom node property')
+          console.log('=== PROPERTY UPDATE COMPLETE ===')
+          return
+        }
+
         if (audioNode && visualNode && self.audioNodeFactory) {
           const nodeType = visualNode.data.nodeType
           const metadata = self.webAudioMetadata[nodeType]
 
           if (metadata) {
+            // Check if this is an AudioParam with an active control connection
+            const propertyDef = metadata.properties.find(p => p.name === propertyName)
+            if (propertyDef?.type === 'AudioParam') {
+              // Check if there's an active control connection to this AudioParam
+              const hasControlConnection = self.audioConnections.some(conn => 
+                conn.targetNodeId === nodeId && conn.targetInput === propertyName
+              )
+              
+              if (hasControlConnection) {
+                console.log(`⚠️ Skipping direct AudioParam update for ${propertyName} - control connection active`)
+                console.log('=== PROPERTY UPDATE COMPLETE (SKIPPED) ===')
+                return
+              }
+            }
+
             // Try to update using the factory
             const success = self.audioNodeFactory.updateNodeProperty(
               audioNode,

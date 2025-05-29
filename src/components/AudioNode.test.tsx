@@ -1,8 +1,18 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import AudioNode from './AudioNode'
 import type { VisualNodeData } from '../types'
+import { createAudioGraphStore, AudioGraphStoreContext } from '../stores/AudioGraphStore'
+
+// Mock the useNodeId hook from React Flow
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react')
+  return {
+    ...actual,
+    useNodeId: () => 'test-node-id', // Mock node ID
+  }
+})
 
 const mockNodeData: VisualNodeData = {
   nodeType: 'OscillatorNode',
@@ -42,7 +52,12 @@ const mockNodeDataWithInputs: VisualNodeData = {
 
 // Helper function to render with ReactFlow provider
 const renderWithProvider = (component: React.ReactElement) => {
-  return render(<ReactFlowProvider>{component}</ReactFlowProvider>)
+  const store = createAudioGraphStore()
+  return render(
+    <AudioGraphStoreContext.Provider value={store}>
+      <ReactFlowProvider>{component}</ReactFlowProvider>
+    </AudioGraphStoreContext.Provider>
+  )
 }
 
 describe('AudioNode', () => {
@@ -128,5 +143,99 @@ describe('AudioNode', () => {
 
     expect(screen.getByText('Error: No metadata')).toBeInTheDocument()
     expect(screen.getByText('InvalidNode')).toBeInTheDocument()
+  })
+
+  // Test to prevent custom UI regression
+  it('should render custom UI elements for custom nodes', () => {
+    const store = createAudioGraphStore()
+    
+    // Mock custom node with createUIElement method
+    const mockCustomNode = {
+      createUIElement: vi.fn((container: HTMLElement) => {
+        const button = document.createElement('button')
+        button.textContent = 'Custom Button'
+        button.className = 'custom-ui-element'
+        container.appendChild(button)
+      }),
+    }
+
+    // Add mock custom node to store
+    store.customNodes.set('test-node-id', mockCustomNode as any)
+
+    const sliderNodeData: VisualNodeData = {
+      nodeType: 'SliderNode',
+      metadata: {
+        name: 'SliderNode',
+        description: 'Custom slider node',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'value', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = render(
+      <AudioGraphStoreContext.Provider value={store}>
+        <ReactFlowProvider>
+          <AudioNode data={sliderNodeData} />
+        </ReactFlowProvider>
+      </AudioGraphStoreContext.Provider>
+    )
+
+    // Check that createUIElement was called
+    expect(mockCustomNode.createUIElement).toHaveBeenCalled()
+
+    // Check that the custom UI element was added
+    const customElement = container.querySelector('.custom-ui-element')
+    expect(customElement).toBeInTheDocument()
+    expect(customElement).toHaveTextContent('Custom Button')
+  })
+
+  it('should include RandomNode in custom node types', () => {
+    const store = createAudioGraphStore()
+    
+    const mockRandomNode = {
+      createUIElement: vi.fn((container: HTMLElement) => {
+        const span = document.createElement('span')
+        span.textContent = 'Random Value: 42'
+        span.className = 'random-ui-element'
+        container.appendChild(span)
+      }),
+    }
+
+    store.customNodes.set('test-node-id', mockRandomNode as any)
+
+    const randomNodeData: VisualNodeData = {
+      nodeType: 'RandomNode',
+      metadata: {
+        name: 'RandomNode',
+        description: 'Random value generator',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'value', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = render(
+      <AudioGraphStoreContext.Provider value={store}>
+        <ReactFlowProvider>
+          <AudioNode data={randomNodeData} />
+        </ReactFlowProvider>
+      </AudioGraphStoreContext.Provider>
+    )
+
+    // Check that createUIElement was called for RandomNode
+    expect(mockRandomNode.createUIElement).toHaveBeenCalled()
+
+    // Check that the custom UI element was added
+    const customElement = container.querySelector('.random-ui-element')
+    expect(customElement).toBeInTheDocument()
   })
 })

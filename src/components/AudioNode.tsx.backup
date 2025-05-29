@@ -22,23 +22,24 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   // Check if this is a custom node type
   const customNodeTypes = [
     'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
-    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
+    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode'
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
-// Initialize custom UI elements for custom nodes
-useEffect(() => {
-  console.log(`AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`)
-  if (isCustomNode && customUIRef.current && nodeId) {
-    // Get the unified node from the store
-    const customNode = store.customNodes.get(nodeId)
-    if (customNode && 'createUIElement' in customNode && typeof customNode.createUIElement === 'function') {
-      // Clear any existing content
-      customUIRef.current.innerHTML = ''
-      // Create the custom UI elements
-      customNode.createUIElement(customUIRef.current)
+
+  // Initialize custom UI elements for custom nodes
+  useEffect(() => {
+    console.log(`AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`); if (isCustomNode && customUIRef.current && nodeId) {
+      // Get the unified node from the store
+      const customNode = store.customNodes.get(nodeId)
+      if (customNode && 'createUIElement' in customNode && typeof customNode.createUIElement === 'function') {
+        // Clear any existing content
+        customUIRef.current.innerHTML = ''
+        // Create the custom UI elements
+        customNode.createUIElement(customUIRef.current)
+      }
     }
-  }
-}, [isCustomNode, nodeId, store.customNodes, data.nodeType]) 
+  }, [isCustomNode, nodeId, store.customNodes, data.nodeType])
+
   // Memoized handlers for better performance
   const handleMouseEnterHandle = useCallback((handleId: string) => {
     return () => setHoveredHandle(handleId)
@@ -131,6 +132,15 @@ useEffect(() => {
   const baseHeight = isCustomNode ? 120 : 80 // More height for custom nodes with UI
   const handleHeight = maxHandles * 30 // 30px per handle
   const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
+
+  const handleSliderChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const value = parseInt(event.target.value)
+    setSliderValue(value)
+    console.log('🎚️ Slider changed to:', value, 'for node:', nodeId)
+    
+    // Use the store's updateNodeProperty method to properly update the audio node
+    store.updateNodeProperty(nodeId, 'value', value)
+  }, [nodeId, store])
 
   return (
     <div

@@ -13,6 +13,8 @@ export interface CustomNode {
   receiveInput?(inputName: string, value: any): void
   createUIElement?(container: HTMLElement): void
   cleanup(): void
+  // Add callback for bridge updates
+  onOutputChange?: (outputName: string, value: any) => void
 }
 
 // Base class for custom nodes
@@ -23,6 +25,7 @@ export class BaseCustomNode implements CustomNode {
   outputs: Map<string, any> = new Map()
   private connections: Array<{ target: CustomNode; outputName: string; inputName: string }> = []
   protected audioContext: AudioContext
+  onOutputChange?: (outputName: string, value: any) => void
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     this.id = id
@@ -56,10 +59,19 @@ export class BaseCustomNode implements CustomNode {
           conn.target.receiveInput(conn.inputName, value)
         }
       })
+    
+    // Also notify store for bridge updates
+    if (this.onOutputChange) {
+      this.onOutputChange(outputName, value)
+    }
   }
 
   receiveInput(inputName: string, value: any): void {
-    // Override in subclasses
+    // ButtonNode doesn't process inputs, it only triggers outputs
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    void inputName
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    void value
   }
 
   cleanup(): void {
@@ -156,6 +168,7 @@ export class SliderNode extends BaseCustomNode {
       this.properties.set('value', value)
       this.outputs.set('value', value)
       this.updateLabel()
+      console.log(`🎚️ SliderNode ${this.id} value changed to: ${value}, notifying connections`)
       this.notifyConnections('value', value)
     })
 
@@ -312,11 +325,12 @@ export class MidiInputNode extends BaseCustomNode {
               this.notifyConnections('cc', data2)
               break
             
-            case 0xe0: // Pitch bend
+            case 0xe0: { // Pitch bend
               const pitchValue = (data2 << 7) | data1
               this.outputs.set('pitch', pitchValue)
               this.notifyConnections('pitch', pitchValue)
               break
+            }
           }
         }
       }
@@ -348,6 +362,264 @@ export class MidiToFreqNode extends BaseCustomNode {
     const baseFreq = this.properties.get('baseFreq') || 440
     const baseMidi = this.properties.get('baseMidi') || 69
     return baseFreq * Math.pow(2, (midiNote - baseMidi) / 12)
+  }
+}
+
+// Display Node Implementation
+export class DisplayNode extends BaseCustomNode {
+  private displayElement?: HTMLDivElement
+  private valueElement?: HTMLSpanElement
+  private labelElement?: HTMLSpanElement
+
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+    super(id, type, audioContext, metadata)
+    
+    // Set initial output to match input (passthrough)
+    const initialValue = this.properties.get('currentValue') || 0
+    this.outputs.set('output', initialValue)
+  }
+
+  createUIElement(container: HTMLElement): void {
+    this.displayElement = document.createElement('div')
+    this.displayElement.style.cssText = `
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 80px;
+      text-align: center;
+    `
+
+    this.labelElement = document.createElement('span')
+    this.labelElement.style.cssText = `
+      font-size: 10px;
+      color: #666;
+      font-weight: bold;
+    `
+    this.labelElement.textContent = this.properties.get('label') || 'Display'
+
+    this.valueElement = document.createElement('span')
+    this.valueElement.style.cssText = `
+      font-size: 14px;
+      color: #2563eb;
+      font-weight: bold;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      font-family: 'Courier New', monospace;
+    `
+    this.updateDisplay()
+
+    this.displayElement.appendChild(this.labelElement)
+    this.displayElement.appendChild(this.valueElement)
+    container.appendChild(this.displayElement)
+  }
+
+  receiveInput(inputName: string, value: any): void {
+    console.log(`🔍 DisplayNode ${this.id} receiveInput: ${inputName} = ${value}`)
+    if (inputName === 'input') {
+      const numValue = Number(value) || 0
+      
+      // Update the current value property
+      this.properties.set('currentValue', numValue)
+      
+      // Pass through to output (for chaining)
+      this.outputs.set('output', numValue)
+      this.notifyConnections('output', numValue)
+      
+      // Update the display
+      this.updateDisplay()
+      console.log(`📊 DisplayNode ${this.id} updated display to: ${numValue}`)
+    }
+  }
+
+  private updateDisplay(): void {
+    if (this.valueElement) {
+      const value = this.properties.get('currentValue') || 0
+      const precision = this.properties.get('precision') || 2
+      
+      let displayValue: string
+      if (Number.isInteger(value) || precision === 0) {
+        displayValue = Math.round(value).toString()
+      } else {
+        displayValue = Number(value).toFixed(precision)
+      }
+      
+      this.valueElement.textContent = displayValue
+    }
+  }
+
+  setValue(value: any): void {
+    if (typeof value === 'number') {
+      this.properties.set('currentValue', value)
+      this.outputs.set('output', value)
+      this.updateDisplay()
+      this.notifyConnections('output', value)
+    } else if (typeof value === 'string' && this.labelElement) {
+      this.properties.set('label', value)
+      this.labelElement.textContent = value
+    }
+  }
+}
+
+// Random Node Implementation
+export class RandomNode extends BaseCustomNode {
+  private intervalId?: number
+  private displayElement?: HTMLDivElement
+  private valueElement?: HTMLSpanElement
+  private labelElement?: HTMLSpanElement
+  private rateInputElement?: HTMLInputElement
+
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+    super(id, type, audioContext, metadata)
+    
+    // Set initial output value
+    const initialValue = this.generateRandomValue()
+    this.properties.set('currentValue', initialValue)
+    this.outputs.set('value', initialValue)
+    
+    // Start generating random values
+    this.startRandomGeneration()
+  }
+
+  createUIElement(container: HTMLElement): void {
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = `
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+    `
+
+    this.labelElement = document.createElement('span')
+    this.labelElement.style.cssText = `
+      font-size: 12px;
+      color: #666;
+      font-weight: bold;
+    `
+    this.updateLabel()
+
+    // Value display
+    this.valueElement = document.createElement('span')
+    this.valueElement.style.cssText = `
+      font-size: 14px;
+      color: #333;
+      font-family: monospace;
+      background: #f0f0f0;
+      padding: 4px 8px;
+      border-radius: 4px;
+      text-align: center;
+    `
+    this.updateDisplay()
+
+    // Rate control
+    const rateWrapper = document.createElement('div')
+    rateWrapper.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    `
+
+    const rateLabel = document.createElement('span')
+    rateLabel.textContent = `Rate: ${this.properties.get('rate') || 1} Hz`
+    rateLabel.style.cssText = `
+      font-size: 11px;
+      color: #666;
+    `
+
+    this.rateInputElement = document.createElement('input')
+    this.rateInputElement.type = 'range'
+    this.rateInputElement.min = '0.1'
+    this.rateInputElement.max = '20'
+    this.rateInputElement.step = '0.1'
+    this.rateInputElement.value = String(this.properties.get('rate') || 1)
+    this.rateInputElement.style.cssText = `
+      width: 100%;
+      margin: 0;
+    `
+
+    this.rateInputElement.addEventListener('input', () => {
+      const rate = parseFloat(this.rateInputElement!.value)
+      this.properties.set('rate', rate)
+      rateLabel.textContent = `Rate: ${rate} Hz`
+      this.restartRandomGeneration()
+    })
+
+    rateWrapper.appendChild(rateLabel)
+    rateWrapper.appendChild(this.rateInputElement)
+
+    wrapper.appendChild(this.labelElement)
+    wrapper.appendChild(this.valueElement)
+    wrapper.appendChild(rateWrapper)
+    container.appendChild(wrapper)
+  }
+
+  private updateLabel(): void {
+    const label = this.properties.get('label') || 'Random'
+    const min = this.properties.get('min') || 0
+    const max = this.properties.get('max') || 100
+    if (this.labelElement) {
+      this.labelElement.textContent = `${label} (${min}-${max})`
+    }
+  }
+
+  private updateDisplay(): void {
+    const value = this.properties.get('currentValue') || 0
+    if (this.valueElement) {
+      this.valueElement.textContent = Number(value).toFixed(2)
+    }
+  }
+
+  private generateRandomValue(): number {
+    const min = this.properties.get('min') || 0
+    const max = this.properties.get('max') || 100
+    return Math.random() * (max - min) + min
+  }
+
+  private startRandomGeneration(): void {
+    this.stopRandomGeneration()
+    const rate = this.properties.get('rate') || 1
+    const intervalMs = 1000 / rate // Convert Hz to milliseconds
+    
+    this.intervalId = window.setInterval(() => {
+      const newValue = this.generateRandomValue()
+      this.properties.set('currentValue', newValue)
+      this.outputs.set('value', newValue)
+      this.updateDisplay()
+      console.log(`🎲 RandomNode ${this.id} generated: ${newValue.toFixed(2)}`)
+      this.notifyConnections('value', newValue)
+    }, intervalMs)
+  }
+
+  private stopRandomGeneration(): void {
+    if (this.intervalId !== undefined) {
+      window.clearInterval(this.intervalId)
+      this.intervalId = undefined
+    }
+  }
+
+  private restartRandomGeneration(): void {
+    this.startRandomGeneration()
+  }
+
+  setValue(value: any): void {
+    if (typeof value === 'number') {
+      // Allow manual override of current value
+      this.properties.set('currentValue', value)
+      this.outputs.set('value', value)
+      this.updateDisplay()
+      this.notifyConnections('value', value)
+    } else if (typeof value === 'string' && this.labelElement) {
+      this.properties.set('label', value)
+      this.updateLabel()
+    }
+  }
+
+  cleanup(): void {
+    super.cleanup()
+    this.stopRandomGeneration()
   }
 }
 
@@ -499,8 +771,14 @@ export class CustomNodeFactory {
       case 'MidiToFreqNode':
         node = new MidiToFreqNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
         break
+      case 'DisplayNode':
+        node = new DisplayNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
+        break
       case 'SoundFileNode':
         node = new SoundFileNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
+        break
+      case 'RandomNode':
+        node = new RandomNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
         break
       default:
         throw new Error(`Unknown custom node type: ${nodeType}`)
@@ -527,7 +805,9 @@ export class CustomNodeFactory {
       'SelectNode',
       'MidiInputNode',
       'MidiToFreqNode',
-      'SoundFileNode'
+      'DisplayNode',
+      'SoundFileNode',
+      'RandomNode'
     ]
     return customNodeTypes.includes(nodeType)
   }

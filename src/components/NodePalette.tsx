@@ -133,7 +133,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   // Custom node types
   const customNodeTypes = [
     'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
-    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'SoundFileNode'
+    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
   ]
 
   // Group nodes by category, separating Web Audio and Custom nodes
@@ -159,22 +159,6 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
       }
     }
   })
-
-  // Legacy grouped nodes (remove this once we migrate fully)
-  const nodesByCategory = store.availableNodeTypes.reduce(
-    (acc, nodeType) => {
-      const metadata = store.webAudioMetadata[nodeType]
-      if (metadata) {
-        const category = metadata.category
-        if (!acc[category]) {
-          acc[category] = []
-        }
-        acc[category].push({ nodeType, metadata })
-      }
-      return acc
-    },
-    {} as Record<string, Array<{ nodeType: string; metadata: any }>>
-  )
 
   return (
     <div className="flex flex-col h-full relative">
@@ -285,11 +269,11 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           ))}
         </div>
 
-        {/* Custom Max/MSP-like Nodes */}
+        {/* Utility Nodes */}
         {Object.keys(customNodeCategories).length > 0 && (
           <div className="mb-8">
             <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-              🎛️ Max/MSP-style Nodes
+              🎛️ Utility Nodes
             </h2>
             {Object.entries(customNodeCategories).map(([category, nodes]) => (
               <div key={category} className="mb-6">

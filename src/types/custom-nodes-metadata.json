@@ -303,5 +303,90 @@
       "stop"
     ],
     "events": []
+  },
+  "DisplayNode": {
+    "name": "Display",
+    "description": "Displays the current value flowing through it. Useful for debugging signal flow and monitoring values.",
+    "category": "utility",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "currentValue",
+        "type": "number",
+        "defaultValue": 0
+      },
+      {
+        "name": "precision",
+        "type": "number",
+        "defaultValue": 2,
+        "min": 0,
+        "max": 6
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Display"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "RandomNode": {
+    "name": "Random",
+    "description": "Generates random values at configurable intervals. Perfect for creating random modulation, noise effects, or generative content.",
+    "category": "utility",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "value",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "min",
+        "type": "number",
+        "defaultValue": 0,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "max",
+        "type": "number",
+        "defaultValue": 100,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "rate",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0.1,
+        "max": 20
+      },
+      {
+        "name": "currentValue",
+        "type": "number",
+        "defaultValue": 50
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Random"
+      }
+    ],
+    "methods": [],
+    "events": []
   }
 } 
