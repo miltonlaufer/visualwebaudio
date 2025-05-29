@@ -116,12 +116,51 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         return 'bg-yellow-50 border-yellow-200 text-yellow-800'
       case 'context':
         return 'bg-gray-50 border-gray-200 text-gray-800'
+      // Custom node categories
+      case 'control':
+        return 'bg-pink-50 border-pink-200 text-pink-800'
+      case 'logic':
+        return 'bg-indigo-50 border-indigo-200 text-indigo-800'
+      case 'input':
+        return 'bg-teal-50 border-teal-200 text-teal-800'
+      case 'utility':
+        return 'bg-orange-50 border-orange-200 text-orange-800'
       default:
         return 'bg-white border-gray-200 text-gray-800'
     }
   }
 
-  // Group nodes by category
+  // Custom node types
+  const customNodeTypes = [
+    'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
+    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'SoundFileNode'
+  ]
+
+  // Group nodes by category, separating Web Audio and Custom nodes
+  const webAudioCategories: Record<string, Array<{ nodeType: string; metadata: any }>> = {}
+  const customNodeCategories: Record<string, Array<{ nodeType: string; metadata: any }>> = {}
+
+  store.availableNodeTypes.forEach(nodeType => {
+    const metadata = store.webAudioMetadata[nodeType]
+    if (metadata) {
+      const category = metadata.category
+      const isCustomNode = customNodeTypes.includes(nodeType)
+
+      if (isCustomNode) {
+        if (!customNodeCategories[category]) {
+          customNodeCategories[category] = []
+        }
+        customNodeCategories[category].push({ nodeType, metadata })
+      } else {
+        if (!webAudioCategories[category]) {
+          webAudioCategories[category] = []
+        }
+        webAudioCategories[category].push({ nodeType, metadata })
+      }
+    }
+  })
+
+  // Legacy grouped nodes (remove this once we migrate fully)
   const nodesByCategory = store.availableNodeTypes.reduce(
     (acc, nodeType) => {
       const metadata = store.webAudioMetadata[nodeType]
@@ -194,52 +233,118 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           </div>
         </div>
 
-        {/* Node Categories */}
-        {Object.entries(nodesByCategory).map(([category, nodes]) => (
-          <div key={category} className="mb-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">{category} Nodes</h3>
-            <div className="space-y-2">
-              {nodes.map(({ nodeType, metadata }) => (
-                <div
-                  key={nodeType}
-                  draggable
-                  onDragStart={e => handleDragStart(e, nodeType)}
-                  onClick={() => handleNodeClick(nodeType)}
-                  className={`
-                    p-3 rounded-lg border cursor-pointer transition-all duration-200
-                    hover:shadow-md hover:scale-105
-                    ${getCategoryColor(category)}
-                  `}
-                >
-                  <div className="text-sm font-medium">{nodeType.replace('Node', '')}</div>
-                  {metadata.description && (
-                    <div
-                      className="text-xs opacity-75 mt-1 line-clamp-2"
-                      title={metadata.description}
-                    >
-                      {metadata.description.split('.')[0]}.
+        {/* Web Audio API Nodes */}
+        <div className="mb-8">
+          <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+            🔊 Web Audio API Nodes
+          </h2>
+          {Object.entries(webAudioCategories).map(([category, nodes]) => (
+            <div key={category} className="mb-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">{category} Nodes</h3>
+              <div className="space-y-2">
+                {nodes.map(({ nodeType, metadata }) => (
+                  <div
+                    key={nodeType}
+                    draggable
+                    onDragStart={e => handleDragStart(e, nodeType)}
+                    onClick={() => handleNodeClick(nodeType)}
+                    className={`
+                      p-3 rounded-lg border cursor-pointer transition-all duration-200
+                      hover:shadow-md hover:scale-105
+                      ${getCategoryColor(category)}
+                    `}
+                  >
+                    <div className="text-sm font-medium">{nodeType.replace('Node', '')}</div>
+                    {metadata.description && (
+                      <div
+                        className="text-xs opacity-75 mt-1 line-clamp-2"
+                        title={metadata.description}
+                      >
+                        {metadata.description.split('.')[0]}.
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center space-x-1">
+                        {metadata.inputs.length > 0 && (
+                          <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                            {metadata.inputs.length} in
+                          </span>
+                        )}
+                        {metadata.outputs.length > 0 && (
+                          <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                            {metadata.outputs.length} out
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-xs opacity-75">{category}</span>
                     </div>
-                  )}
-                  <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center space-x-1">
-                      {metadata.inputs.length > 0 && (
-                        <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
-                          {metadata.inputs.length} in
-                        </span>
-                      )}
-                      {metadata.outputs.length > 0 && (
-                        <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
-                          {metadata.outputs.length} out
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs opacity-75">{category}</span>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+          ))}
+        </div>
+
+        {/* Custom Max/MSP-like Nodes */}
+        {Object.keys(customNodeCategories).length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+              🎛️ Max/MSP-style Nodes
+            </h2>
+            {Object.entries(customNodeCategories).map(([category, nodes]) => (
+              <div key={category} className="mb-6">
+                <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">{category} Nodes</h3>
+                <div className="space-y-2">
+                  {nodes.map(({ nodeType, metadata }) => (
+                    <div
+                      key={nodeType}
+                      draggable
+                      onDragStart={e => handleDragStart(e, nodeType)}
+                      onClick={() => handleNodeClick(nodeType)}
+                      className={`
+                        p-3 rounded-lg border cursor-pointer transition-all duration-200
+                        hover:shadow-md hover:scale-105
+                        ${getCategoryColor(category)}
+                      `}
+                    >
+                      <div className="text-sm font-medium">{metadata.name}</div>
+                      {metadata.description && (
+                        <div
+                          className="text-xs opacity-75 mt-1 line-clamp-2"
+                          title={metadata.description}
+                        >
+                          {metadata.description.split('.')[0]}.
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center space-x-1">
+                          {metadata.inputs.length > 0 && (
+                            <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                              {metadata.inputs.length} in
+                            </span>
+                          )}
+                          {metadata.outputs.length > 0 && (
+                            <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                              {metadata.outputs.length} out
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs opacity-75">{category}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* Node Categories - Legacy fallback */}
+        {Object.keys(webAudioCategories).length === 0 && Object.keys(customNodeCategories).length === 0 && (
+          <div className="text-center text-gray-500 py-8">
+            <p>No nodes available. Check store configuration.</p>
+          </div>
+        )}
       </div>
 
       {/* Floating scroll indicator */}

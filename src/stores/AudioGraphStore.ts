@@ -3,13 +3,26 @@ import type { Instance, IJsonPatch } from 'mobx-state-tree'
 import type { NodeMetadata } from '~/types'
 import { VisualNodeModel, VisualEdgeModel, AudioConnectionModel } from '~/models/NodeModels'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
+import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
 // Import the JSON metadata directly
 import webAudioMetadataJson from '~/types/web-audio-metadata.json'
+import customNodesMetadataJson from '~/types/custom-nodes-metadata.json'
 import { createContext, useContext } from 'react'
 
 // Use the imported metadata directly
 const getWebAudioMetadata = (): Record<string, NodeMetadata> => {
   return webAudioMetadataJson as Record<string, NodeMetadata>
+}
+
+const getCustomNodesMetadata = (): Record<string, NodeMetadata> => {
+  return customNodesMetadataJson as Record<string, NodeMetadata>
+}
+
+const getAllNodesMetadata = (): Record<string, NodeMetadata> => {
+  return {
+    ...getWebAudioMetadata(),
+    ...getCustomNodesMetadata(),
+  }
 }
 
 export const AudioGraphStore = types
@@ -32,8 +45,10 @@ export const AudioGraphStore = types
   .volatile(() => ({
     audioContext: null as AudioContext | null,
     audioNodes: new Map<string, AudioNode>(),
+    customNodes: new Map<string, CustomNode>(),
     webAudioMetadata: {} as Record<string, NodeMetadata>,
     audioNodeFactory: null as AudioNodeFactory | null,
+    customNodeFactory: null as CustomNodeFactory | null,
     // Keep only the patch application flag in volatile
     isApplyingPatch: false,
     // Flag to disable undo/redo recording (for examples)
@@ -54,7 +69,7 @@ export const AudioGraphStore = types
       loadMetadata() {
         console.log('=== STORE: Loading metadata ===')
         try {
-          self.webAudioMetadata = getWebAudioMetadata()
+          self.webAudioMetadata = getAllNodesMetadata()
           console.log('STORE: Metadata loaded successfully:', Object.keys(self.webAudioMetadata))
           console.log('STORE: Sample metadata:', self.webAudioMetadata['AudioDestinationNode'])
         } catch (error) {
@@ -152,6 +167,7 @@ export const AudioGraphStore = types
       recreateAudioGraph() {
         // Clear existing audio nodes
         self.audioNodes.clear()
+        self.customNodes.clear()
 
         // Recreate audio nodes using metadata-driven approach
         self.visualNodes.forEach(node => {
@@ -181,6 +197,7 @@ export const AudioGraphStore = types
         if (!self.audioContext) {
           self.audioContext = new AudioContext()
           self.audioNodeFactory = new AudioNodeFactory(self.audioContext)
+          self.customNodeFactory = new CustomNodeFactory(self.audioContext)
 
           // Create global analyzer for frequency analysis
           self.globalAnalyzer = self.audioContext.createAnalyser()
@@ -262,21 +279,39 @@ export const AudioGraphStore = types
       },
 
       createAudioNode(nodeId: string, nodeType: string) {
-        console.log(`Creating audio node: ${nodeType} with ID: ${nodeId}`)
+        console.log(`Creating node: ${nodeType} with ID: ${nodeId}`)
 
         if (!self.audioContext) {
           console.log('No audio context, initializing...')
           actions.initializeAudioContext()
         }
 
-        if (!self.audioContext) {
-          console.error('Failed to initialize audio context')
+        if (!self.audioContext || !self.audioNodeFactory || !self.customNodeFactory) {
+          console.error('Failed to initialize audio context or factories')
           return
         }
 
         const metadata = self.webAudioMetadata[nodeType]
         if (!metadata) {
           console.error(`No metadata found for node type: ${nodeType}`)
+          return
+        }
+
+        // Get the visual node to extract properties
+        const visualNode = self.visualNodes.find(node => node.id === nodeId)
+        const properties = visualNode
+          ? Object.fromEntries(visualNode.data.properties.entries())
+          : {}
+
+        // Check if it's a custom node type
+        if (self.customNodeFactory.isCustomNodeType(nodeType)) {
+          try {
+            const customNode = self.customNodeFactory.createCustomNode(nodeType, metadata, properties)
+            self.customNodes.set(nodeId, customNode)
+            console.log(`Successfully created custom node: ${nodeType}`)
+          } catch (error) {
+            console.error('STORE: Error creating custom node:', error)
+          }
           return
         }
 
@@ -299,14 +334,9 @@ export const AudioGraphStore = types
           }
         }
 
-        // Get the visual node to extract properties
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
-        const properties = visualNode
-          ? Object.fromEntries(visualNode.data.properties.entries())
-          : {}
-
+        // Handle regular Web Audio API nodes
         try {
-          const audioNode = self.audioNodeFactory!.createAudioNode(nodeType, metadata, properties)
+          const audioNode = self.audioNodeFactory.createAudioNode(nodeType, metadata, properties)
           self.audioNodes.set(nodeId, audioNode)
           console.log(`Successfully created audio node: ${nodeType}`)
         } catch (error) {
@@ -327,9 +357,21 @@ export const AudioGraphStore = types
         const nodeType = visualNode.data.nodeType
         console.log(`Node type: ${nodeType}`)
 
-        // Get the audio node
-        const audioNode = self.audioNodes.get(nodeId)
+        // Check if it's a custom node
+        const customNode = self.customNodes.get(nodeId)
+        if (customNode) {
+          console.log('Found custom node, performing cleanup...')
+          try {
+            customNode.cleanup()
+            self.customNodes.delete(nodeId)
+            console.log('Custom node cleanup completed')
+          } catch (error) {
+            console.error('Error during custom node cleanup:', error)
+          }
+        }
 
+        // Check if it's an audio node
+        const audioNode = self.audioNodes.get(nodeId)
         if (audioNode) {
           console.log('Found audio node, performing thorough cleanup...')
 
@@ -376,8 +418,10 @@ export const AudioGraphStore = types
           // Remove from audio nodes map
           self.audioNodes.delete(nodeId)
           console.log('Audio node removed from map')
-        } else {
-          console.log('No audio node found')
+        }
+
+        if (!customNode && !audioNode) {
+          console.log('No audio or custom node found')
         }
 
         // Remove all edges connected to this node BEFORE removing the visual node
@@ -585,6 +629,7 @@ export const AudioGraphStore = types
           // Reset audio context and factory
           self.audioContext = null
           self.audioNodeFactory = null
+          self.customNodeFactory = null
 
           // Create new audio context
           actions.initializeAudioContext()
@@ -775,8 +820,7 @@ export const AudioGraphStore = types
           } catch (error) {
             console.error('Failed to connect audio nodes:', error)
           }
-        }
-      },
+        },
 
       disconnectAudioNodes(sourceId: string, targetId: string) {
         const sourceNode = self.audioNodes.get(sourceId)
@@ -858,8 +902,7 @@ export const AudioGraphStore = types
           } catch (error) {
             console.error('Failed to disconnect audio nodes:', error)
           }
-        }
-      },
+        },
 
       updateNodeProperty(nodeId: string, propertyName: string, value: unknown) {
         console.log('=== UPDATING NODE PROPERTY ===', nodeId, propertyName, value)
@@ -964,8 +1007,10 @@ export const AudioGraphStore = types
           // Clear everything
           self.audioContext = null
           self.audioNodeFactory = null
+          self.customNodeFactory = null
           self.globalAnalyzer = null
           self.audioNodes.clear()
+          self.customNodes.clear()
 
           self.isPlaying = false
           console.log('Playback stopped - fresh state ready')
