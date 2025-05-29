@@ -438,14 +438,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleSave}
-                  disabled={store.visualNodes.length === 0}
+                  disabled={store.visualNodes.length === 0 || !store.isProjectModified}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setShowSaveAsDialog(true)}
-                  disabled={store.visualNodes.length === 0}
+                  disabled={store.visualNodes.length === 0 || !store.isProjectModified}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save As...

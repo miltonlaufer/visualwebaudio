@@ -39,6 +39,8 @@ const ExamplesDropdown: React.FC<ExamplesDropdownProps> = ({
     }
 
     await example.create()
+    // Mark project as unmodified after loading example (examples are a fresh starting point)
+    store.setProjectModified(false)
     setIsOpen(false)
     onExampleSelect?.(example)
     onClose?.()

@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-167%2F167%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-165%2F165%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
@@ -54,7 +54,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 - **Project Management**: Export/Import projects as JSON with unsaved changes tracking and undo/redo system / IndexedDB storage
 - **Real-time Audio Processing**: Web Audio API integration with memory leak prevention and lifecycle management
 - **Error Handling**: Comprehensive error boundaries and connection validation
-- **Progressive Web App**: Installable on mobile devices with offline support and caching
+- **Progressive Web App**: Installable with offline support and caching
 
 ## Getting Started
 

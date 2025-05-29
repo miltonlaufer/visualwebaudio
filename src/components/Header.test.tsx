@@ -6,6 +6,8 @@ import Header from './Header'
 // Mock the AudioGraphStore hook
 const mockStore = {
   isProjectModified: false,
+  visualNodes: [],
+  visualEdges: [],
 }
 
 vi.mock('~/stores/AudioGraphStore', () => ({
@@ -25,13 +27,6 @@ vi.mock('./ProjectModal', () => ({
 // Mock window.confirm
 const mockConfirm = vi.fn(() => true)
 Object.defineProperty(window, 'confirm', { value: mockConfirm, writable: true })
-
-// Mock location.reload
-const mockReload = vi.fn()
-Object.defineProperty(window, 'location', {
-  value: { reload: mockReload },
-  writable: true,
-})
 
 describe('Header', () => {
   beforeEach(() => {
@@ -73,21 +68,5 @@ describe('Header', () => {
     const closeButton = screen.getByText('Close Modal')
     fireEvent.click(closeButton)
     expect(screen.queryByTestId('project-modal')).not.toBeInTheDocument()
-  })
-
-  it('should render reload button', () => {
-    render(<Header />)
-
-    const reloadButton = screen.getByLabelText('Reload application')
-    expect(reloadButton).toBeInTheDocument()
-  })
-
-  it('should reload page when reload button is clicked', () => {
-    render(<Header />)
-
-    const reloadButton = screen.getByLabelText('Reload application')
-    fireEvent.click(reloadButton)
-
-    expect(mockReload).toHaveBeenCalled()
   })
 })
