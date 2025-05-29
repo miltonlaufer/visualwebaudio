@@ -26,6 +26,8 @@ export const AudioGraphStore = types
     propertyChangeCounter: types.optional(types.number, 0),
     // Add a counter to track graph structure changes for React re-renders
     graphChangeCounter: types.optional(types.number, 0),
+    // Track if the current project has been modified (default false for new projects)
+    isProjectModified: types.optional(types.boolean, false),
   })
   .volatile(() => ({
     audioContext: null as AudioContext | null,
@@ -115,6 +117,16 @@ export const AudioGraphStore = types
       // Actions to manage automatic play state updates
       setUpdatingPlayState(value: boolean) {
         self.isUpdatingPlayState = value
+      },
+
+      // Action to set project modified state
+      setProjectModified(value: boolean) {
+        self.isProjectModified = value
+      },
+
+      // Action to mark project as modified (when changes are made)
+      markProjectModified() {
+        self.isProjectModified = true
       },
 
       applyUndo() {
@@ -484,6 +496,9 @@ export const AudioGraphStore = types
 
         // Reset flag to allow recording future operations
         actions.setClearingAllNodes(false)
+
+        // Reset project modification state since we've cleared everything
+        self.isProjectModified = false
       },
 
       performComprehensiveAudioCleanup() {
@@ -1141,6 +1156,21 @@ export const createAudioGraphStore = () => {
     // Don't record property change counter updates (these are just for React re-renders)
     if (patch.path === '/propertyChangeCounter') {
       return
+    }
+
+    // Don't record graph change counter updates
+    if (patch.path === '/graphChangeCounter') {
+      return
+    }
+
+    // Don't record modification state changes (prevents recursion)
+    if (patch.path === '/isProjectModified') {
+      return
+    }
+
+    // Mark project as modified for meaningful changes
+    if (!store.isProjectModified) {
+      store.markProjectModified()
     }
 
     // Start recording if not already

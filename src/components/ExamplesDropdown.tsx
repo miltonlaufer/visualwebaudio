@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useExamples, type Example } from './Examples'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 interface ExamplesDropdownProps {
   variant: 'desktop' | 'mobile'
@@ -16,6 +17,7 @@ const ExamplesDropdown: React.FC<ExamplesDropdownProps> = ({
   className = '',
 }) => {
   const { examples } = useExamples()
+  const store = useAudioGraphStore()
   const [isOpen, setIsOpen] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -29,6 +31,13 @@ const ExamplesDropdown: React.FC<ExamplesDropdownProps> = ({
   })
 
   const handleExampleSelect = async (example: Example) => {
+    // Check if there are unsaved changes
+    if (store.visualNodes.length > 0 && store.isProjectModified) {
+      if (!confirm('You will lose your changes. Are you sure you want to load this example?')) {
+        return
+      }
+    }
+
     await example.create()
     setIsOpen(false)
     onExampleSelect?.(example)

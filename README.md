@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-147%2F147%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-167%2F167%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
@@ -51,7 +51,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 - **Visual Audio Graph Editor**: Drag-and-drop node creation with type validation and color-coded connections
 - **Metadata-Driven Architecture**: 18+ Web Audio API nodes automatically discovered from TypeScript definitions
 - **Voice Effects Processing**: Real-time microphone input with robot voice, vocoder, harmonizer, and transformer effects
-- **Project Management**: Export/Import projects as JSON with error handling and undo/redo system
+- **Project Management**: Export/Import projects as JSON with unsaved changes tracking and undo/redo system / IndexedDB storage
 - **Real-time Audio Processing**: Web Audio API integration with memory leak prevention and lifecycle management
 - **Error Handling**: Comprehensive error boundaries and connection validation
 - **Progressive Web App**: Installable on mobile devices with offline support and caching
@@ -75,7 +75,7 @@ npm run dev
 
 # Other useful commands
 npm run build        # Build for production
-npm run test         # Run tests (147/147 passing)
+npm run test         # Run tests
 npm run type-check   # TypeScript type checking
 npm run lint         # ESLint code quality
 ```

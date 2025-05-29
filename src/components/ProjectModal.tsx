@@ -23,7 +23,6 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   const [showSaveAsDialog, setShowSaveAsDialog] = useState<boolean>(false)
   const [newProjectName, setNewProjectName] = useState<string>('')
   const [loadingProjects, setLoadingProjects] = useState<boolean>(false)
-  const [isProjectSaved, setIsProjectSaved] = useState<boolean>(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -57,21 +56,15 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     if (store.visualNodes.length === 0 && (currentProjectId || currentProjectName)) {
       setCurrentProjectId(null)
       setCurrentProjectName('')
-      setIsProjectSaved(false)
+      // Reset modification state when project is cleared
+      store.setProjectModified(false)
     }
   }, [store.visualNodes.length, currentProjectId, currentProjectName])
-
-  // Track changes to mark project as unsaved
-  useEffect(() => {
-    if (store.visualNodes.length > 0 && isProjectSaved) {
-      setIsProjectSaved(false)
-    }
-  }, [store.visualNodes.length, store.visualEdges.length, isProjectSaved])
 
   // Handle beforeunload warning
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (store.visualNodes.length > 0 && !isProjectSaved) {
+      if (store.visualNodes.length > 0 && store.isProjectModified) {
         const message = 'You will lose your changes. Are you sure you want to leave?'
         event.preventDefault()
         event.returnValue = message
@@ -81,7 +74,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [store.visualNodes.length, isProjectSaved])
+  }, [store.visualNodes.length, store.isProjectModified])
 
   const loadSavedProjects = async () => {
     try {
@@ -127,8 +120,8 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       await loadSavedProjects()
       setTimeout(() => setStorageSuccess(null), 3000)
 
-      // Mark project as saved after successful save
-      setIsProjectSaved(true)
+      // Mark project as unmodified after successful save
+      store.setProjectModified(false)
     } catch (error) {
       setStorageError('Failed to save project: ' + (error as Error).message)
     }
@@ -165,14 +158,21 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       await loadSavedProjects()
       setTimeout(() => setStorageSuccess(null), 3000)
 
-      // Mark project as saved after successful save
-      setIsProjectSaved(true)
+      // Mark project as unmodified after successful save
+      store.setProjectModified(false)
     } catch (error) {
       setStorageError('Failed to save project: ' + (error as Error).message)
     }
   }
 
   const handleLoad = async (project: SavedProject) => {
+    // Check if there are unsaved changes
+    if (store.visualNodes.length > 0 && store.isProjectModified) {
+      if (!confirm('You will lose your changes. Are you sure you want to load this project?')) {
+        return
+      }
+    }
+
     try {
       setStorageError(null)
 
@@ -203,8 +203,8 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       setCurrentProjectName(project.name)
       setStorageSuccess(`Project "${project.name}" loaded successfully!`)
 
-      // Mark project as saved since we just loaded it
-      setIsProjectSaved(true)
+      // Mark project as unmodified after successful load
+      store.setProjectModified(false)
 
       setTimeout(() => {
         setStorageSuccess(null)
@@ -272,8 +272,8 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
       console.log('Project exported successfully')
 
-      // Mark project as saved after successful export
-      setIsProjectSaved(true)
+      // Mark project as unmodified after successful export
+      store.setProjectModified(false)
     } catch (error) {
       console.error('Export failed:', error)
       setImportError('Export failed: ' + (error as Error).message)
@@ -316,6 +316,9 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
         console.log('Project imported successfully')
 
+        // Mark project as unmodified after successful import
+        store.setProjectModified(false)
+
         // Auto-close after success
         setTimeout(() => {
           setImportSuccess(false)
@@ -332,6 +335,13 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   }
 
   const handleImportClick = () => {
+    // Check if there are unsaved changes
+    if (store.visualNodes.length > 0 && store.isProjectModified) {
+      if (!confirm('You will lose your changes. Are you sure you want to import a project?')) {
+        return
+      }
+    }
+
     setImportError(null)
     setImportSuccess(false)
     fileInputRef.current?.click()

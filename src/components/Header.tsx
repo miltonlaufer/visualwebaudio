@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
@@ -37,6 +37,10 @@ const Header: React.FC<HeaderProps> = observer(
       action()
       setIsMobileMenuOpen(false)
     }
+
+    const handleCloseProjectModal = useCallback(() => {
+      setIsProjectModalOpen(false)
+    }, [])
 
     return (
       <>
@@ -245,6 +249,17 @@ const Header: React.FC<HeaderProps> = observer(
                             <button
                               key={example.id}
                               onClick={async () => {
+                                // Check if there are unsaved changes
+                                if (store.visualNodes.length > 0 && store.isProjectModified) {
+                                  if (
+                                    !confirm(
+                                      'You will lose your changes. Are you sure you want to load this example?'
+                                    )
+                                  ) {
+                                    return
+                                  }
+                                }
+
                                 await example.create()
                                 setIsMobileMenuOpen(false)
                                 setIsExamplesOpen(false)
@@ -398,11 +413,7 @@ const Header: React.FC<HeaderProps> = observer(
           </div>
         </header>
 
-        <ProjectModal
-          isOpen={isProjectModalOpen}
-          onClose={() => setIsProjectModalOpen(false)}
-          store={store}
-        />
+        <ProjectModal isOpen={isProjectModalOpen} onClose={handleCloseProjectModal} />
       </>
     )
   }
