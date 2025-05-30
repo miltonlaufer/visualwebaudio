@@ -18,6 +18,7 @@ export interface CustomNode {
   setOutputChangeCallback?(
     callback: (nodeId: string, outputName: string, value: number) => void
   ): void
+  loadAudioFile?(file: File): Promise<void>
 }
 
 // Adapter class to bridge MobX store with existing CustomNode interface

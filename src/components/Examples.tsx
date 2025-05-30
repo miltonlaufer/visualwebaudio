@@ -146,8 +146,8 @@ export const useExamples = () => {
     {
       id: 'sound-file-player',
       name: 'Sound File Player',
-      description: 'Button-triggered sound file playback',
-      create: createExample(() => {
+      description: 'Button-triggered sound file playback with sample audio',
+      create: createExample(async () => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
@@ -163,6 +163,8 @@ export const useExamples = () => {
         store.updateNodeProperty(soundFileId, 'gain', 1)
         store.updateNodeProperty(soundFileId, 'loop', false)
         store.updateNodeProperty(soundFileId, 'playbackRate', 1)
+        // Set the filename property early so it shows in the UI
+        store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
 
         // Connect the nodes
         console.log('Sound File Player: Connecting button to sound file...')
@@ -170,6 +172,28 @@ export const useExamples = () => {
 
         console.log('Sound File Player: Connecting sound file to destination...')
         store.addEdge(soundFileId, destId, 'output', 'input')
+
+        // Load the sample audio file
+        try {
+          console.log('Sound File Player: Loading sample audio...')
+          const response = await fetch('/samples/test-sound.wav')
+          if (!response.ok) {
+            throw new Error(`Failed to load sample: ${response.statusText}`)
+          }
+
+          const blob = await response.blob()
+          const file = new File([blob], 'test-sound.wav', { type: 'audio/wav' })
+
+          // Get the custom node and load the file
+          const customNode = store.customNodes.get(soundFileId)
+          if (customNode && customNode.loadAudioFile) {
+            await customNode.loadAudioFile(file)
+            console.log('✅ Sound File Player: Sample audio loaded successfully')
+          }
+        } catch (error) {
+          console.error('Sound File Player: Failed to load sample audio:', error)
+          console.log('💡 You can still upload your own audio file using the file input')
+        }
       }),
     },
     {
@@ -1073,25 +1097,20 @@ export const useExamples = () => {
 
           // Connect the pitch shifter chain
           console.log('Voice Pitch Shifter: Connecting audio chain...')
-
-          // Main signal path from microphone gain
           store.addEdge(micId, micGainId, 'output', 'input')
-
-          // Dry path
           store.addEdge(micGainId, dryGainId, 'output', 'input')
-          store.addEdge(dryGainId, mixerId, 'output', 'input')
-
-          // Wet path (pitch shifted)
           store.addEdge(micGainId, delayId, 'output', 'input')
           store.addEdge(delayId, wetGainId, 'output', 'input')
-          store.addEdge(wetGainId, mixerId, 'output', 'input')
 
-          // LFO modulation of delay time
+          // Connect dry and wet to mixer
+          store.addEdge(dryGainId, mixerId, 'output', 'input')
+          store.addEdge(wetGainId, mixerId, 'output', 'input')
+          store.addEdge(mixerId, destId, 'output', 'input')
+
+          // Connect LFO modulation to delay time
+          console.log('Voice Pitch Shifter: Connecting LFO modulation...')
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, delayId, 'output', 'delayTime')
-
-          // Output
-          store.addEdge(mixerId, destId, 'output', 'input')
         } catch (error) {
           console.error('Failed to create voice pitch shifter example:', error)
           alert('Microphone access denied. Please allow microphone access and try again.')

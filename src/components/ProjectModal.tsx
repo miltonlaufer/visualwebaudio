@@ -200,6 +200,30 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
         applySnapshot(store, newSnapshot)
 
+        // Restore custom nodes data if present
+        if (importData.customNodes) {
+          console.log('Restoring custom nodes data from import...')
+          Object.entries(importData.customNodes).forEach(([nodeId, nodeData]: [string, any]) => {
+            const customNode = store.customNodes.get(nodeId)
+            if (customNode) {
+              // Restore properties (including audio buffer data)
+              Object.entries(nodeData.properties || {}).forEach(([key, value]) => {
+                customNode.properties.set(key, value)
+              })
+
+              // Restore outputs
+              Object.entries(nodeData.outputs || {}).forEach(([key, value]) => {
+                customNode.outputs.set(key, value)
+              })
+
+              console.log(
+                `Restored custom node ${nodeId} with properties:`,
+                Object.keys(nodeData.properties || {})
+              )
+            }
+          })
+        }
+
         // Recreate the audio graph and wait for it to complete
         await store.recreateAudioGraph()
 
@@ -255,6 +279,31 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       // Get snapshot of the store
       const snapshot = getSnapshot(store)
 
+      // Debug: Log store custom nodes info
+      console.log('🔍 Export Debug: store.customNodes size:', store.customNodes.size)
+      console.log('🔍 Export Debug: store.customNodes keys:', Array.from(store.customNodes.keys()))
+      console.log('🔍 Export Debug: store.visualNodes length:', store.visualNodes.length)
+
+      // Log each visual node to see which are custom nodes
+      store.visualNodes.forEach(node => {
+        console.log(`🔍 Visual Node: ${node.id} - Type: ${node.data.nodeType}`)
+      })
+
+      // Serialize custom nodes data (including audio buffer data)
+      const customNodesData: Record<string, any> = {}
+      store.customNodes.forEach((customNode, nodeId) => {
+        console.log(`🔍 Processing custom node: ${nodeId}`, customNode)
+        customNodesData[nodeId] = {
+          id: customNode.id || nodeId,
+          type: customNode.type,
+          // Convert Maps to objects for JSON serialization
+          properties: Object.fromEntries(customNode.properties.entries()),
+          outputs: Object.fromEntries(customNode.outputs.entries()),
+        }
+      })
+
+      console.log('🔍 Export Debug: customNodesData:', customNodesData)
+
       // Create a clean export object with only the necessary data
       const exportData = {
         version: '1.0.0',
@@ -262,7 +311,11 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         visualNodes: snapshot.visualNodes,
         visualEdges: snapshot.visualEdges,
         audioConnections: snapshot.audioConnections,
+        // Include custom nodes data for full project preservation
+        customNodes: customNodesData,
       }
+
+      console.log('🔍 Export Debug: final exportData.customNodes:', exportData.customNodes)
 
       // Create and download the file
       const dataStr = JSON.stringify(exportData, null, 2)
@@ -278,7 +331,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
       URL.revokeObjectURL(url)
 
-      console.log('Project exported successfully')
+      console.log('Project exported successfully with custom nodes data')
 
       // Mark project as unmodified after successful export
       store.setProjectModified(false)
@@ -320,13 +373,37 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
           applySnapshot(store, newSnapshot)
 
+          // Restore custom nodes data if present
+          if (importData.customNodes) {
+            console.log('Restoring custom nodes data from import...')
+            Object.entries(importData.customNodes).forEach(([nodeId, nodeData]: [string, any]) => {
+              const customNode = store.customNodes.get(nodeId)
+              if (customNode) {
+                // Restore properties (including audio buffer data)
+                Object.entries(nodeData.properties || {}).forEach(([key, value]) => {
+                  customNode.properties.set(key, value)
+                })
+
+                // Restore outputs
+                Object.entries(nodeData.outputs || {}).forEach(([key, value]) => {
+                  customNode.outputs.set(key, value)
+                })
+
+                console.log(
+                  `Restored custom node ${nodeId} with properties:`,
+                  Object.keys(nodeData.properties || {})
+                )
+              }
+            })
+          }
+
           // Recreate the audio graph and wait for it to complete
           await store.recreateAudioGraph()
 
           setImportSuccess(true)
           setImportError(null)
 
-          console.log('Project imported successfully')
+          console.log('Project imported successfully with custom nodes data')
 
           // Mark project as unmodified after successful import
           store.setProjectModified(false)
