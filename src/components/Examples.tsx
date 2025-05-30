@@ -176,7 +176,7 @@ export const useExamples = () => {
         // Load the sample audio file
         try {
           console.log('Sound File Player: Loading sample audio...')
-          const response = await fetch('/samples/test-sound.wav')
+          const response = await fetch('./samples/test-sound.wav')
           if (!response.ok) {
             throw new Error(`Failed to load sample: ${response.statusText}`)
           }
