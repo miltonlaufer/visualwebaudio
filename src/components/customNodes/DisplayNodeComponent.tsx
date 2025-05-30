@@ -15,20 +15,29 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
 
   const currentValue = node.properties.get('currentValue')
   const label = node.properties.get('label') || 'Display'
+  const precision = node.properties.get('precision') || 2
 
   // Ensure we show a meaningful value - use 0 if currentValue is undefined, null, or NaN
-  const displayValue =
+  const rawValue =
     currentValue !== undefined && currentValue !== null && !isNaN(currentValue) ? currentValue : 0
 
+  // Format the display value with precision
+  let formattedValue: string
+  if (Number.isInteger(rawValue) || precision === 0) {
+    formattedValue = Math.round(rawValue).toString()
+  } else {
+    formattedValue = Number(rawValue).toFixed(precision)
+  }
+
   console.log(
-    `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, displayValue=${displayValue}`
+    `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, formattedValue=${formattedValue}, precision=${precision}`
   )
 
   return (
     <div className="p-2 space-y-1">
       <div className="text-xs font-medium text-gray-700">{label}</div>
       <div className="text-lg font-mono bg-gray-50 px-2 py-1 rounded border text-center">
-        {displayValue}
+        {formattedValue}
       </div>
     </div>
   )

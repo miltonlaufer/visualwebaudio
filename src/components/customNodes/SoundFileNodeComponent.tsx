@@ -8,12 +8,15 @@ interface SoundFileNodeComponentProps {
 
 const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const playButtonRef = useRef<HTMLButtonElement>(null)
 
+  // Early return check BEFORE any other hooks
   if (!node || node.nodeType !== 'SoundFileNode') {
     return <div className="text-red-500 text-xs">SoundFileNode not found</div>
   }
+
+  // Now we can safely call all hooks knowing the component will render normally
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const playButtonRef = useRef<HTMLButtonElement>(null)
 
   const fileName = node.properties.get('fileName') || ''
   const loaded = node.outputs.get('loaded') || 0

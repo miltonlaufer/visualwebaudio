@@ -30,8 +30,19 @@ const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = ({ nodeId, nodeTyp
       return <SoundFileNodeComponent nodeId={nodeId} />
     case 'RandomNode':
       return <RandomNodeComponent nodeId={nodeId} />
+    case 'MidiToFreqNode':
+      // MidiToFreqNode doesn't need a UI component - it's a pure computation node
+      return <div className="text-gray-600 text-xs p-2 text-center">MIDI → Freq</div>
+    case 'GreaterThanNode':
+    case 'EqualsNode':
+    case 'SelectNode':
+    case 'MidiInputNode':
+      // These nodes don't have UI components yet - just show their type
+      return (
+        <div className="text-gray-600 text-xs p-2 text-center">{nodeType.replace('Node', '')}</div>
+      )
     default:
-      return <div className="text-gray-500 text-xs p-2">Unknown custom node: {nodeType}</div>
+      return <div className="text-red-500 text-xs p-2">Unknown custom node: {nodeType}</div>
   }
 }
 

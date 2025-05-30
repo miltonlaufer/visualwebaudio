@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { observer } from 'mobx-react-lite'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 
@@ -8,16 +8,19 @@ interface ButtonNodeComponentProps {
 
 const ButtonNodeComponent: React.FC<ButtonNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
-  const buttonRef = useRef<HTMLButtonElement>(null)
 
+  // Early return check BEFORE any other hooks
   if (!node || node.nodeType !== 'ButtonNode') {
     return <div className="text-red-500 text-xs">ButtonNode not found</div>
   }
 
+  // Now we can safely call all hooks knowing the component will render normally
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
   const label = node.properties.get('label') || 'Button'
 
   const handleClick = () => {
-    console.log(`🔘 ButtonNode ${nodeId}: Button clicked`)
+    console.log(`🔘 ButtonNode ${nodeId}: Triggered`)
     node.trigger()
   }
 
@@ -48,7 +51,7 @@ const ButtonNodeComponent: React.FC<ButtonNodeComponentProps> = observer(({ node
       <button
         ref={buttonRef}
         onClick={handleClick}
-        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors text-sm font-medium"
+        className="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded transition-colors"
       >
         {label}
       </button>

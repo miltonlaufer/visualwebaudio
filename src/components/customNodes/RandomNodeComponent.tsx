@@ -8,11 +8,14 @@ interface RandomNodeComponentProps {
 
 const RandomNodeComponent: React.FC<RandomNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
-  const sliderRef = useRef<HTMLInputElement>(null)
 
+  // Early return check BEFORE any other hooks
   if (!node || node.nodeType !== 'RandomNode') {
     return <div className="text-red-500 text-xs">RandomNode not found</div>
   }
+
+  // Now we can safely call all hooks knowing the component will render normally
+  const sliderRef = useRef<HTMLInputElement>(null)
 
   const currentValue = node.outputs.get('value') || 0
   const rate = node.properties.get('rate') || 1

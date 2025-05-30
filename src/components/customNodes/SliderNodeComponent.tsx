@@ -9,12 +9,15 @@ interface SliderNodeComponentProps {
 
 const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
-  const store = useAudioGraphStore()
-  const sliderRef = useRef<HTMLInputElement>(null)
 
+  // Early return check BEFORE any other hooks
   if (!node || node.nodeType !== 'SliderNode') {
     return <div className="text-red-500 text-xs">SliderNode not found</div>
   }
+
+  // Now we can safely call all hooks knowing the component will render normally
+  const store = useAudioGraphStore()
+  const sliderRef = useRef<HTMLInputElement>(null)
 
   const currentValue = node.properties.get('value') || 50
   const min = node.properties.get('min') || 0
