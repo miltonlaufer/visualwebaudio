@@ -25,6 +25,65 @@ export const useExamples = () => {
 
   const examples: Example[] = [
     {
+      id: 'midi-to-frequency',
+      name: 'MIDI to Frequency',
+      description: 'Control oscillator frequency with a slider via MIDI note conversion',
+      create: createExample(() => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const sliderId = store.addNode('SliderNode', {
+          x: -2.6200660464996304,
+          y: -27.92407649604229,
+        })
+        const displayNode1Id = store.addNode('DisplayNode', {
+          x: -0.683888634989259,
+          y: 194.5119899292198,
+        })
+        const midiToFreqId = store.addNode('MidiToFreqNode', {
+          x: 255.03647005056547,
+          y: -12.888551203235835,
+        })
+        const displayNode2Id = store.addNode('DisplayNode', {
+          x: 283.60216452982104,
+          y: 200.40628596561203,
+        })
+        const oscId = store.addNode('OscillatorNode', {
+          x: 543.047959716879,
+          y: -28.436677674416615,
+        })
+        const destId = store.addNode('AudioDestinationNode', {
+          x: 520.3458360566071,
+          y: 263.8463363195132,
+        })
+
+        console.log('MIDI to Frequency: Setting up slider for MIDI note range...')
+        store.updateNodeProperty(sliderId, 'min', 48)
+        store.updateNodeProperty(sliderId, 'max', 84)
+        store.updateNodeProperty(sliderId, 'value', 60)
+        store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
+
+        console.log('MIDI to Frequency: Setting up MIDI to frequency converter...')
+        store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
+        store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        console.log('MIDI to Frequency: Setting up oscillator...')
+        // Don't set frequency here - it will be controlled by the MIDI input
+        store.updateNodeProperty(oscId, 'type', 'sine')
+
+        console.log('MIDI to Frequency: Connecting slider to display nodes and oscillator...')
+        store.addEdge(sliderId, displayNode1Id, 'value', 'input')
+        store.addEdge(displayNode1Id, midiToFreqId, 'output', 'midiNote')
+        store.addEdge(midiToFreqId, displayNode2Id, 'frequency', 'input')
+        store.addEdge(displayNode2Id, oscId, 'output', 'frequency')
+        store.addEdge(oscId, destId, 'output', 'input')
+
+        // Trigger initial value propagation through the chain
+        console.log('MIDI to Frequency: Triggering initial value propagation...')
+        store.updateNodeProperty(sliderId, 'value', 60) // This will trigger the chain
+      }),
+    },
+    {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
@@ -81,6 +140,59 @@ export const useExamples = () => {
           alert(
             'Microphone access denied or not available. Please allow microphone access and try again.'
           )
+        }
+      }),
+    },
+    {
+      id: 'sound-file-player',
+      name: 'Sound File Player',
+      description: 'Button-triggered sound file playback with sample audio',
+      create: createExample(async () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const soundFileId = store.addNode('SoundFileNode', { x: 629, y: 117 })
+        const buttonId = store.addNode('ButtonNode', { x: 350, y: 100 })
+        const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
+
+        console.log('Sound File Player: Setting up button...')
+        store.updateNodeProperty(buttonId, 'label', 'Play Sound')
+        store.updateNodeProperty(buttonId, 'outputValue', 1)
+
+        console.log('Sound File Player: Setting up sound file node...')
+        store.updateNodeProperty(soundFileId, 'gain', 1)
+        store.updateNodeProperty(soundFileId, 'loop', false)
+        store.updateNodeProperty(soundFileId, 'playbackRate', 1)
+        // Set the filename property early so it shows in the UI
+        store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
+
+        // Connect the nodes
+        console.log('Sound File Player: Connecting button to sound file...')
+        store.addEdge(buttonId, soundFileId, 'trigger', 'trigger')
+
+        console.log('Sound File Player: Connecting sound file to destination...')
+        store.addEdge(soundFileId, destId, 'output', 'input')
+
+        // Load the sample audio file
+        try {
+          console.log('Sound File Player: Loading sample audio...')
+          const response = await fetch('/samples/test-sound.wav')
+          if (!response.ok) {
+            throw new Error(`Failed to load sample: ${response.statusText}`)
+          }
+
+          const blob = await response.blob()
+          const file = new File([blob], 'test-sound.wav', { type: 'audio/wav' })
+
+          // Get the custom node and load the file
+          const customNode = store.customNodes.get(soundFileId)
+          if (customNode && customNode.loadAudioFile) {
+            await customNode.loadAudioFile(file)
+            console.log('✅ Sound File Player: Sample audio loaded successfully')
+          }
+        } catch (error) {
+          console.error('Sound File Player: Failed to load sample audio:', error)
+          console.log('💡 You can still upload your own audio file using the file input')
         }
       }),
     },
@@ -985,25 +1097,20 @@ export const useExamples = () => {
 
           // Connect the pitch shifter chain
           console.log('Voice Pitch Shifter: Connecting audio chain...')
-
-          // Main signal path from microphone gain
           store.addEdge(micId, micGainId, 'output', 'input')
-
-          // Dry path
           store.addEdge(micGainId, dryGainId, 'output', 'input')
-          store.addEdge(dryGainId, mixerId, 'output', 'input')
-
-          // Wet path (pitch shifted)
           store.addEdge(micGainId, delayId, 'output', 'input')
           store.addEdge(delayId, wetGainId, 'output', 'input')
-          store.addEdge(wetGainId, mixerId, 'output', 'input')
 
-          // LFO modulation of delay time
+          // Connect dry and wet to mixer
+          store.addEdge(dryGainId, mixerId, 'output', 'input')
+          store.addEdge(wetGainId, mixerId, 'output', 'input')
+          store.addEdge(mixerId, destId, 'output', 'input')
+
+          // Connect LFO modulation to delay time
+          console.log('Voice Pitch Shifter: Connecting LFO modulation...')
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, delayId, 'output', 'delayTime')
-
-          // Output
-          store.addEdge(mixerId, destId, 'output', 'input')
         } catch (error) {
           console.error('Failed to create voice pitch shifter example:', error)
           alert('Microphone access denied. Please allow microphone access and try again.')

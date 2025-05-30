@@ -1,0 +1,393 @@
+{
+  "ButtonNode": {
+    "name": "Button",
+    "description": "A clickable button that outputs a trigger/bang when pressed. Similar to Max/MSP button object.",
+    "category": "control",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "trigger",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Button"
+      },
+      {
+        "name": "outputValue",
+        "type": "number",
+        "defaultValue": 1
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "SliderNode": {
+    "name": "Slider",
+    "description": "A horizontal slider control with customizable range and step. Outputs the current value.",
+    "category": "control",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "value",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "min",
+        "type": "number",
+        "defaultValue": 0,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "max",
+        "type": "number",
+        "defaultValue": 100,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "step",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0.001,
+        "max": 100
+      },
+      {
+        "name": "value",
+        "type": "number",
+        "defaultValue": 50
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Slider"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "GreaterThanNode": {
+    "name": "Greater Than",
+    "description": "Outputs 1 if first input is greater than second input, 0 otherwise. Logic conditional node.",
+    "category": "logic",
+    "inputs": [
+      {
+        "name": "input1",
+        "type": "control"
+      },
+      {
+        "name": "input2",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "threshold",
+        "type": "number",
+        "defaultValue": 0
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "EqualsNode": {
+    "name": "Equals",
+    "description": "Outputs 1 if inputs are equal, 0 otherwise. Comparison conditional node.",
+    "category": "logic",
+    "inputs": [
+      {
+        "name": "input1",
+        "type": "control"
+      },
+      {
+        "name": "input2",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "tolerance",
+        "type": "number",
+        "defaultValue": 0.001
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "SelectNode": {
+    "name": "Select",
+    "description": "Routes input to one of multiple outputs based on selector value. Similar to Max/MSP select object.",
+    "category": "logic",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "control"
+      },
+      {
+        "name": "input",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output0",
+        "type": "control"
+      },
+      {
+        "name": "output1",
+        "type": "control"
+      },
+      {
+        "name": "output2",
+        "type": "control"
+      },
+      {
+        "name": "output3",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "numOutputs",
+        "type": "number",
+        "defaultValue": 2,
+        "min": 2,
+        "max": 8
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "MidiInputNode": {
+    "name": "MIDI Input",
+    "description": "Receives MIDI messages from connected MIDI devices. Outputs note, velocity, and control change data.",
+    "category": "input",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "note",
+        "type": "control"
+      },
+      {
+        "name": "velocity",
+        "type": "control"
+      },
+      {
+        "name": "cc",
+        "type": "control"
+      },
+      {
+        "name": "pitch",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "channel",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 1,
+        "max": 16
+      },
+      {
+        "name": "deviceName",
+        "type": "string",
+        "defaultValue": ""
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "MidiToFreqNode": {
+    "name": "MIDI to Frequency",
+    "description": "Converts MIDI note numbers to frequency values. 69 = 440Hz (A4).",
+    "category": "utility",
+    "inputs": [
+      {
+        "name": "midiNote",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "frequency",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "baseFreq",
+        "type": "number",
+        "defaultValue": 440,
+        "min": 1,
+        "max": 20000
+      },
+      {
+        "name": "baseMidi",
+        "type": "number",
+        "defaultValue": 69,
+        "min": 0,
+        "max": 127
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "SoundFileNode": {
+    "name": "Sound File",
+    "description": "Loads and stores audio files as buffers. Can be triggered to play back the loaded sound.",
+    "category": "source",
+    "inputs": [
+      {
+        "name": "trigger",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      },
+      {
+        "name": "loaded",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "fileName",
+        "type": "string",
+        "defaultValue": "No file loaded"
+      },
+      {
+        "name": "audioBufferData",
+        "type": "string",
+        "defaultValue": null
+      },
+      {
+        "name": "loop",
+        "type": "boolean",
+        "defaultValue": false
+      },
+      {
+        "name": "gain",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0,
+        "max": 2
+      },
+      {
+        "name": "playbackRate",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0.1,
+        "max": 4
+      }
+    ],
+    "methods": ["loadFile", "play", "stop"],
+    "events": []
+  },
+  "DisplayNode": {
+    "name": "Display",
+    "description": "Displays the current value flowing through it. Useful for debugging signal flow and monitoring values.",
+    "category": "utility",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "currentValue",
+        "type": "number",
+        "defaultValue": 0
+      },
+      {
+        "name": "precision",
+        "type": "number",
+        "defaultValue": 2,
+        "min": 0,
+        "max": 6
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Display"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "RandomNode": {
+    "name": "Random",
+    "description": "Generates random values at configurable intervals. Perfect for creating random modulation, noise effects, or generative content.",
+    "category": "utility",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "value",
+        "type": "control"
+      }
+    ],
+    "properties": [
+      {
+        "name": "min",
+        "type": "number",
+        "defaultValue": 0,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "max",
+        "type": "number",
+        "defaultValue": 100,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "rate",
+        "type": "number",
+        "defaultValue": 1,
+        "min": 0.1,
+        "max": 20
+      },
+      {
+        "name": "currentValue",
+        "type": "number",
+        "defaultValue": 50
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Random"
+      }
+    ],
+    "methods": [],
+    "events": []
+  }
+}

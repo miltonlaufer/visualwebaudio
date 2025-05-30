@@ -440,4 +440,103 @@ describe('ExportJSButton', () => {
     expect(generatedCode).toContain("osc_1.type = 'sine';")
     expect(generatedCode).not.toContain('detune')
   })
+
+  it('shows warning for custom nodes and prevents export', async () => {
+    const user = userEvent.setup()
+
+    // Mock alert
+    const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {})
+
+    const mockStoreWithCustomNodes = {
+      ...mockStore,
+      visualNodes: [
+        {
+          id: 'slider-1',
+          type: 'SliderNode',
+          data: {
+            nodeType: 'SliderNode',
+            properties: new Map([['value', 50]] as [string, any][]),
+          },
+        },
+        {
+          id: 'osc-1',
+          type: 'OscillatorNode',
+          data: {
+            nodeType: 'OscillatorNode',
+            properties: new Map([['frequency', 440]] as [string, any][]),
+          },
+        },
+      ],
+    }
+
+    vi.mocked(useAudioGraphStore).mockReturnValue(mockStoreWithCustomNodes as any)
+
+    render(<ExportJSButton />)
+
+    const button = screen.getByRole('button')
+    await user.click(button)
+
+    // Should show alert and not open modal
+    expect(mockAlert).toHaveBeenCalledWith(
+      'Support for exporting utility nodes coming soon. This feature is only available for pure Web Audio API projects.'
+    )
+    expect(screen.queryByText('Exported JavaScript Code')).not.toBeInTheDocument()
+
+    mockAlert.mockRestore()
+  })
+
+  it('allows export for pure Web Audio API projects', async () => {
+    const user = userEvent.setup()
+    const mockStoreWithWebAudioOnly = {
+      ...mockStore,
+      visualNodes: [
+        {
+          id: 'osc-1',
+          type: 'OscillatorNode',
+          data: {
+            nodeType: 'OscillatorNode',
+            properties: new Map([['frequency', 440]] as [string, any][]),
+          },
+        },
+        {
+          id: 'gain-1',
+          type: 'GainNode',
+          data: {
+            nodeType: 'GainNode',
+            properties: new Map([['gain', 0.5]] as [string, any][]),
+          },
+        },
+        {
+          id: 'dest-1',
+          type: 'AudioDestinationNode',
+          data: {
+            nodeType: 'AudioDestinationNode',
+            properties: new Map(),
+          },
+        },
+      ],
+      visualEdges: [
+        {
+          id: 'edge-1',
+          source: 'osc-1',
+          target: 'gain-1',
+        },
+        {
+          id: 'edge-2',
+          source: 'gain-1',
+          target: 'dest-1',
+        },
+      ],
+    }
+
+    vi.mocked(useAudioGraphStore).mockReturnValue(mockStoreWithWebAudioOnly as any)
+
+    render(<ExportJSButton />)
+
+    const button = screen.getByRole('button')
+    await user.click(button)
+
+    // Should open modal for pure Web Audio API projects
+    expect(screen.getByText('Exported JavaScript Code')).toBeInTheDocument()
+  })
 })

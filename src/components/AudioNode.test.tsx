@@ -1,8 +1,18 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { ReactFlowProvider } from '@xyflow/react'
 import AudioNode from './AudioNode'
 import type { VisualNodeData } from '../types'
+import { createAudioGraphStore, AudioGraphStoreContext } from '../stores/AudioGraphStore'
+
+// Mock the useNodeId hook from React Flow
+vi.mock('@xyflow/react', async () => {
+  const actual = await vi.importActual('@xyflow/react')
+  return {
+    ...actual,
+    useNodeId: () => 'test-node-id', // Mock node ID
+  }
+})
 
 const mockNodeData: VisualNodeData = {
   nodeType: 'OscillatorNode',
@@ -42,7 +52,12 @@ const mockNodeDataWithInputs: VisualNodeData = {
 
 // Helper function to render with ReactFlow provider
 const renderWithProvider = (component: React.ReactElement) => {
-  return render(<ReactFlowProvider>{component}</ReactFlowProvider>)
+  const store = createAudioGraphStore()
+  return render(
+    <AudioGraphStoreContext.Provider value={store}>
+      <ReactFlowProvider>{component}</ReactFlowProvider>
+    </AudioGraphStoreContext.Provider>
+  )
 }
 
 describe('AudioNode', () => {
@@ -128,5 +143,207 @@ describe('AudioNode', () => {
 
     expect(screen.getByText('Error: No metadata')).toBeInTheDocument()
     expect(screen.getByText('InvalidNode')).toBeInTheDocument()
+  })
+
+  // Test to prevent custom UI regression
+  it('should render custom UI elements for custom nodes', () => {
+    const store = createAudioGraphStore()
+
+    // Mock custom node with createUIElement method
+    const mockCustomNode = {
+      createUIElement: vi.fn((container: HTMLElement) => {
+        const button = document.createElement('button')
+        button.textContent = 'Custom Button'
+        button.className = 'custom-ui-element'
+        container.appendChild(button)
+      }),
+    }
+
+    // Add mock custom node to store
+    store.customNodes.set('test-node-id', mockCustomNode as any)
+
+    const sliderNodeData: VisualNodeData = {
+      nodeType: 'SliderNode',
+      metadata: {
+        name: 'SliderNode',
+        description: 'Custom slider node',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'value', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = render(
+      <AudioGraphStoreContext.Provider value={store}>
+        <ReactFlowProvider>
+          <AudioNode data={sliderNodeData} />
+        </ReactFlowProvider>
+      </AudioGraphStoreContext.Provider>
+    )
+
+    // Check that createUIElement was called
+    expect(mockCustomNode.createUIElement).toHaveBeenCalled()
+
+    // Check that the custom UI element was added
+    const customElement = container.querySelector('.custom-ui-element')
+    expect(customElement).toBeInTheDocument()
+    expect(customElement).toHaveTextContent('Custom Button')
+  })
+
+  it('should include RandomNode in custom node types', () => {
+    const store = createAudioGraphStore()
+
+    const mockRandomNode = {
+      createUIElement: vi.fn((container: HTMLElement) => {
+        const span = document.createElement('span')
+        span.textContent = 'Random Value: 42'
+        span.className = 'random-ui-element'
+        container.appendChild(span)
+      }),
+    }
+
+    store.customNodes.set('test-node-id', mockRandomNode as any)
+
+    const randomNodeData: VisualNodeData = {
+      nodeType: 'RandomNode',
+      metadata: {
+        name: 'RandomNode',
+        description: 'Random value generator',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'value', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = render(
+      <AudioGraphStoreContext.Provider value={store}>
+        <ReactFlowProvider>
+          <AudioNode data={randomNodeData} />
+        </ReactFlowProvider>
+      </AudioGraphStoreContext.Provider>
+    )
+
+    // Check that createUIElement was called for RandomNode
+    expect(mockRandomNode.createUIElement).toHaveBeenCalled()
+
+    // Check that the custom UI element was added
+    const customElement = container.querySelector('.random-ui-element')
+    expect(customElement).toBeInTheDocument()
+  })
+
+  it('displays corner type label for web audio nodes', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'GainNode',
+      metadata: {
+        name: 'Gain',
+        description: 'A gain node',
+        category: 'effect',
+        inputs: [{ name: 'input', type: 'audio' }],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    // Check that the WebAudio label is present
+    expect(screen.getByText('WebAudio')).toBeInTheDocument()
+
+    // Check that it has the correct styling for web audio nodes
+    const label = screen.getByText('WebAudio')
+    expect(label).toHaveClass('bg-blue-500', 'text-white', 'w-[75px]', 'top-[10px]', '-right-4')
+  })
+
+  it('displays corner type label for utility nodes', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'ButtonNode',
+      metadata: {
+        name: 'Button',
+        description: 'A button node',
+        category: 'processing',
+        inputs: [],
+        outputs: [{ name: 'trigger', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    // Check that the Utility label is present
+    expect(screen.getByText('Utility')).toBeInTheDocument()
+
+    // Check that it has the correct styling for utility nodes
+    const label = screen.getByText('Utility')
+    expect(label).toHaveClass(
+      'bg-orange-500',
+      'text-white',
+      'w-[67px]',
+      'top-[7px]',
+      '-right-[17px]',
+      'text-center'
+    )
+  })
+
+  it('applies correct rotation and positioning for corner labels', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'OscillatorNode',
+      metadata: {
+        name: 'Oscillator',
+        description: 'An oscillator node',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    const label = screen.getByText('WebAudio')
+
+    // Check for common rotation and positioning classes
+    expect(label).toHaveClass('transform', 'rotate-45', 'origin-center', 'absolute')
+    expect(label).toHaveClass('text-[10px]', 'font-medium', 'shadow-sm')
+  })
+
+  it('corner label container has correct overflow and pointer event settings', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'DelayNode',
+      metadata: {
+        name: 'Delay',
+        description: 'A delay node',
+        category: 'effect',
+        inputs: [{ name: 'input', type: 'audio' }],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = renderWithProvider(<AudioNode data={mockData} />)
+
+    // Find the corner label container
+    const cornerContainer = container.querySelector('.absolute.top-0.right-0.w-16.h-16')
+    expect(cornerContainer).toBeInTheDocument()
+    expect(cornerContainer).toHaveClass('overflow-hidden', 'pointer-events-none')
   })
 })

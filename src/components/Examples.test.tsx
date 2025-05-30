@@ -291,8 +291,10 @@ describe('Examples Structure Tests', () => {
   describe('All Examples', () => {
     it('should have all expected examples', () => {
       const expectedExamples = [
+        'midi-to-frequency',
         'basic-oscillator',
         'microphone-input',
+        'sound-file-player',
         'delay-effect',
         'filter-sweep',
         'stereo-panner',

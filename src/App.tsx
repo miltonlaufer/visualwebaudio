@@ -31,6 +31,13 @@ const nodeTypes: NodeTypes = {
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
 
+  // Make store available for debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      ;(window as any).__STORE__ = store
+    }
+  }, [store])
+
   return (
     <AudioGraphStoreContext.Provider value={store}>
       <AppContent />
@@ -524,7 +531,7 @@ const AppContent: React.FC = observer(() => {
           }}
         />
       </div>
-    </div>
+      </div>
   )
 })
 

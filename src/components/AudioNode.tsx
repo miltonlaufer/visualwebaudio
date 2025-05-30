@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react'
-import { Handle, Position } from '@xyflow/react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
+import { Handle, Position, useNodeId } from '@xyflow/react'
 import type { VisualNodeData } from '~/types'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 interface AudioNodeProps {
   data: VisualNodeData
@@ -10,11 +11,48 @@ interface AudioNodeProps {
 const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   console.log('AudioNode rendering:', data.nodeType)
 
+  const store = useAudioGraphStore()
+  const nodeId = useNodeId() // Get the node ID from React Flow
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const customUIRef = useRef<HTMLDivElement>(null)
 
   const { metadata, nodeType, properties } = data
 
+  // Check if this is a custom node type
+  const customNodeTypes = [
+    'ButtonNode',
+    'SliderNode',
+    'GreaterThanNode',
+    'EqualsNode',
+    'SelectNode',
+    'MidiInputNode',
+    'MidiToFreqNode',
+    'DisplayNode',
+    'SoundFileNode',
+    'RandomNode',
+  ]
+  const isCustomNode = customNodeTypes.includes(nodeType)
+  // Initialize custom UI elements for custom nodes
+  useEffect(() => {
+    console.log(
+      `AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`
+    )
+    if (isCustomNode && customUIRef.current && nodeId) {
+      // Get the unified node from the store
+      const customNode = store.customNodes.get(nodeId)
+      if (
+        customNode &&
+        'createUIElement' in customNode &&
+        typeof customNode.createUIElement === 'function'
+      ) {
+        // Clear any existing content
+        customUIRef.current.innerHTML = ''
+        // Create the custom UI elements
+        customNode.createUIElement(customUIRef.current)
+      }
+    }
+  }, [isCustomNode, nodeId, store.customNodes, data.nodeType])
   // Memoized handlers for better performance
   const handleMouseEnterHandle = useCallback((handleId: string) => {
     return () => setHoveredHandle(handleId)
@@ -70,6 +108,15 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
         return 'bg-yellow-100 border-yellow-300'
       case 'context':
         return 'bg-gray-100 border-gray-300'
+      // Custom node categories
+      case 'control':
+        return 'bg-pink-100 border-pink-300'
+      case 'logic':
+        return 'bg-indigo-100 border-indigo-300'
+      case 'input':
+        return 'bg-teal-100 border-teal-300'
+      case 'utility':
+        return 'bg-orange-100 border-orange-300'
       default:
         return 'bg-white border-gray-300'
     }
@@ -95,9 +142,32 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
 
   // Calculate node height based on content
   const maxHandles = Math.max(metadata.inputs.length, metadata.outputs.length)
-  const baseHeight = 80 // Base height for header and properties
+  const baseHeight = isCustomNode ? 120 : 80 // More height for custom nodes with UI
   const handleHeight = maxHandles * 30 // 30px per handle
   const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
+
+  // Determine the type label for the corner
+  const getTypeLabel = () => {
+    return isCustomNode ? 'Utility' : 'WebAudio'
+  }
+
+  const getTypeLabelColors = () => {
+    if (isCustomNode) {
+      return 'bg-orange-500 text-white'
+    } else {
+      return 'bg-blue-500 text-white'
+    }
+  }
+
+  const getTypeLabelPositioning = () => {
+    if (isCustomNode) {
+      // Utility: width: 67px, top: 7px, right: -17px, text-align: center
+      return 'w-[67px] top-[7px] -right-[17px] text-center'
+    } else {
+      // WebAudio: width: 75px, top: 12px, right: -16px
+      return 'w-[75px] top-[10px] -right-4'
+    }
+  }
 
   return (
     <div
@@ -110,8 +180,23 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
       onMouseEnter={handleMouseEnterNode}
       onMouseLeave={handleMouseLeaveNode}
     >
+      {/* Corner Type Label */}
+      <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none">
+        <div
+          className={`
+            ${getTypeLabelColors()}
+            ${getTypeLabelPositioning()}
+            text-[10px] font-medium px-3 py-0.5 shadow-sm
+            transform rotate-45 origin-center
+            absolute
+          `}
+        >
+          {getTypeLabel()}
+        </div>
+      </div>
+
       {/* Input Handles and Labels */}
-      {metadata.inputs.map((input, index) => {
+      {metadata.inputs.map((input: any, index: number) => {
         const colors = getHandleColors(input.type)
         const topPosition = 35 + index * 30
         const handleId = `input-${input.name}`
@@ -151,7 +236,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
       })}
 
       {/* Output Handles and Labels */}
-      {metadata.outputs.map((output, index) => {
+      {metadata.outputs.map((output: any, index: number) => {
         const colors = getHandleColors(output.type)
         const topPosition = 35 + index * 30
         const handleId = `output-${output.name}`
@@ -195,12 +280,18 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
         {nodeType.replace('Node', '')}
       </div>
 
-      {/* Node Properties - Show properties for nodes with fewer handles or important properties */}
-      {metadata.properties.length > 0 &&
+      {/* Custom Node UI Container */}
+      {isCustomNode && (
+        <div ref={customUIRef} className="w-full flex justify-center items-center my-2" />
+      )}
+
+      {/* Node Properties - Show properties for nodes with fewer handles or important properties (only for non-custom nodes) */}
+      {!isCustomNode &&
+        metadata.properties.length > 0 &&
         (maxHandles <= 3 ||
-          metadata.properties.some(p => p.name === 'type' || p.name === 'frequency')) && (
+          metadata.properties.some((p: any) => p.name === 'type' || p.name === 'frequency')) && (
           <div className="space-y-1 mt-4">
-            {metadata.properties.slice(0, maxHandles > 3 ? 1 : 2).map(prop => (
+            {metadata.properties.slice(0, maxHandles > 3 ? 1 : 2).map((prop: any) => (
               <div key={prop.name} className="text-xs text-gray-600 text-center">
                 <span className="font-medium">{prop.name}:</span>{' '}
                 <span className="text-gray-500">
