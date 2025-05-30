@@ -11,6 +11,12 @@ interface ProjectModalProps {
 }
 
 const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose }) => {
+  // Early return check BEFORE any hooks to avoid hooks rule violations
+  if (!isOpen) {
+    return null
+  }
+
+  // Now we can safely call all hooks knowing the component will render normally
   const store = useAudioGraphStore()
   const [activeTab, setActiveTab] = useState<'storage' | 'export' | 'import'>('storage')
   const [importError, setImportError] = useState<string | null>(null)
@@ -438,11 +444,6 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     setImportError(null)
     setImportSuccess(false)
     fileInputRef.current?.click()
-  }
-
-  // Conditional rendering without early return to avoid hooks rule violations
-  if (!isOpen) {
-    return null
   }
 
   return (
