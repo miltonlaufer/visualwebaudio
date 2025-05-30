@@ -1,6 +1,7 @@
 import type { NodeMetadata } from '~/types'
+import { customNodeStore, type ICustomNodeState } from '~/stores/CustomNodeStore'
 
-// Base interface for custom nodes
+// Base interface for custom nodes - keeping for compatibility
 export interface CustomNode {
   id: string
   type: string
@@ -13,12 +14,278 @@ export interface CustomNode {
   receiveInput?(inputName: string, value: any): void
   createUIElement?(container: HTMLElement): void
   cleanup(): void
-  // Add method to get audio output for nodes that have audio connections
   getAudioOutput?(): AudioNode | null
-  // Add method to set callback for output changes
   setOutputChangeCallback?(
     callback: (nodeId: string, outputName: string, value: number) => void
   ): void
+}
+
+// Adapter class to bridge MobX store with existing CustomNode interface
+class MobXCustomNodeAdapter implements CustomNode {
+  private mobxNode: ICustomNodeState
+  private uiElement?: HTMLElement
+  private fileInputElement?: HTMLInputElement
+
+  constructor(mobxNode: ICustomNodeState) {
+    this.mobxNode = mobxNode
+  }
+
+  get id(): string {
+    return this.mobxNode.id
+  }
+
+  get type(): string {
+    return this.mobxNode.nodeType
+  }
+
+  get properties(): Map<string, any> {
+    return this.mobxNode.properties
+  }
+
+  get outputs(): Map<string, any> {
+    return this.mobxNode.outputs
+  }
+
+  connect(targetNode: CustomNode, outputName = 'output', inputName = 'input'): void {
+    this.mobxNode.addConnection(targetNode.id, outputName, inputName)
+  }
+
+  disconnect(): void {
+    this.mobxNode.clearConnections()
+  }
+
+  setValue(value: any): void {
+    this.mobxNode.setValue(value)
+  }
+
+  trigger(): void {
+    this.mobxNode.trigger()
+  }
+
+  receiveInput(inputName: string, value: any): void {
+    this.mobxNode.receiveInput(inputName, value)
+  }
+
+  createUIElement(container: HTMLElement): void {
+    // Delegate to node-type specific UI creation
+    this.createUIForNodeType(container)
+  }
+
+  cleanup(): void {
+    this.mobxNode.clearConnections()
+    if (this.uiElement) {
+      this.uiElement.remove()
+    }
+  }
+
+  getAudioOutput(): AudioNode | null {
+    return this.mobxNode.getAudioOutput?.() || null
+  }
+
+  setOutputChangeCallback(
+    callback: (nodeId: string, outputName: string, value: number) => void
+  ): void {
+    // The MobX store handles this via reactions
+    customNodeStore.setBridgeUpdateCallback(callback)
+  }
+
+  // Expose audio functionality for SoundFileNode
+  loadAudioFile(file: File): Promise<void> {
+    if (this.mobxNode.loadAudioFile) {
+      return this.mobxNode.loadAudioFile(file)
+    }
+    return Promise.resolve()
+  }
+
+  updateAudioContext(audioContext: AudioContext): void {
+    if (this.mobxNode.updateAudioContext) {
+      this.mobxNode.updateAudioContext(audioContext)
+    }
+  }
+
+  private createUIForNodeType(container: HTMLElement): void {
+    const nodeType = this.mobxNode.nodeType
+
+    if (nodeType === 'SliderNode') {
+      this.createSliderUI(container)
+    } else if (nodeType === 'DisplayNode') {
+      this.createDisplayUI(container)
+    } else if (nodeType === 'ButtonNode') {
+      this.createButtonUI(container)
+    } else if (nodeType === 'SoundFileNode') {
+      this.createSoundFileUI(container)
+    }
+    // Add more node types as needed
+  }
+
+  private createSliderUI(container: HTMLElement): void {
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = `
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    `
+
+    const labelElement = document.createElement('span')
+    labelElement.style.cssText = `
+      font-size: 12px;
+      color: #666;
+    `
+
+    const sliderElement = document.createElement('input')
+    sliderElement.type = 'range'
+    sliderElement.min = String(this.mobxNode.properties.get('min') || 0)
+    sliderElement.max = String(this.mobxNode.properties.get('max') || 100)
+    sliderElement.step = String(this.mobxNode.properties.get('step') || 1)
+    sliderElement.value = String(this.mobxNode.properties.get('value') || 50)
+    sliderElement.style.cssText = `width: 120px; margin: 0;`
+
+    const updateLabel = (): void => {
+      const label = this.mobxNode.properties.get('label') || 'Slider'
+      const value = this.mobxNode.properties.get('value') || 0
+      labelElement.textContent = `${label}: ${value}`
+    }
+
+    updateLabel()
+
+    sliderElement.addEventListener('input', () => {
+      const value = parseFloat(sliderElement.value)
+      this.mobxNode.setProperty('value', value)
+      this.mobxNode.setOutput('value', value)
+      updateLabel()
+      console.log(`🎚️ MobX SliderNode ${this.mobxNode.id} value changed to: ${value}`)
+      this.mobxNode.propagateOutput('value', value)
+    })
+
+    // Prevent drag events from bubbling
+    sliderElement.addEventListener('mousedown', e => e.stopPropagation())
+    sliderElement.addEventListener('mousemove', e => e.stopPropagation())
+    sliderElement.addEventListener('mouseup', e => e.stopPropagation())
+
+    wrapper.appendChild(labelElement)
+    wrapper.appendChild(sliderElement)
+    container.appendChild(wrapper)
+    this.uiElement = wrapper
+  }
+
+  private createDisplayUI(container: HTMLElement): void {
+    const displayElement = document.createElement('div')
+    displayElement.style.cssText = `
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 80px;
+      text-align: center;
+    `
+
+    const labelElement = document.createElement('span')
+    labelElement.style.cssText = `
+      font-size: 10px;
+      color: #666;
+      font-weight: bold;
+    `
+    labelElement.textContent = this.mobxNode.properties.get('label') || 'Display'
+
+    const valueElement = document.createElement('span')
+    valueElement.style.cssText = `
+      font-size: 14px;
+      color: #2563eb;
+      font-weight: bold;
+      background: #f1f5f9;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #cbd5e1;
+      font-family: 'Courier New', monospace;
+    `
+
+    const updateDisplay = (): void => {
+      const value = this.mobxNode.properties.get('currentValue') || 0
+      const precision = this.mobxNode.properties.get('precision') || 2
+
+      let displayValue: string
+      if (Number.isInteger(value) || precision === 0) {
+        displayValue = Math.round(value).toString()
+      } else {
+        displayValue = Number(value).toFixed(precision)
+      }
+
+      valueElement.textContent = displayValue
+    }
+
+    updateDisplay()
+
+    displayElement.appendChild(labelElement)
+    displayElement.appendChild(valueElement)
+    container.appendChild(displayElement)
+    this.uiElement = displayElement
+  }
+
+  private createButtonUI(container: HTMLElement): void {
+    const buttonElement = document.createElement('button')
+    const label = this.mobxNode.properties.get('label') || 'Button'
+    buttonElement.textContent = label
+    buttonElement.style.cssText = `
+      padding: 8px 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 4px;
+    `
+
+    buttonElement.addEventListener('click', () => {
+      this.mobxNode.trigger()
+    })
+
+    // Prevent click events from bubbling
+    buttonElement.addEventListener('mousedown', e => e.stopPropagation())
+    buttonElement.addEventListener('mouseup', e => e.stopPropagation())
+
+    container.appendChild(buttonElement)
+    this.uiElement = buttonElement
+  }
+
+  private createSoundFileUI(container: HTMLElement): void {
+    const wrapper = document.createElement('div')
+    wrapper.style.cssText = `
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    `
+
+    const label = document.createElement('span')
+    label.textContent = this.mobxNode.properties.get('fileName') || 'No file loaded'
+    label.style.cssText = `
+      font-size: 12px;
+      color: #666;
+    `
+
+    this.fileInputElement = document.createElement('input')
+    this.fileInputElement.type = 'file'
+    this.fileInputElement.accept = 'audio/*'
+    this.fileInputElement.style.cssText = `
+      font-size: 12px;
+      margin: 2px 0;
+    `
+
+    this.fileInputElement.addEventListener('change', event => {
+      const file = (event.target as HTMLInputElement).files?.[0]
+      if (file) {
+        this.loadAudioFile(file)
+        label.textContent = file.name
+        this.properties.set('fileName', file.name)
+      }
+    })
+
+    wrapper.appendChild(label)
+    wrapper.appendChild(this.fileInputElement)
+    container.appendChild(wrapper)
+  }
 }
 
 // Base class for custom nodes
@@ -990,7 +1257,7 @@ export class SoundFileNode extends BaseCustomNode {
   }
 }
 
-// Factory class for creating custom nodes
+// Updated CustomNodeFactory to use MobX store
 export class CustomNodeFactory {
   private audioContext: AudioContext
 
@@ -998,74 +1265,95 @@ export class CustomNodeFactory {
     this.audioContext = audioContext
   }
 
+  // Update audio context for all existing nodes
+  updateAudioContext(newAudioContext: AudioContext): void {
+    this.audioContext = newAudioContext
+    // The MobX store doesn't need audio context updates since it's state-only
+  }
+
+  // Create a custom node using MobX store
+  createNode(id: string, type: string, metadata: NodeMetadata): CustomNode {
+    console.log(`🏭 MobX CustomNodeFactory: Creating ${type} with id ${id}`)
+
+    // Set audio context on the store for SoundFileNode functionality
+    customNodeStore.setAudioContext(this.audioContext)
+
+    // Create the MobX observable node in the store
+    const mobxNode = customNodeStore.addNode(id, type, metadata)
+
+    // Return an adapter that implements the CustomNode interface
+    return new MobXCustomNodeAdapter(mobxNode)
+  }
+
+  // Check if a node type is a custom node
+  isCustomNodeType(nodeType: string): boolean {
+    const customNodeTypes = [
+      'ButtonNode',
+      'SliderNode',
+      'GreaterThanNode',
+      'EqualsNode',
+      'SelectNode',
+      'MidiInputNode',
+      'MidiToFreqNode',
+      'DisplayNode',
+      'RandomNode',
+      'SoundFileNode',
+    ]
+    return customNodeTypes.includes(nodeType)
+  }
+
+  // Get all custom node types
+  getCustomNodeTypes(): string[] {
+    return [
+      'ButtonNode',
+      'SliderNode',
+      'GreaterThanNode',
+      'EqualsNode',
+      'SelectNode',
+      'MidiInputNode',
+      'MidiToFreqNode',
+      'DisplayNode',
+      'RandomNode',
+      'SoundFileNode',
+    ]
+  }
+
+  // Clean up all custom nodes
+  cleanup(): void {
+    customNodeStore.clear()
+  }
+
+  // Set bridge update callback
+  setBridgeUpdateCallback(
+    callback: (nodeId: string, outputName: string, value: number) => void
+  ): void {
+    customNodeStore.setBridgeUpdateCallback(callback)
+  }
+
+  // Connect two custom nodes
+  connectCustomNodes(
+    sourceId: string,
+    targetId: string,
+    outputName: string,
+    inputName: string
+  ): void {
+    customNodeStore.connectNodes(sourceId, targetId, outputName, inputName)
+  }
+
+  // Get a custom node from the store
+  getCustomNode(id: string): CustomNode | undefined {
+    const mobxNode = customNodeStore.getNode(id)
+    return mobxNode ? new MobXCustomNodeAdapter(mobxNode) : undefined
+  }
+
+  // Backward compatibility method for existing tests
   createCustomNode(
     nodeType: string,
     metadata: NodeMetadata,
     properties: Record<string, any> = {}
   ): CustomNode {
-    let node: CustomNode
-
-    console.log(
-      `🏭 CustomNodeFactory: Creating ${nodeType} with properties:`,
-      Object.keys(properties)
-    )
-    console.log(`🏭 CustomNodeFactory: Using audioContext state = ${this.audioContext.state}`)
-
-    if (nodeType === 'SoundFileNode') {
-      console.log(`🎵 SoundFileNode properties:`, {
-        hasAudioBufferData: !!properties.audioBufferData,
-        fileName: properties.fileName,
-        audioBufferDataLength:
-          typeof properties.audioBufferData === 'string'
-            ? properties.audioBufferData.length
-            : 'not string',
-      })
-    }
-
-    switch (nodeType) {
-      case 'ButtonNode':
-        node = new ButtonNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'SliderNode':
-        node = new SliderNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'GreaterThanNode':
-        node = new GreaterThanNode(
-          `${nodeType}-${Date.now()}`,
-          nodeType,
-          this.audioContext,
-          metadata
-        )
-        break
-      case 'EqualsNode':
-        node = new EqualsNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'SelectNode':
-        node = new SelectNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'MidiInputNode':
-        node = new MidiInputNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'MidiToFreqNode':
-        node = new MidiToFreqNode(
-          `${nodeType}-${Date.now()}`,
-          nodeType,
-          this.audioContext,
-          metadata
-        )
-        break
-      case 'DisplayNode':
-        node = new DisplayNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'SoundFileNode':
-        node = new SoundFileNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      case 'RandomNode':
-        node = new RandomNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
-        break
-      default:
-        throw new Error(`Unknown custom node type: ${nodeType}`)
-    }
+    const id = `${nodeType}-${Date.now()}`
+    const node = this.createNode(id, nodeType, metadata)
 
     // Apply any initial properties
     Object.entries(properties).forEach(([key, value]) => {
@@ -1077,29 +1365,5 @@ export class CustomNodeFactory {
     })
 
     return node
-  }
-
-  isCustomNodeType(nodeType: string): boolean {
-    const customNodeTypes = [
-      'ButtonNode',
-      'SliderNode',
-      'GreaterThanNode',
-      'EqualsNode',
-      'SelectNode',
-      'MidiInputNode',
-      'MidiToFreqNode',
-      'DisplayNode',
-      'SoundFileNode',
-      'RandomNode',
-    ]
-    return customNodeTypes.includes(nodeType)
-  }
-
-  // Method to update audio context for all existing custom nodes
-  updateAudioContext(newAudioContext: AudioContext): void {
-    console.log(
-      `🔄 CustomNodeFactory: Updating audio context to new context (state: ${newAudioContext.state})`
-    )
-    this.audioContext = newAudioContext
   }
 }

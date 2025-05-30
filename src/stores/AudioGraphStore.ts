@@ -330,11 +330,16 @@ export const AudioGraphStore = types
         // Check if it's a custom node type
         if (self.customNodeFactory.isCustomNodeType(nodeType)) {
           try {
-            const customNode = self.customNodeFactory.createCustomNode(
-              nodeType,
-              metadata,
-              properties
-            )
+            const customNode = self.customNodeFactory.createNode(nodeId, nodeType, metadata)
+
+            // Apply properties after creation
+            Object.entries(properties).forEach(([key, value]) => {
+              if (customNode.setValue && key === 'value') {
+                customNode.setValue(value)
+              } else {
+                customNode.properties.set(key, value)
+              }
+            })
 
             // Set up callback for output changes to update bridges
             if (
