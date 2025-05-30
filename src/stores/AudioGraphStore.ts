@@ -4,10 +4,11 @@ import type { NodeMetadata } from '~/types'
 import { VisualNodeModel, VisualEdgeModel, AudioConnectionModel } from '~/models/NodeModels'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
+import { customNodeStore } from '~/stores/CustomNodeStore'
+import { createContext, useContext } from 'react'
 // Import the JSON metadata directly
 import webAudioMetadataJson from '~/types/web-audio-metadata.json'
 import customNodesMetadataJson from '~/types/custom-nodes-metadata.json'
-import { createContext, useContext } from 'react'
 
 // Use the imported metadata directly
 const getWebAudioMetadata = (): Record<string, NodeMetadata> => {
@@ -280,20 +281,22 @@ export const AudioGraphStore = types
           },
         }
 
+        // Create the actual audio node FIRST (before adding visual node)
+        // This ensures CustomNodeStore has the MobX node before React renders
+        try {
+          actions.createAudioNode(nodeId, nodeType)
+          console.log('STORE: Successfully created audio node')
+        } catch (error) {
+          console.error('STORE: Error creating audio node:', error)
+        }
+
+        // Now add the visual node to the store, so React components can find the MobX node
         try {
           self.visualNodes.push(visualNode)
           console.log('STORE: Successfully added node to visualNodes array')
         } catch (error) {
           console.error('STORE: Error adding node to visualNodes:', error)
           throw error
-        }
-
-        // Create the actual audio node using metadata-driven approach
-        try {
-          actions.createAudioNode(nodeId, nodeType)
-          console.log('STORE: Successfully created audio node')
-        } catch (error) {
-          console.error('STORE: Error creating audio node:', error)
         }
 
         // Increment graph change counter to force React re-render
@@ -428,6 +431,9 @@ export const AudioGraphStore = types
           try {
             customNode.cleanup()
             self.customNodes.delete(nodeId)
+
+            // Also remove from the CustomNodeStore
+            customNodeStore.removeNode(nodeId)
             console.log('Custom node cleanup completed')
           } catch (error) {
             console.error('Error during custom node cleanup:', error)
@@ -838,8 +844,8 @@ export const AudioGraphStore = types
         // Handle custom node to custom node connections
         if (sourceCustomNode && targetCustomNode) {
           try {
-            // Connect the custom nodes directly
-            sourceCustomNode.connect(targetCustomNode, sourceOutput, targetInput)
+            // Use the new reactive connection system
+            customNodeStore.connectNodes(sourceId, targetId, sourceOutput, targetInput)
 
             self.audioConnections.push({
               sourceNodeId: sourceId,
@@ -848,7 +854,9 @@ export const AudioGraphStore = types
               targetInput,
             })
 
-            console.log(`Connected custom node ${sourceId} to custom node ${targetId}`)
+            console.log(
+              `🔗 Connected custom node ${sourceId}.${sourceOutput} → ${targetId}.${targetInput} (reactive)`
+            )
           } catch (error) {
             console.error('Failed to connect custom node to custom node:', error)
           }

@@ -1,0 +1,37 @@
+import React from 'react'
+import { observer } from 'mobx-react-lite'
+import { customNodeStore } from '~/stores/CustomNodeStore'
+
+interface DisplayNodeComponentProps {
+  nodeId: string
+}
+
+const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ nodeId }) => {
+  const node = customNodeStore.getNode(nodeId)
+
+  if (!node || node.nodeType !== 'DisplayNode') {
+    return <div className="text-red-500 text-xs">DisplayNode not found</div>
+  }
+
+  const currentValue = node.properties.get('currentValue')
+  const label = node.properties.get('label') || 'Display'
+
+  // Ensure we show a meaningful value - use 0 if currentValue is undefined, null, or NaN
+  const displayValue =
+    currentValue !== undefined && currentValue !== null && !isNaN(currentValue) ? currentValue : 0
+
+  console.log(
+    `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, displayValue=${displayValue}`
+  )
+
+  return (
+    <div className="p-2 space-y-1">
+      <div className="text-xs font-medium text-gray-700">{label}</div>
+      <div className="text-lg font-mono bg-gray-50 px-2 py-1 rounded border text-center">
+        {displayValue}
+      </div>
+    </div>
+  )
+})
+
+export default DisplayNodeComponent

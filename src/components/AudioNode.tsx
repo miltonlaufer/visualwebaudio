@@ -1,7 +1,8 @@
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback } from 'react'
 import { Handle, Position, useNodeId } from '@xyflow/react'
 import type { VisualNodeData } from '~/types'
-import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import CustomNodeRenderer from './customNodes'
+import { customNodeStore } from '~/stores/CustomNodeStore'
 
 interface AudioNodeProps {
   data: VisualNodeData
@@ -11,11 +12,9 @@ interface AudioNodeProps {
 const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   console.log('AudioNode rendering:', data.nodeType)
 
-  const store = useAudioGraphStore()
   const nodeId = useNodeId() // Get the node ID from React Flow
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
-  const customUIRef = useRef<HTMLDivElement>(null)
 
   const { metadata, nodeType, properties } = data
 
@@ -33,26 +32,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
     'RandomNode',
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
-  // Initialize custom UI elements for custom nodes
-  useEffect(() => {
-    console.log(
-      `AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`
-    )
-    if (isCustomNode && customUIRef.current && nodeId) {
-      // Get the unified node from the store
-      const customNode = store.customNodes.get(nodeId)
-      if (
-        customNode &&
-        'createUIElement' in customNode &&
-        typeof customNode.createUIElement === 'function'
-      ) {
-        // Clear any existing content
-        customUIRef.current.innerHTML = ''
-        // Create the custom UI elements
-        customNode.createUIElement(customUIRef.current)
-      }
-    }
-  }, [isCustomNode, nodeId, store.customNodes, data.nodeType])
+
+  // Get the MobX custom node state directly from customNodeStore
+  const mobxCustomNode = isCustomNode && nodeId ? customNodeStore.getNode(nodeId) : null
+
   // Memoized handlers for better performance
   const handleMouseEnterHandle = useCallback((handleId: string) => {
     return () => setHoveredHandle(handleId)
@@ -125,17 +108,15 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   const getHandleColors = (type: string) => {
     if (type === 'audio') {
       return {
-        backgroundColor: '#059669', // emerald-600 (darker green)
-        borderColor: '#047857', // emerald-700 (even darker border)
-        labelColor: 'text-emerald-800',
-        badgeColor: 'bg-emerald-100 text-emerald-800',
+        bgClass: 'bg-emerald-600',
+        borderClass: 'border-emerald-700',
+        labelClass: 'text-emerald-800',
       }
     } else {
       return {
-        backgroundColor: '#dc2626', // red-600 (distinct red for control)
-        borderColor: '#b91c1c', // red-700 (darker red border)
-        labelColor: 'text-red-800',
-        badgeColor: 'bg-red-100 text-red-800',
+        bgClass: 'bg-red-600',
+        borderClass: 'border-red-700',
+        labelClass: 'text-red-800',
       }
     }
   }
@@ -197,10 +178,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
 
       {/* Input Handles and Labels */}
       {metadata.inputs.map((input: any, index: number) => {
-        const colors = getHandleColors(input.type)
         const topPosition = 35 + index * 30
         const handleId = `input-${input.name}`
         const showLabel = hoveredHandle === handleId || isConnecting
+        const colors = getHandleColors(input.type)
 
         return (
           <div key={handleId} className="absolute left-0" style={{ top: `${topPosition}px` }}>
@@ -209,14 +190,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
               position={Position.Left}
               id={input.name}
               data-handletype={input.type}
-              style={{
-                backgroundColor: colors.backgroundColor,
-                border: `2px solid ${colors.borderColor}`,
-                width: '14px',
-                height: '14px',
-                left: '-7px',
-                zIndex: 10,
-              }}
+              className={`w-[14px] h-[14px] z-10 -left-[7px] border-2 ${colors.bgClass} ${colors.borderClass}`}
               title={`${input.name} (${input.type})`}
               onMouseEnter={handleMouseEnterHandle(handleId)}
               onMouseLeave={handleMouseLeaveHandle}
@@ -225,7 +199,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
             {showLabel && (
               <div className="absolute left-2 top-1/2 transform -translate-y-1/2 flex items-center pointer-events-none z-20">
                 <span
-                  className={`text-xs font-medium ${colors.labelColor} bg-white px-1 rounded shadow-sm`}
+                  className={`text-xs font-medium ${colors.labelClass} bg-white px-1 rounded shadow-sm`}
                 >
                   {input.name}
                 </span>
@@ -237,10 +211,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
 
       {/* Output Handles and Labels */}
       {metadata.outputs.map((output: any, index: number) => {
-        const colors = getHandleColors(output.type)
         const topPosition = 35 + index * 30
         const handleId = `output-${output.name}`
         const showLabel = hoveredHandle === handleId || isConnecting
+        const colors = getHandleColors(output.type)
 
         return (
           <div key={handleId} className="absolute right-0" style={{ top: `${topPosition}px` }}>
@@ -249,14 +223,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
               position={Position.Right}
               id={output.name}
               data-handletype={output.type}
-              style={{
-                backgroundColor: colors.backgroundColor,
-                border: `2px solid ${colors.borderColor}`,
-                width: '14px',
-                height: '14px',
-                right: '-7px',
-                zIndex: 10,
-              }}
+              className={`w-[14px] h-[14px] z-10 -right-[7px] border-2 ${colors.bgClass} ${colors.borderClass}`}
               title={`${output.name} (${output.type})`}
               onMouseEnter={handleMouseEnterHandle(handleId)}
               onMouseLeave={handleMouseLeaveHandle}
@@ -265,7 +232,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
             {showLabel && (
               <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex items-center justify-end pointer-events-none z-20">
                 <span
-                  className={`text-xs font-medium ${colors.labelColor} bg-white px-1 rounded shadow-sm`}
+                  className={`text-xs font-medium ${colors.labelClass} bg-white px-1 rounded shadow-sm`}
                 >
                   {output.name}
                 </span>
@@ -281,8 +248,10 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
       </div>
 
       {/* Custom Node UI Container */}
-      {isCustomNode && (
-        <div ref={customUIRef} className="w-full flex justify-center items-center my-2" />
+      {isCustomNode && mobxCustomNode && nodeId && (
+        <div className="w-full flex justify-center items-center my-2">
+          <CustomNodeRenderer nodeId={nodeId} nodeType={nodeType} />
+        </div>
       )}
 
       {/* Node Properties - Show properties for nodes with fewer handles or important properties (only for non-custom nodes) */}
