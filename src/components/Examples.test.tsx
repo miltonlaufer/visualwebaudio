@@ -294,6 +294,7 @@ describe('Examples Structure Tests', () => {
         'midi-to-frequency',
         'basic-oscillator',
         'microphone-input',
+        'sound-file-player',
         'delay-effect',
         'filter-sweep',
         'stereo-panner',

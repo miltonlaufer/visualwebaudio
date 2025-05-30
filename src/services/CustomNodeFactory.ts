@@ -13,8 +13,12 @@ export interface CustomNode {
   receiveInput?(inputName: string, value: any): void
   createUIElement?(container: HTMLElement): void
   cleanup(): void
-  // Add callback for bridge updates
-  onOutputChange?: (outputName: string, value: any) => void
+  // Add method to get audio output for nodes that have audio connections
+  getAudioOutput?(): AudioNode | null
+  // Add method to set callback for output changes
+  setOutputChangeCallback?(
+    callback: (nodeId: string, outputName: string, value: number) => void
+  ): void
 }
 
 // Base class for custom nodes
@@ -25,7 +29,7 @@ export class BaseCustomNode implements CustomNode {
   outputs: Map<string, any> = new Map()
   private connections: Array<{ target: CustomNode; outputName: string; inputName: string }> = []
   protected audioContext: AudioContext
-  onOutputChange?: (outputName: string, value: any) => void
+  private onOutputChangeCallback?: (nodeId: string, outputName: string, value: number) => void
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     this.id = id
@@ -43,6 +47,18 @@ export class BaseCustomNode implements CustomNode {
     })
   }
 
+  // Method to set the callback for output changes
+  setOutputChangeCallback(
+    callback: (nodeId: string, outputName: string, value: number) => void
+  ): void {
+    this.onOutputChangeCallback = callback
+  }
+
+  // Method to update the audio context reference
+  updateAudioContext(newAudioContext: AudioContext): void {
+    this.audioContext = newAudioContext
+  }
+
   connect(targetNode: CustomNode, outputName = 'output', inputName = 'input'): void {
     this.connections.push({ target: targetNode, outputName, inputName })
   }
@@ -52,25 +68,35 @@ export class BaseCustomNode implements CustomNode {
   }
 
   protected notifyConnections(outputName: string, value: any): void {
+    console.log(`🔄 ${this.type} ${this.id} notifyConnections(${outputName}, ${value})`)
+
+    // Update the output value in the custom node
+    this.outputs.set(outputName, value)
+
+    // Notify connected custom nodes
     this.connections
       .filter(conn => conn.outputName === outputName)
       .forEach(conn => {
+        console.log(
+          `  → Notifying ${conn.target.type} ${conn.target.id}.receiveInput(${conn.inputName}, ${value})`
+        )
         if (conn.target.receiveInput) {
           conn.target.receiveInput(conn.inputName, value)
         }
       })
-    
-    // Also notify store for bridge updates
-    if (this.onOutputChange) {
-      this.onOutputChange(outputName, value)
+
+    // Notify the store about output changes for bridge updates
+    if (this.onOutputChangeCallback && typeof value === 'number') {
+      console.log(
+        `  → Calling bridge update callback for ${this.id} output ${outputName}: ${value}`
+      )
+      this.onOutputChangeCallback(this.id, outputName, value)
     }
   }
 
   receiveInput(inputName: string, value: any): void {
     // ButtonNode doesn't process inputs, it only triggers outputs
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     void inputName
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     void value
   }
 
@@ -91,7 +117,7 @@ export class ButtonNode extends BaseCustomNode {
 
   createUIElement(container: HTMLElement): void {
     const label = this.properties.get('label') || 'Button'
-    
+
     this.buttonElement = document.createElement('button')
     this.buttonElement.textContent = label
     this.buttonElement.style.cssText = `
@@ -104,11 +130,20 @@ export class ButtonNode extends BaseCustomNode {
       font-size: 14px;
       margin: 4px;
     `
-    
+
     this.buttonElement.addEventListener('click', () => {
       this.trigger()
     })
-    
+
+    // Prevent click events from bubbling up to React Flow
+    this.buttonElement.addEventListener('mousedown', e => {
+      e.stopPropagation()
+    })
+
+    this.buttonElement.addEventListener('mouseup', e => {
+      e.stopPropagation()
+    })
+
     container.appendChild(this.buttonElement)
   }
 
@@ -129,7 +164,7 @@ export class SliderNode extends BaseCustomNode {
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
-    
+
     // Set initial output value
     const initialValue = this.properties.get('value') || 50
     this.outputs.set('value', initialValue)
@@ -157,7 +192,7 @@ export class SliderNode extends BaseCustomNode {
     this.sliderElement.max = String(this.properties.get('max') || 100)
     this.sliderElement.step = String(this.properties.get('step') || 1)
     this.sliderElement.value = String(this.properties.get('value') || 50)
-    
+
     this.sliderElement.style.cssText = `
       width: 120px;
       margin: 0;
@@ -170,6 +205,32 @@ export class SliderNode extends BaseCustomNode {
       this.updateLabel()
       console.log(`🎚️ SliderNode ${this.id} value changed to: ${value}, notifying connections`)
       this.notifyConnections('value', value)
+    })
+
+    // Prevent drag events from bubbling up to React Flow
+    this.sliderElement.addEventListener('mousedown', e => {
+      e.stopPropagation()
+    })
+
+    this.sliderElement.addEventListener('mousemove', e => {
+      e.stopPropagation()
+    })
+
+    this.sliderElement.addEventListener('mouseup', e => {
+      e.stopPropagation()
+    })
+
+    // Also prevent touch events for mobile
+    this.sliderElement.addEventListener('touchstart', e => {
+      e.stopPropagation()
+    })
+
+    this.sliderElement.addEventListener('touchmove', e => {
+      e.stopPropagation()
+    })
+
+    this.sliderElement.addEventListener('touchend', e => {
+      e.stopPropagation()
     })
 
     wrapper.appendChild(this.labelElement)
@@ -209,7 +270,7 @@ export class GreaterThanNode extends BaseCustomNode {
     } else if (inputName === 'input2') {
       this.input2Value = Number(value) || 0
     }
-    
+
     this.calculateResult()
   }
 
@@ -231,7 +292,7 @@ export class EqualsNode extends BaseCustomNode {
     } else if (inputName === 'input2') {
       this.input2Value = Number(value) || 0
     }
-    
+
     this.calculateResult()
   }
 
@@ -254,7 +315,7 @@ export class SelectNode extends BaseCustomNode {
     } else if (inputName === 'input') {
       this.inputValue = value
     }
-    
+
     this.routeOutput()
   }
 
@@ -262,7 +323,7 @@ export class SelectNode extends BaseCustomNode {
     const numOutputs = this.properties.get('numOutputs') || 2
     const outputIndex = Math.max(0, Math.min(this.selectorValue, numOutputs - 1))
     const outputName = `output${outputIndex}`
-    
+
     this.outputs.set(outputName, this.inputValue)
     this.notifyConnections(outputName, this.inputValue)
   }
@@ -292,11 +353,11 @@ export class MidiInputNode extends BaseCustomNode {
     if (!this.midiAccess) return
 
     const channel = this.properties.get('channel') || 1
-    
+
     this.midiAccess.inputs.forEach((input: MIDIInput) => {
       input.onmidimessage = (event: MIDIMessageEvent) => {
         if (!event.data || event.data.length < 2) return
-        
+
         const status = event.data[0]
         const data1 = event.data[1]
         const data2 = event.data.length > 2 ? event.data[2] : 0
@@ -312,20 +373,21 @@ export class MidiInputNode extends BaseCustomNode {
               this.notifyConnections('note', data1)
               this.notifyConnections('velocity', data2)
               break
-            
+
             case 0x80: // Note off
               this.outputs.set('note', data1)
               this.outputs.set('velocity', 0)
               this.notifyConnections('note', data1)
               this.notifyConnections('velocity', 0)
               break
-            
+
             case 0xb0: // Control change
               this.outputs.set('cc', data2)
               this.notifyConnections('cc', data2)
               break
-            
-            case 0xe0: { // Pitch bend
+
+            case 0xe0: {
+              // Pitch bend
               const pitchValue = (data2 << 7) | data1
               this.outputs.set('pitch', pitchValue)
               this.notifyConnections('pitch', pitchValue)
@@ -370,13 +432,21 @@ export class DisplayNode extends BaseCustomNode {
   private displayElement?: HTMLDivElement
   private valueElement?: HTMLSpanElement
   private labelElement?: HTMLSpanElement
+  private onPropertyChangeCallback?: (nodeId: string, propertyName: string, value: any) => void
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
-    
+
     // Set initial output to match input (passthrough)
     const initialValue = this.properties.get('currentValue') || 0
     this.outputs.set('output', initialValue)
+  }
+
+  // Method to set the callback for property changes
+  setPropertyChangeCallback(
+    callback: (nodeId: string, propertyName: string, value: any) => void
+  ): void {
+    this.onPropertyChangeCallback = callback
   }
 
   createUIElement(container: HTMLElement): void {
@@ -420,14 +490,19 @@ export class DisplayNode extends BaseCustomNode {
     console.log(`🔍 DisplayNode ${this.id} receiveInput: ${inputName} = ${value}`)
     if (inputName === 'input') {
       const numValue = Number(value) || 0
-      
+
       // Update the current value property
       this.properties.set('currentValue', numValue)
-      
+
+      // Notify the store to update the visual node property for the properties panel
+      if (this.onPropertyChangeCallback) {
+        this.onPropertyChangeCallback(this.id, 'currentValue', numValue)
+      }
+
       // Pass through to output (for chaining)
       this.outputs.set('output', numValue)
       this.notifyConnections('output', numValue)
-      
+
       // Update the display
       this.updateDisplay()
       console.log(`📊 DisplayNode ${this.id} updated display to: ${numValue}`)
@@ -438,14 +513,14 @@ export class DisplayNode extends BaseCustomNode {
     if (this.valueElement) {
       const value = this.properties.get('currentValue') || 0
       const precision = this.properties.get('precision') || 2
-      
+
       let displayValue: string
       if (Number.isInteger(value) || precision === 0) {
         displayValue = Math.round(value).toString()
       } else {
         displayValue = Number(value).toFixed(precision)
       }
-      
+
       this.valueElement.textContent = displayValue
     }
   }
@@ -473,12 +548,12 @@ export class RandomNode extends BaseCustomNode {
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
-    
+
     // Set initial output value
     const initialValue = this.generateRandomValue()
     this.properties.set('currentValue', initialValue)
     this.outputs.set('value', initialValue)
-    
+
     // Start generating random values
     this.startRandomGeneration()
   }
@@ -547,6 +622,32 @@ export class RandomNode extends BaseCustomNode {
       this.restartRandomGeneration()
     })
 
+    // Prevent drag events from bubbling up to React Flow
+    this.rateInputElement.addEventListener('mousedown', e => {
+      e.stopPropagation()
+    })
+
+    this.rateInputElement.addEventListener('mousemove', e => {
+      e.stopPropagation()
+    })
+
+    this.rateInputElement.addEventListener('mouseup', e => {
+      e.stopPropagation()
+    })
+
+    // Also prevent touch events for mobile
+    this.rateInputElement.addEventListener('touchstart', e => {
+      e.stopPropagation()
+    })
+
+    this.rateInputElement.addEventListener('touchmove', e => {
+      e.stopPropagation()
+    })
+
+    this.rateInputElement.addEventListener('touchend', e => {
+      e.stopPropagation()
+    })
+
     rateWrapper.appendChild(rateLabel)
     rateWrapper.appendChild(this.rateInputElement)
 
@@ -582,7 +683,7 @@ export class RandomNode extends BaseCustomNode {
     this.stopRandomGeneration()
     const rate = this.properties.get('rate') || 1
     const intervalMs = 1000 / rate // Convert Hz to milliseconds
-    
+
     this.intervalId = window.setInterval(() => {
       const newValue = this.generateRandomValue()
       this.properties.set('currentValue', newValue)
@@ -633,11 +734,88 @@ export class SoundFileNode extends BaseCustomNode {
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
     this.setupAudioNodes()
+
+    // Important: Restore audio buffer if data exists in properties during construction
+    // This is crucial for when nodes are recreated after pause/resume
+    setTimeout(() => {
+      this.restoreAudioBufferFromProperties()
+    }, 50) // Small delay to ensure all properties are set
   }
 
   private setupAudioNodes(): void {
     this.gainNode = this.audioContext.createGain()
     this.gainNode.gain.value = this.properties.get('gain') || 1
+  }
+
+  private async restoreAudioBufferFromProperties(): Promise<void> {
+    const audioBufferData = this.properties.get('audioBufferData')
+    const fileName = this.properties.get('fileName')
+
+    console.log(`🔍 SoundFileNode: Attempting to restore audio data...`)
+    console.log(`🔍 audioBufferData exists: ${!!audioBufferData}, type: ${typeof audioBufferData}`)
+    console.log(`🔍 fileName: ${fileName}`)
+    console.log(`🔍 Properties keys: [${Array.from(this.properties.keys()).join(', ')}]`)
+
+    if (audioBufferData && fileName) {
+      try {
+        console.log(`🎵 SoundFileNode: Restoring audio buffer for ${fileName}`)
+        console.log(
+          `🎵 Data length: ${typeof audioBufferData === 'string' ? audioBufferData.length : 'not string'}`
+        )
+
+        // Ensure audioBufferData is a string (base64)
+        if (typeof audioBufferData !== 'string') {
+          console.error('🚨 audioBufferData is not a string:', typeof audioBufferData)
+          throw new Error('Invalid audioBufferData format - expected base64 string')
+        }
+
+        // Convert base64 to ArrayBuffer and decode
+        const arrayBuffer = this.base64ToArrayBuffer(audioBufferData)
+        console.log(`🔄 Converting array buffer of length ${arrayBuffer.byteLength}`)
+
+        this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer)
+        this.outputs.set('loaded', 1)
+        this.notifyConnections('loaded', 1)
+
+        console.log(`✅ SoundFileNode: Successfully restored audio buffer for ${fileName}`)
+        console.log(`   - Duration: ${this.audioBuffer.duration.toFixed(2)}s`)
+        console.log(`   - Sample rate: ${this.audioBuffer.sampleRate}Hz`)
+        console.log(`   - Channels: ${this.audioBuffer.numberOfChannels}`)
+      } catch (error) {
+        console.error('🚨 SoundFileNode: Error restoring audio buffer:', error)
+        this.outputs.set('loaded', 0)
+        this.notifyConnections('loaded', 0)
+
+        // Don't clear the data here - it might be a temporary decoding issue
+        // Let the user try to reload the file manually
+        console.warn('🔄 SoundFileNode: Audio data preserved - user can try reloading')
+      }
+    } else {
+      console.log(`⚠️ SoundFileNode: No stored audio data found`)
+      console.log(`   - audioBufferData missing: ${!audioBufferData}`)
+      console.log(`   - fileName missing: ${!fileName}`)
+      this.outputs.set('loaded', 0)
+      this.notifyConnections('loaded', 0)
+    }
+  }
+
+  private arrayBufferToBase64(buffer: ArrayBuffer): string {
+    const bytes = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  private base64ToArrayBuffer(base64: string): ArrayBuffer {
+    const binaryString = atob(base64)
+    const len = binaryString.length
+    const bytes = new Uint8Array(len)
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i)
+    }
+    return bytes.buffer
   }
 
   createUIElement(container: HTMLElement): void {
@@ -664,7 +842,7 @@ export class SoundFileNode extends BaseCustomNode {
       margin: 2px 0;
     `
 
-    this.fileInputElement.addEventListener('change', (event) => {
+    this.fileInputElement.addEventListener('change', event => {
       const file = (event.target as HTMLInputElement).files?.[0]
       if (file) {
         this.loadFile(file)
@@ -681,13 +859,25 @@ export class SoundFileNode extends BaseCustomNode {
   private async loadFile(file: File): Promise<void> {
     try {
       const arrayBuffer = await file.arrayBuffer()
-      this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer)
+
+      // Store the raw audio data for persistence across context recreations
+      const base64Data = this.arrayBufferToBase64(arrayBuffer)
+      this.properties.set('audioBufferData', base64Data)
+      this.properties.set('fileName', file.name)
+
+      // Decode audio buffer for immediate use
+      this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice())
       this.outputs.set('loaded', 1)
       this.notifyConnections('loaded', 1)
+
+      console.log(`🎵 SoundFileNode: Loaded and stored audio file: ${file.name}`)
     } catch (error) {
       console.error('Error loading audio file:', error)
       this.outputs.set('loaded', 0)
       this.notifyConnections('loaded', 0)
+      // Clear any partial data
+      this.properties.delete('audioBufferData')
+      this.properties.delete('fileName')
     }
   }
 
@@ -698,28 +888,77 @@ export class SoundFileNode extends BaseCustomNode {
   }
 
   trigger(): void {
-    if (!this.audioBuffer || !this.gainNode) return
+    console.log(`🎯 SoundFileNode trigger called:`)
+    console.log(`   - audioBuffer exists: ${!!this.audioBuffer}`)
+    console.log(`   - gainNode exists: ${!!this.gainNode}`)
+    console.log(`   - audioContext state: ${this.audioContext.state}`)
 
+    if (!this.audioBuffer) {
+      console.warn('SoundFileNode: No audio buffer loaded')
+      return
+    }
+
+    // If the audio context is closed, we need to get a fresh one
+    // This can happen after pause/resume cycles
+    if (this.audioContext.state === 'closed') {
+      console.warn('SoundFileNode: Stored audio context is closed - node needs to be recreated')
+      return
+    }
+
+    // Ensure we have a valid gain node for the current context
+    if (!this.gainNode || this.gainNode.context !== this.audioContext) {
+      console.log('SoundFileNode: Recreating gain node for current context')
+      this.setupAudioNodes()
+    }
+
+    if (!this.gainNode) {
+      console.warn('SoundFileNode: No gain node available after setup')
+      return
+    }
+
+    if (this.audioContext.state === 'suspended') {
+      console.warn('SoundFileNode: Audio context is suspended. Attempting to resume...')
+      this.audioContext
+        .resume()
+        .then(() => {
+          console.log('SoundFileNode: Audio context resumed, triggering playback')
+          this.performTrigger()
+        })
+        .catch(error => {
+          console.error('SoundFileNode: Failed to resume audio context:', error)
+        })
+      return
+    }
+
+    this.performTrigger()
+  }
+
+  private performTrigger(): void {
     // Stop previous playback
     if (this.bufferSource) {
-      this.bufferSource.stop()
-      this.bufferSource.disconnect()
+      try {
+        this.bufferSource.stop()
+        this.bufferSource.disconnect()
+      } catch {
+        console.log('SoundFileNode: Previous buffer source already stopped')
+      }
     }
 
     // Create new buffer source
     this.bufferSource = this.audioContext.createBufferSource()
-    this.bufferSource.buffer = this.audioBuffer
+    this.bufferSource.buffer = this.audioBuffer!
     this.bufferSource.loop = this.properties.get('loop') || false
     this.bufferSource.playbackRate.value = this.properties.get('playbackRate') || 1
 
     // Update gain
-    this.gainNode.gain.value = this.properties.get('gain') || 1
+    this.gainNode!.gain.value = this.properties.get('gain') || 1
 
     // Connect: bufferSource -> gainNode -> (external connections)
-    this.bufferSource.connect(this.gainNode)
+    this.bufferSource.connect(this.gainNode!)
 
     // Start playback
     this.bufferSource.start()
+    console.log('SoundFileNode: Audio playback started')
   }
 
   getAudioOutput(): AudioNode | null {
@@ -736,6 +975,19 @@ export class SoundFileNode extends BaseCustomNode {
       this.gainNode.disconnect()
     }
   }
+
+  // Override to handle audio context updates
+  updateAudioContext(newAudioContext: AudioContext): void {
+    console.log(
+      `🔄 SoundFileNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
+    )
+    super.updateAudioContext(newAudioContext)
+
+    // Recreate audio nodes with the new context
+    this.setupAudioNodes()
+
+    console.log(`✅ SoundFileNode: Audio context updated and nodes recreated`)
+  }
 }
 
 // Factory class for creating custom nodes
@@ -746,8 +998,29 @@ export class CustomNodeFactory {
     this.audioContext = audioContext
   }
 
-  createCustomNode(nodeType: string, metadata: NodeMetadata, properties: Record<string, any> = {}): CustomNode {
+  createCustomNode(
+    nodeType: string,
+    metadata: NodeMetadata,
+    properties: Record<string, any> = {}
+  ): CustomNode {
     let node: CustomNode
+
+    console.log(
+      `🏭 CustomNodeFactory: Creating ${nodeType} with properties:`,
+      Object.keys(properties)
+    )
+    console.log(`🏭 CustomNodeFactory: Using audioContext state = ${this.audioContext.state}`)
+
+    if (nodeType === 'SoundFileNode') {
+      console.log(`🎵 SoundFileNode properties:`, {
+        hasAudioBufferData: !!properties.audioBufferData,
+        fileName: properties.fileName,
+        audioBufferDataLength:
+          typeof properties.audioBufferData === 'string'
+            ? properties.audioBufferData.length
+            : 'not string',
+      })
+    }
 
     switch (nodeType) {
       case 'ButtonNode':
@@ -757,7 +1030,12 @@ export class CustomNodeFactory {
         node = new SliderNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
         break
       case 'GreaterThanNode':
-        node = new GreaterThanNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
+        node = new GreaterThanNode(
+          `${nodeType}-${Date.now()}`,
+          nodeType,
+          this.audioContext,
+          metadata
+        )
         break
       case 'EqualsNode':
         node = new EqualsNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
@@ -769,7 +1047,12 @@ export class CustomNodeFactory {
         node = new MidiInputNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
         break
       case 'MidiToFreqNode':
-        node = new MidiToFreqNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
+        node = new MidiToFreqNode(
+          `${nodeType}-${Date.now()}`,
+          nodeType,
+          this.audioContext,
+          metadata
+        )
         break
       case 'DisplayNode':
         node = new DisplayNode(`${nodeType}-${Date.now()}`, nodeType, this.audioContext, metadata)
@@ -799,7 +1082,7 @@ export class CustomNodeFactory {
   isCustomNodeType(nodeType: string): boolean {
     const customNodeTypes = [
       'ButtonNode',
-      'SliderNode', 
+      'SliderNode',
       'GreaterThanNode',
       'EqualsNode',
       'SelectNode',
@@ -807,8 +1090,16 @@ export class CustomNodeFactory {
       'MidiToFreqNode',
       'DisplayNode',
       'SoundFileNode',
-      'RandomNode'
+      'RandomNode',
     ]
     return customNodeTypes.includes(nodeType)
   }
-} 
+
+  // Method to update audio context for all existing custom nodes
+  updateAudioContext(newAudioContext: AudioContext): void {
+    console.log(
+      `🔄 CustomNodeFactory: Updating audio context to new context (state: ${newAudioContext.state})`
+    )
+    this.audioContext = newAudioContext
+  }
+}

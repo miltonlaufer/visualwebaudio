@@ -32,25 +32,43 @@ export const useExamples = () => {
         // Clear existing nodes first to avoid conflicts
         store.clearAllNodes()
 
-        const sliderId = store.addNode('SliderNode', { x: -296.62006604649963, y: 178.86761051567646 })
-        const displayNode1Id = store.addNode('DisplayNode', { x: -0.683888634989259, y: 194.5119899292198 })
-        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 222.03647005056547, y: 95.11144879676417 })
-        const displayNode2Id = store.addNode('DisplayNode', { x: 497.60216452982104, y: 252.40628596561203 })
-        const oscId = store.addNode('OscillatorNode', { x: 728.047959716879, y: -12.436677674416607 })
-        const destId = store.addNode('AudioDestinationNode', { x: 991.3458360566071, y: 179.84633631951323 })
+        const sliderId = store.addNode('SliderNode', {
+          x: -2.6200660464996304,
+          y: -27.92407649604229,
+        })
+        const displayNode1Id = store.addNode('DisplayNode', {
+          x: -0.683888634989259,
+          y: 194.5119899292198,
+        })
+        const midiToFreqId = store.addNode('MidiToFreqNode', {
+          x: 255.03647005056547,
+          y: -12.888551203235835,
+        })
+        const displayNode2Id = store.addNode('DisplayNode', {
+          x: 283.60216452982104,
+          y: 200.40628596561203,
+        })
+        const oscId = store.addNode('OscillatorNode', {
+          x: 543.047959716879,
+          y: -28.436677674416615,
+        })
+        const destId = store.addNode('AudioDestinationNode', {
+          x: 520.3458360566071,
+          y: 263.8463363195132,
+        })
 
         console.log('MIDI to Frequency: Setting up slider for MIDI note range...')
-        store.updateNodeProperty(sliderId, 'min', 0)
-        store.updateNodeProperty(sliderId, 'max', 100)
-        store.updateNodeProperty(sliderId, 'value', 50)
-        store.updateNodeProperty(sliderId, 'label', 'Slider')
+        store.updateNodeProperty(sliderId, 'min', 48)
+        store.updateNodeProperty(sliderId, 'max', 84)
+        store.updateNodeProperty(sliderId, 'value', 60)
+        store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
 
         console.log('MIDI to Frequency: Setting up MIDI to frequency converter...')
         store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
         store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
 
         console.log('MIDI to Frequency: Setting up oscillator...')
-        store.updateNodeProperty(oscId, 'frequency', 440)
+        // Don't set frequency here - it will be controlled by the MIDI input
         store.updateNodeProperty(oscId, 'type', 'sine')
 
         console.log('MIDI to Frequency: Connecting slider to display nodes and oscillator...')
@@ -59,6 +77,10 @@ export const useExamples = () => {
         store.addEdge(midiToFreqId, displayNode2Id, 'frequency', 'input')
         store.addEdge(displayNode2Id, oscId, 'output', 'frequency')
         store.addEdge(oscId, destId, 'output', 'input')
+
+        // Trigger initial value propagation through the chain
+        console.log('MIDI to Frequency: Triggering initial value propagation...')
+        store.updateNodeProperty(sliderId, 'value', 60) // This will trigger the chain
       }),
     },
     {
@@ -119,6 +141,35 @@ export const useExamples = () => {
             'Microphone access denied or not available. Please allow microphone access and try again.'
           )
         }
+      }),
+    },
+    {
+      id: 'sound-file-player',
+      name: 'Sound File Player',
+      description: 'Button-triggered sound file playback',
+      create: createExample(() => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const soundFileId = store.addNode('SoundFileNode', { x: 629, y: 117 })
+        const buttonId = store.addNode('ButtonNode', { x: 350, y: 100 })
+        const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
+
+        console.log('Sound File Player: Setting up button...')
+        store.updateNodeProperty(buttonId, 'label', 'Play Sound')
+        store.updateNodeProperty(buttonId, 'outputValue', 1)
+
+        console.log('Sound File Player: Setting up sound file node...')
+        store.updateNodeProperty(soundFileId, 'gain', 1)
+        store.updateNodeProperty(soundFileId, 'loop', false)
+        store.updateNodeProperty(soundFileId, 'playbackRate', 1)
+
+        // Connect the nodes
+        console.log('Sound File Player: Connecting button to sound file...')
+        store.addEdge(buttonId, soundFileId, 'trigger', 'trigger')
+
+        console.log('Sound File Player: Connecting sound file to destination...')
+        store.addEdge(soundFileId, destId, 'output', 'input')
       }),
     },
     {

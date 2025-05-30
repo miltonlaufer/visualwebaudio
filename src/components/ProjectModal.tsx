@@ -186,30 +186,38 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       // Clear existing project
       store.clearAllNodes()
 
-      // Apply the imported data
-      const newSnapshot = {
-        ...getSnapshot(store),
-        visualNodes: importData.visualNodes,
-        visualEdges: importData.visualEdges,
-        audioConnections: importData.audioConnections,
+      // Set flag to prevent marking as modified during loading
+      store.setLoadingProject(true)
+
+      try {
+        // Apply the imported data
+        const newSnapshot = {
+          ...getSnapshot(store),
+          visualNodes: importData.visualNodes,
+          visualEdges: importData.visualEdges,
+          audioConnections: importData.audioConnections,
+        }
+
+        applySnapshot(store, newSnapshot)
+
+        // Recreate the audio graph and wait for it to complete
+        await store.recreateAudioGraph()
+
+        setCurrentProjectId(project.id || null)
+        setCurrentProjectName(project.name)
+        setStorageSuccess(`Project "${project.name}" loaded successfully!`)
+
+        // Mark project as unmodified after successful load
+        store.setProjectModified(false)
+
+        setTimeout(() => {
+          setStorageSuccess(null)
+          onClose()
+        }, 2000)
+      } finally {
+        // Always reset the flag, even if there's an error
+        store.setLoadingProject(false)
       }
-
-      applySnapshot(store, newSnapshot)
-
-      // Recreate the audio graph
-      store.recreateAudioGraph()
-
-      setCurrentProjectId(project.id || null)
-      setCurrentProjectName(project.name)
-      setStorageSuccess(`Project "${project.name}" loaded successfully!`)
-
-      // Mark project as unmodified after successful load
-      store.setProjectModified(false)
-
-      setTimeout(() => {
-        setStorageSuccess(null)
-        onClose()
-      }, 2000)
     } catch (error) {
       setStorageError('Failed to load project: ' + (error as Error).message)
     }
@@ -285,7 +293,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     if (!file) return
 
     const reader = new FileReader()
-    reader.onload = e => {
+    reader.onload = async e => {
       try {
         const content = e.target?.result as string
         const importData = JSON.parse(content)
@@ -298,32 +306,40 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         // Clear existing project
         store.clearAllNodes()
 
-        // Apply the imported data
-        const newSnapshot = {
-          ...getSnapshot(store),
-          visualNodes: importData.visualNodes,
-          visualEdges: importData.visualEdges,
-          audioConnections: importData.audioConnections,
+        // Set flag to prevent marking as modified during loading
+        store.setLoadingProject(true)
+
+        try {
+          // Apply the imported data
+          const newSnapshot = {
+            ...getSnapshot(store),
+            visualNodes: importData.visualNodes,
+            visualEdges: importData.visualEdges,
+            audioConnections: importData.audioConnections,
+          }
+
+          applySnapshot(store, newSnapshot)
+
+          // Recreate the audio graph and wait for it to complete
+          await store.recreateAudioGraph()
+
+          setImportSuccess(true)
+          setImportError(null)
+
+          console.log('Project imported successfully')
+
+          // Mark project as unmodified after successful import
+          store.setProjectModified(false)
+
+          // Auto-close after success
+          setTimeout(() => {
+            setImportSuccess(false)
+            onClose()
+          }, 2000)
+        } finally {
+          // Always reset the flag, even if there's an error
+          store.setLoadingProject(false)
         }
-
-        applySnapshot(store, newSnapshot)
-
-        // Recreate the audio graph
-        store.recreateAudioGraph()
-
-        setImportSuccess(true)
-        setImportError(null)
-
-        console.log('Project imported successfully')
-
-        // Mark project as unmodified after successful import
-        store.setProjectModified(false)
-
-        // Auto-close after success
-        setTimeout(() => {
-          setImportSuccess(false)
-          onClose()
-        }, 2000)
       } catch (error) {
         console.error('Import failed:', error)
         setImportError('Import failed: ' + (error as Error).message)

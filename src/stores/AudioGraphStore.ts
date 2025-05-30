@@ -18,6 +18,7 @@ const getCustomNodesMetadata = (): Record<string, NodeMetadata> => {
   return customNodesMetadataJson as Record<string, NodeMetadata>
 }
 
+// Combine both metadata sources
 const getAllNodesMetadata = (): Record<string, NodeMetadata> => {
   return {
     ...getWebAudioMetadata(),
@@ -57,6 +58,8 @@ export const AudioGraphStore = types
     isClearingAllNodes: false,
     // Flag to disable undo/redo recording (for automatic play state changes)
     isUpdatingPlayState: false,
+    // Flag to disable modification tracking during project loading
+    isLoadingProject: false,
     // Global analyzer for frequency analysis
     globalAnalyzer: null as AnalyserNode | null,
     // Counter to ensure unique node IDs
@@ -87,22 +90,19 @@ export const AudioGraphStore = types
         actions.applyRedo()
       },
 
-      // Actions to manage undo/redo stacks
       addToUndoStack(patches: { forward: IJsonPatch[]; inverse: IJsonPatch[] }) {
         self.undoStack.push(patches)
         // Clear redo stack when new action is performed
         self.redoStack.clear()
-        // Limit undo stack to 50 entries
-        if (self.undoStack.length > 50) {
-          self.undoStack.splice(0, 1)
-        }
       },
 
       moveToRedoStack() {
         if (self.undoStack.length > 0) {
           const patches = self.undoStack.pop()
-          self.redoStack.push(patches)
-          return patches
+          if (patches) {
+            self.redoStack.push(patches)
+            return patches
+          }
         }
         return null
       },
@@ -110,30 +110,33 @@ export const AudioGraphStore = types
       moveToUndoStack() {
         if (self.redoStack.length > 0) {
           const patches = self.redoStack.pop()
-          self.undoStack.push(patches)
-          return patches
+          if (patches) {
+            self.undoStack.push(patches)
+            return patches
+          }
         }
         return null
       },
 
-      // Actions to manage patch application
       setApplyingPatch(value: boolean) {
         self.isApplyingPatch = value
       },
 
-      // Actions to manage example creation
       setCreatingExample(value: boolean) {
         self.isCreatingExample = value
       },
 
-      // Actions to manage clearing all nodes
       setClearingAllNodes(value: boolean) {
         self.isClearingAllNodes = value
       },
 
-      // Actions to manage automatic play state updates
       setUpdatingPlayState(value: boolean) {
         self.isUpdatingPlayState = value
+      },
+
+      // Action to set/reset project loading state
+      setLoadingProject(value: boolean) {
+        self.isLoadingProject = value
       },
 
       // Action to set project modified state
@@ -166,19 +169,38 @@ export const AudioGraphStore = types
         }
       },
 
-      recreateAudioGraph() {
+      recreateAudioGraph: flow(function* () {
         // Clear existing audio nodes
         self.audioNodes.clear()
-        self.customNodes.clear()
 
-        // Recreate audio nodes using metadata-driven approach
+        // Update existing custom nodes with new audio context instead of recreating them
+        console.log(
+          `🔄 Updating ${self.customNodes.size} existing custom nodes with fresh audio context`
+        )
+        self.customNodes.forEach((customNode, nodeId) => {
+          if (
+            'updateAudioContext' in customNode &&
+            typeof customNode.updateAudioContext === 'function'
+          ) {
+            ;(customNode as any).updateAudioContext(self.audioContext)
+            console.log(`✅ Updated audio context for custom node ${nodeId}`)
+          }
+        })
+
+        // Recreate regular audio nodes using metadata-driven approach
         self.visualNodes.forEach(node => {
           try {
-            actions.createAudioNode(node.id, node.data.nodeType)
+            // Only recreate regular audio nodes, skip custom nodes since we updated them above
+            if (!self.customNodeFactory?.isCustomNodeType(node.data.nodeType)) {
+              actions.createAudioNode(node.id, node.data.nodeType)
+            }
           } catch (error) {
             console.error('Error recreating audio node:', error)
           }
         })
+
+        // Small delay to ensure nodes are fully updated
+        yield new Promise(resolve => setTimeout(resolve, 50))
 
         // Recreate audio connections
         self.visualEdges.forEach(edge => {
@@ -193,7 +215,7 @@ export const AudioGraphStore = types
             console.error('Error recreating audio connection:', error)
           }
         })
-      },
+      }),
 
       initializeAudioContext() {
         if (!self.audioContext) {
@@ -308,21 +330,42 @@ export const AudioGraphStore = types
         // Check if it's a custom node type
         if (self.customNodeFactory.isCustomNodeType(nodeType)) {
           try {
-            const customNode = self.customNodeFactory.createCustomNode(nodeType, metadata, properties)
-            
-            // Set up callback to update bridges when output values change
-            customNode.onOutputChange = (outputName: string, value: any) => {
-              // Update any bridges connected to this custom node
-              if (self.customNodeBridges) {
-                self.customNodeBridges.forEach((bridge, key) => {
-                  if (key.startsWith(`${nodeId}-`)) {
-                    bridge.offset.value = value as number
-                    console.log(`🌉 Updated bridge for ${nodeId} output ${outputName}: ${value}`)
-                  }
-                })
-              }
+            const customNode = self.customNodeFactory.createCustomNode(
+              nodeType,
+              metadata,
+              properties
+            )
+
+            // Set up callback for output changes to update bridges
+            if (
+              'setOutputChangeCallback' in customNode &&
+              typeof customNode.setOutputChangeCallback === 'function'
+            ) {
+              customNode.setOutputChangeCallback(
+                (nodeId: string, outputName: string, value: number) => {
+                  actions.updateCustomNodeBridges(nodeId, outputName, value)
+                }
+              )
             }
-            
+
+            // Set up callback for DisplayNode to update visual properties
+            if (
+              nodeType === 'DisplayNode' &&
+              'setPropertyChangeCallback' in customNode &&
+              typeof (customNode as any).setPropertyChangeCallback === 'function'
+            ) {
+              ;(customNode as any).setPropertyChangeCallback(
+                (nodeId: string, propertyName: string, value: any) => {
+                  // Update the visual node property so it shows up in the properties panel
+                  const visualNode = self.visualNodes.find(node => node.id === nodeId)
+                  if (visualNode) {
+                    visualNode.data.properties.set(propertyName, value)
+                    self.propertyChangeCounter += 1
+                  }
+                }
+              )
+            }
+
             self.customNodes.set(nodeId, customNode)
             console.log(`Successfully created custom node: ${nodeType}`)
           } catch (error) {
@@ -792,7 +835,7 @@ export const AudioGraphStore = types
           try {
             // Connect the custom nodes directly
             sourceCustomNode.connect(targetCustomNode, sourceOutput, targetInput)
-            
+
             self.audioConnections.push({
               sourceNodeId: sourceId,
               targetNodeId: targetId,
@@ -820,14 +863,43 @@ export const AudioGraphStore = types
             const targetInputDef = targetMetadata?.inputs.find(input => input.name === targetInput)
             const isControlConnection = targetInputDef?.type === 'control'
 
-            if (isControlConnection) {
+            // Check if this is an audio connection from custom node
+            const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
+            const sourceMetadata = sourceVisualNode?.data.metadata
+            const sourceOutputDef = sourceMetadata?.outputs.find(
+              output => output.name === sourceOutput
+            )
+            const isAudioOutput = sourceOutputDef?.type === 'audio'
+            const isAudioInput = targetInputDef?.type === 'audio'
+
+            if (isAudioOutput && isAudioInput) {
+              // Handle audio output from custom node to audio input of audio node
+              const audioOutput = sourceCustomNode.getAudioOutput?.()
+              if (audioOutput) {
+                if (isDestinationConnection && self.globalAnalyzer) {
+                  // Connect through analyzer for destination
+                  audioOutput.connect(self.globalAnalyzer)
+                  self.globalAnalyzer.connect(targetNode)
+                  console.log('Connected custom node audio through global analyzer to destination')
+                } else {
+                  // Direct audio connection
+                  audioOutput.connect(targetNode)
+                  console.log(
+                    `Connected custom node audio output to ${targetVisualNode?.data.nodeType}`
+                  )
+                }
+              } else {
+                console.error(`Custom node ${sourceId} does not have audio output available`)
+                return
+              }
+            } else if (isControlConnection) {
               // Create a ConstantSourceNode bridge for custom node control output
               const constantSource = self.audioContext!.createConstantSource()
-              
+
               // Get current output value from custom node
               const currentValue = sourceCustomNode.outputs.get(sourceOutput) || 0
               constantSource.offset.value = currentValue
-              
+
               // Connect to AudioParam
               const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
               const audioParam = targetNodeWithParams[targetInput]
@@ -835,37 +907,53 @@ export const AudioGraphStore = types
               if (audioParam && typeof audioParam.value !== 'undefined') {
                 constantSource.connect(audioParam)
                 constantSource.start()
-                
+
                 // Get the source node info to determine connection type
                 const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
                 const sourceNodeType = sourceVisualNode?.data.nodeType
-                
+
                 // Smart base value handling based on parameter and source type
                 if (targetInput === 'frequency') {
                   // For frequency parameters, check the source type
                   if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
                     // Direct frequency control - these nodes output frequency values
                     audioParam.value = 0
-                    console.log(`Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`)
+                    console.log(
+                      `Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`
+                    )
                   } else {
                     // Default: keep base value for modulation
-                    console.log(`Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`)
+                    console.log(
+                      `Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`
+                    )
                   }
                 } else {
                   // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
                   audioParam.value = 0
-                  console.log(`Connected custom node to AudioParam: ${targetInput}, set base value to 0`)
+                  console.log(
+                    `Connected custom node to AudioParam: ${targetInput}, set base value to 0`
+                  )
                 }
-                
+
                 // Store the bridge source for updates and cleanup
                 if (!self.customNodeBridges) {
                   self.customNodeBridges = new Map()
                 }
                 self.customNodeBridges.set(`${sourceId}-${targetId}`, constantSource)
-                
-                // Set up notification when custom node output changes
-                // We'll handle this through the updateNodeProperty method instead
-                console.log(`Bridge created for custom node ${sourceNodeType} → ${targetInput}`)
+
+                console.log(
+                  `Bridge created for custom node ${sourceNodeType} → ${targetInput} with initial value: ${currentValue}`
+                )
+
+                // Force an immediate update to ensure the bridge has the latest value
+                // This handles the case where the custom node already has a valid output value
+                setTimeout(() => {
+                  const latestValue = sourceCustomNode.outputs.get(sourceOutput)
+                  if (latestValue !== undefined && latestValue !== currentValue) {
+                    constantSource.offset.value = latestValue
+                    console.log(`🔄 Updated bridge immediately after connection: ${latestValue}`)
+                  }
+                }, 10)
               } else {
                 console.error(`AudioParam ${targetInput} not found on target node`)
                 return
@@ -881,6 +969,14 @@ export const AudioGraphStore = types
               sourceOutput,
               targetInput,
             })
+
+            if (isDestinationConnection) {
+              // Audio is now playing through the destination, update play state
+              console.log('Audio connected to destination - setting play state to true')
+              actions.setUpdatingPlayState(true)
+              self.isPlaying = true
+              actions.setUpdatingPlayState(false)
+            }
 
             console.log(`Connected custom node ${sourceId} to audio node ${targetId}`)
           } catch (error) {
@@ -909,24 +1005,30 @@ export const AudioGraphStore = types
 
               if (audioParam && typeof audioParam.value !== 'undefined') {
                 sourceNode.connect(audioParam)
-                
+
                 // Get the source node info to determine connection type
                 const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
                 const sourceNodeType = sourceVisualNode?.data.nodeType
-                
+
                 // Smart base value handling based on parameter and source type
                 if (targetInput === 'frequency') {
                   // For frequency parameters, check the source type
                   if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
                     // Direct frequency control - these nodes output frequency values
                     audioParam.value = 0
-                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`)
+                    console.log(
+                      `Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`
+                    )
                   } else if (sourceNodeType === 'OscillatorNode') {
                     // LFO modulation - oscillator output adds to base frequency
-                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`)
+                    console.log(
+                      `Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`
+                    )
                   } else {
                     // Default: keep base value for modulation
-                    console.log(`Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`)
+                    console.log(
+                      `Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`
+                    )
                   }
                 } else {
                   // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
@@ -978,7 +1080,7 @@ export const AudioGraphStore = types
           try {
             // Disconnect the custom nodes directly
             sourceCustomNode.disconnect()
-            
+
             const connectionIndex = self.audioConnections.findIndex(
               conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
             )
@@ -993,7 +1095,7 @@ export const AudioGraphStore = types
           return
         }
 
-        // Handle custom node to audio node disconnections  
+        // Handle custom node to audio node disconnections
         if (sourceCustomNode && targetNode) {
           try {
             // Clean up the bridge
@@ -1020,13 +1122,15 @@ export const AudioGraphStore = types
               const paramMetadata = targetMetadata?.properties.find(
                 prop => prop.name === connection.targetInput && prop.type === 'AudioParam'
               )
-              
+
               if (paramMetadata && paramMetadata.defaultValue !== null) {
                 const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
                 const audioParam = targetNodeWithParams[connection.targetInput]
                 if (audioParam && typeof audioParam.value !== 'undefined') {
                   audioParam.value = paramMetadata.defaultValue
-                  console.log(`Disconnected custom node: restored ${connection.targetInput} to default value: ${paramMetadata.defaultValue}`)
+                  console.log(
+                    `Disconnected custom node: restored ${connection.targetInput} to default value: ${paramMetadata.defaultValue}`
+                  )
                 }
               }
             }
@@ -1073,14 +1177,16 @@ export const AudioGraphStore = types
 
                 if (audioParam && typeof audioParam.value !== 'undefined') {
                   sourceNode.disconnect(audioParam)
-                  
+
                   // Restore the default value for this AudioParam
                   const paramMetadata = targetMetadata?.properties.find(
                     prop => prop.name === connection.targetInput && prop.type === 'AudioParam'
                   )
                   if (paramMetadata && paramMetadata.defaultValue !== null) {
                     audioParam.value = paramMetadata.defaultValue
-                    console.log(`Disconnected from AudioParam: ${connection.targetInput}, restored default value: ${paramMetadata.defaultValue}`)
+                    console.log(
+                      `Disconnected from AudioParam: ${connection.targetInput}, restored default value: ${paramMetadata.defaultValue}`
+                    )
                   } else {
                     console.log(`Disconnected from AudioParam: ${connection.targetInput}`)
                   }
@@ -1135,6 +1241,29 @@ export const AudioGraphStore = types
         }
       },
 
+      updateCustomNodeBridges(nodeId: string, outputName: string, value: number) {
+        if (!self.customNodeBridges) return
+
+        // Update any bridges connected to this custom node's output
+        self.customNodeBridges.forEach((bridge, bridgeKey) => {
+          // Check if this bridge starts with the source node ID
+          if (bridgeKey.startsWith(`${nodeId}-`)) {
+            // Find the connection that uses this bridge
+            const connection = self.audioConnections.find(
+              conn =>
+                conn.sourceNodeId === nodeId &&
+                bridgeKey === `${conn.sourceNodeId}-${conn.targetNodeId}` &&
+                conn.sourceOutput === outputName
+            )
+
+            if (connection) {
+              bridge.offset.value = value
+              console.log(`🌉 Updated bridge for ${nodeId} output ${outputName}: ${value}`)
+            }
+          }
+        })
+      },
+
       updateNodeProperty(nodeId: string, propertyName: string, value: unknown) {
         console.log('=== UPDATING NODE PROPERTY ===', nodeId, propertyName, value)
 
@@ -1155,22 +1284,27 @@ export const AudioGraphStore = types
         if (customNode && visualNode) {
           // Update the custom node's property
           customNode.properties.set(propertyName, value)
-          
-          // Update custom node output if this is a value property
+
+          // Check if this property corresponds to an output and update bridges
+          const nodeMetadata = visualNode.data.metadata
+          const hasCorrespondingOutput = nodeMetadata.outputs.some(
+            output => output.name === propertyName
+          )
+
+          if (hasCorrespondingOutput) {
+            // Update the custom node's output
+            customNode.outputs.set(propertyName, value)
+
+            // Update any bridges connected to this custom node output
+            actions.updateCustomNodeBridges(nodeId, propertyName, value as number)
+          }
+
+          // Handle special case for 'value' property (most common output)
           if (propertyName === 'value') {
             customNode.outputs.set('value', value)
-            
-            // Update any bridges connected to this custom node
-            if (self.customNodeBridges) {
-              self.customNodeBridges.forEach((bridge, key) => {
-                if (key.startsWith(`${nodeId}-`)) {
-                  bridge.offset.value = value as number
-                  console.log(`Updated bridge for ${nodeId}: ${value}`)
-                }
-              })
-            }
+            actions.updateCustomNodeBridges(nodeId, 'value', value as number)
           }
-          
+
           console.log('Updated custom node property')
           console.log('=== PROPERTY UPDATE COMPLETE ===')
           return
@@ -1185,12 +1319,14 @@ export const AudioGraphStore = types
             const propertyDef = metadata.properties.find(p => p.name === propertyName)
             if (propertyDef?.type === 'AudioParam') {
               // Check if there's an active control connection to this AudioParam
-              const hasControlConnection = self.audioConnections.some(conn => 
-                conn.targetNodeId === nodeId && conn.targetInput === propertyName
+              const hasControlConnection = self.audioConnections.some(
+                conn => conn.targetNodeId === nodeId && conn.targetInput === propertyName
               )
-              
+
               if (hasControlConnection) {
-                console.log(`⚠️ Skipping direct AudioParam update for ${propertyName} - control connection active`)
+                console.log(
+                  `⚠️ Skipping direct AudioParam update for ${propertyName} - control connection active`
+                )
                 console.log('=== PROPERTY UPDATE COMPLETE (SKIPPED) ===')
                 return
               }
@@ -1262,9 +1398,9 @@ export const AudioGraphStore = types
         }
       },
 
-      togglePlayback: flow(function* () {
+      togglePlayback: flow(function* (): Generator<Promise<unknown>, void, unknown> {
         if (self.isPlaying) {
-          // STOP: Close the entire audio context
+          // STOP: Close the audio context
           console.log('=== STOPPING PLAYBACK ===')
 
           if (self.audioContext) {
@@ -1276,16 +1412,16 @@ export const AudioGraphStore = types
             }
           }
 
-          // Clear everything
+          // Clear audio nodes but keep custom nodes so we can update them
           self.audioContext = null
           self.audioNodeFactory = null
           self.customNodeFactory = null
           self.globalAnalyzer = null
           self.audioNodes.clear()
-          self.customNodes.clear()
+          // Don't clear customNodes - we'll update them with fresh context
 
           self.isPlaying = false
-          console.log('Playback stopped - fresh state ready')
+          console.log('Playback stopped')
         } else {
           // START: Create fresh audio context and rebuild everything
           console.log('=== STARTING PLAYBACK ===')
@@ -1298,32 +1434,11 @@ export const AudioGraphStore = types
             return
           }
 
-          // Recreate all audio nodes from scratch
-          console.log('Recreating audio graph from scratch...')
-          self.visualNodes.forEach(node => {
-            try {
-              actions.createAudioNode(node.id, node.data.nodeType)
-            } catch (error) {
-              console.error('Error recreating audio node:', error)
-            }
-          })
-
-          // Recreate all connections
-          self.visualEdges.forEach(edge => {
-            try {
-              actions.connectAudioNodes(
-                edge.source,
-                edge.target,
-                edge.sourceHandle || 'output',
-                edge.targetHandle || 'input'
-              )
-            } catch (error) {
-              console.error('Error recreating audio connection:', error)
-            }
-          })
+          // Use the existing recreateAudioGraph method
+          yield actions.recreateAudioGraph()
 
           self.isPlaying = true
-          console.log('Playback started with fresh audio context')
+          console.log('Playback started')
         }
       }),
 
@@ -1454,6 +1569,9 @@ export const createAudioGraphStore = () => {
 
     // Don't record patches when updating play state automatically
     if (store.isUpdatingPlayState) return
+
+    // Don't record patches when loading a project
+    if (store.isLoadingProject) return
 
     // Don't record patches to the history stacks themselves (prevents recursion)
     if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {

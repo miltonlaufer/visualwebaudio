@@ -278,6 +278,11 @@
         "defaultValue": "No file loaded"
       },
       {
+        "name": "audioBufferData",
+        "type": "string",
+        "defaultValue": null
+      },
+      {
         "name": "loop",
         "type": "boolean",
         "defaultValue": false
@@ -297,11 +302,7 @@
         "max": 4
       }
     ],
-    "methods": [
-      "loadFile",
-      "play",
-      "stop"
-    ],
+    "methods": ["loadFile", "play", "stop"],
     "events": []
   },
   "DisplayNode": {
@@ -389,4 +390,4 @@
     "methods": [],
     "events": []
   }
-} 
+}
