@@ -443,10 +443,10 @@ describe('ExportJSButton', () => {
 
   it('shows warning for custom nodes and prevents export', async () => {
     const user = userEvent.setup()
-    
+
     // Mock alert
     const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {})
-    
+
     const mockStoreWithCustomNodes = {
       ...mockStore,
       visualNodes: [
@@ -477,9 +477,11 @@ describe('ExportJSButton', () => {
     await user.click(button)
 
     // Should show alert and not open modal
-    expect(mockAlert).toHaveBeenCalledWith('Support for exporting custom nodes coming soon. This feature is only available for pure Web Audio API projects.')
+    expect(mockAlert).toHaveBeenCalledWith(
+      'Support for exporting utility nodes coming soon. This feature is only available for pure Web Audio API projects.'
+    )
     expect(screen.queryByText('Exported JavaScript Code')).not.toBeInTheDocument()
-    
+
     mockAlert.mockRestore()
   })
 

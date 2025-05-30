@@ -50,14 +50,24 @@ const ExportJSButton: React.FC = observer(() => {
     // Check if there are any custom nodes
     const hasCustomNodes = nodes.some(node => {
       const customNodeTypes = [
-        'SliderNode', 'ButtonNode', 'GreaterThanNode', 'EqualsNode', 
-        'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
+        'SliderNode',
+        'ButtonNode',
+        'GreaterThanNode',
+        'EqualsNode',
+        'SelectNode',
+        'MidiInputNode',
+        'MidiToFreqNode',
+        'DisplayNode',
+        'SoundFileNode',
+        'RandomNode',
       ]
       return customNodeTypes.includes(node.data.nodeType)
     })
 
     if (hasCustomNodes) {
-      alert('Support for exporting custom nodes coming soon. This feature is only available for pure Web Audio API projects.')
+      alert(
+        'Support for exporting utility nodes coming soon. This feature is only available for pure Web Audio API projects.'
+      )
       return
     }
 

@@ -148,7 +148,7 @@ describe('AudioNode', () => {
   // Test to prevent custom UI regression
   it('should render custom UI elements for custom nodes', () => {
     const store = createAudioGraphStore()
-    
+
     // Mock custom node with createUIElement method
     const mockCustomNode = {
       createUIElement: vi.fn((container: HTMLElement) => {
@@ -196,7 +196,7 @@ describe('AudioNode', () => {
 
   it('should include RandomNode in custom node types', () => {
     const store = createAudioGraphStore()
-    
+
     const mockRandomNode = {
       createUIElement: vi.fn((container: HTMLElement) => {
         const span = document.createElement('span')
@@ -237,5 +237,113 @@ describe('AudioNode', () => {
     // Check that the custom UI element was added
     const customElement = container.querySelector('.random-ui-element')
     expect(customElement).toBeInTheDocument()
+  })
+
+  it('displays corner type label for web audio nodes', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'GainNode',
+      metadata: {
+        name: 'Gain',
+        description: 'A gain node',
+        category: 'effect',
+        inputs: [{ name: 'input', type: 'audio' }],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    // Check that the WebAudio label is present
+    expect(screen.getByText('WebAudio')).toBeInTheDocument()
+
+    // Check that it has the correct styling for web audio nodes
+    const label = screen.getByText('WebAudio')
+    expect(label).toHaveClass('bg-blue-500', 'text-white', 'w-[75px]', 'top-[10px]', '-right-4')
+  })
+
+  it('displays corner type label for utility nodes', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'ButtonNode',
+      metadata: {
+        name: 'Button',
+        description: 'A button node',
+        category: 'processing',
+        inputs: [],
+        outputs: [{ name: 'trigger', type: 'control' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    // Check that the Utility label is present
+    expect(screen.getByText('Utility')).toBeInTheDocument()
+
+    // Check that it has the correct styling for utility nodes
+    const label = screen.getByText('Utility')
+    expect(label).toHaveClass(
+      'bg-orange-500',
+      'text-white',
+      'w-[67px]',
+      'top-[7px]',
+      '-right-[17px]',
+      'text-center'
+    )
+  })
+
+  it('applies correct rotation and positioning for corner labels', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'OscillatorNode',
+      metadata: {
+        name: 'Oscillator',
+        description: 'An oscillator node',
+        category: 'source',
+        inputs: [],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    renderWithProvider(<AudioNode data={mockData} />)
+
+    const label = screen.getByText('WebAudio')
+
+    // Check for common rotation and positioning classes
+    expect(label).toHaveClass('transform', 'rotate-45', 'origin-center', 'absolute')
+    expect(label).toHaveClass('text-[10px]', 'font-medium', 'shadow-sm')
+  })
+
+  it('corner label container has correct overflow and pointer event settings', () => {
+    const mockData: VisualNodeData = {
+      nodeType: 'DelayNode',
+      metadata: {
+        name: 'Delay',
+        description: 'A delay node',
+        category: 'effect',
+        inputs: [{ name: 'input', type: 'audio' }],
+        outputs: [{ name: 'output', type: 'audio' }],
+        properties: [],
+        methods: [],
+        events: [],
+      },
+      properties: new Map(),
+    }
+
+    const { container } = renderWithProvider(<AudioNode data={mockData} />)
+
+    // Find the corner label container
+    const cornerContainer = container.querySelector('.absolute.top-0.right-0.w-16.h-16')
+    expect(cornerContainer).toBeInTheDocument()
+    expect(cornerContainer).toHaveClass('overflow-hidden', 'pointer-events-none')
   })
 })

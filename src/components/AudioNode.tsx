@@ -10,7 +10,7 @@ interface AudioNodeProps {
 
 const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
   console.log('AudioNode rendering:', data.nodeType)
-  
+
   const store = useAudioGraphStore()
   const nodeId = useNodeId() // Get the node ID from React Flow
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
@@ -21,24 +21,38 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
 
   // Check if this is a custom node type
   const customNodeTypes = [
-    'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
-    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
+    'ButtonNode',
+    'SliderNode',
+    'GreaterThanNode',
+    'EqualsNode',
+    'SelectNode',
+    'MidiInputNode',
+    'MidiToFreqNode',
+    'DisplayNode',
+    'SoundFileNode',
+    'RandomNode',
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
-// Initialize custom UI elements for custom nodes
-useEffect(() => {
-  console.log(`AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`)
-  if (isCustomNode && customUIRef.current && nodeId) {
-    // Get the unified node from the store
-    const customNode = store.customNodes.get(nodeId)
-    if (customNode && 'createUIElement' in customNode && typeof customNode.createUIElement === 'function') {
-      // Clear any existing content
-      customUIRef.current.innerHTML = ''
-      // Create the custom UI elements
-      customNode.createUIElement(customUIRef.current)
+  // Initialize custom UI elements for custom nodes
+  useEffect(() => {
+    console.log(
+      `AudioNode useEffect: isCustomNode=${isCustomNode}, nodeId=${nodeId}, nodeType=${data.nodeType}`
+    )
+    if (isCustomNode && customUIRef.current && nodeId) {
+      // Get the unified node from the store
+      const customNode = store.customNodes.get(nodeId)
+      if (
+        customNode &&
+        'createUIElement' in customNode &&
+        typeof customNode.createUIElement === 'function'
+      ) {
+        // Clear any existing content
+        customUIRef.current.innerHTML = ''
+        // Create the custom UI elements
+        customNode.createUIElement(customUIRef.current)
+      }
     }
-  }
-}, [isCustomNode, nodeId, store.customNodes, data.nodeType]) 
+  }, [isCustomNode, nodeId, store.customNodes, data.nodeType])
   // Memoized handlers for better performance
   const handleMouseEnterHandle = useCallback((handleId: string) => {
     return () => setHoveredHandle(handleId)
@@ -132,6 +146,29 @@ useEffect(() => {
   const handleHeight = maxHandles * 30 // 30px per handle
   const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
 
+  // Determine the type label for the corner
+  const getTypeLabel = () => {
+    return isCustomNode ? 'Utility' : 'WebAudio'
+  }
+
+  const getTypeLabelColors = () => {
+    if (isCustomNode) {
+      return 'bg-orange-500 text-white'
+    } else {
+      return 'bg-blue-500 text-white'
+    }
+  }
+
+  const getTypeLabelPositioning = () => {
+    if (isCustomNode) {
+      // Utility: width: 67px, top: 7px, right: -17px, text-align: center
+      return 'w-[67px] top-[7px] -right-[17px] text-center'
+    } else {
+      // WebAudio: width: 75px, top: 12px, right: -16px
+      return 'w-[75px] top-[10px] -right-4'
+    }
+  }
+
   return (
     <div
       className={`
@@ -143,6 +180,21 @@ useEffect(() => {
       onMouseEnter={handleMouseEnterNode}
       onMouseLeave={handleMouseLeaveNode}
     >
+      {/* Corner Type Label */}
+      <div className="absolute top-0 right-0 w-16 h-16 overflow-hidden pointer-events-none">
+        <div
+          className={`
+            ${getTypeLabelColors()}
+            ${getTypeLabelPositioning()}
+            text-[10px] font-medium px-3 py-0.5 shadow-sm
+            transform rotate-45 origin-center
+            absolute
+          `}
+        >
+          {getTypeLabel()}
+        </div>
+      </div>
+
       {/* Input Handles and Labels */}
       {metadata.inputs.map((input: any, index: number) => {
         const colors = getHandleColors(input.type)
@@ -234,7 +286,8 @@ useEffect(() => {
       )}
 
       {/* Node Properties - Show properties for nodes with fewer handles or important properties (only for non-custom nodes) */}
-      {!isCustomNode && metadata.properties.length > 0 &&
+      {!isCustomNode &&
+        metadata.properties.length > 0 &&
         (maxHandles <= 3 ||
           metadata.properties.some((p: any) => p.name === 'type' || p.name === 'frequency')) && (
           <div className="space-y-1 mt-4">
