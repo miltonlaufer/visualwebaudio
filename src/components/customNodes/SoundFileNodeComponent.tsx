@@ -9,14 +9,49 @@ interface SoundFileNodeComponentProps {
 const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
 
-  // Early return check BEFORE any other hooks
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const playButtonRef = useRef<HTMLButtonElement>(null)
+
+  // Prevent React Flow drag when clicking buttons
+  useEffect(() => {
+    const fileInput = fileInputRef.current
+    const playButton = playButtonRef.current
+
+    const preventDefault = (e: Event) => {
+      e.stopPropagation()
+    }
+
+    // Add capture-phase event listeners to intercept before React Flow
+    if (fileInput) {
+      fileInput.addEventListener('pointerdown', preventDefault, { capture: true })
+      fileInput.addEventListener('mousedown', preventDefault, { capture: true })
+      fileInput.addEventListener('touchstart', preventDefault, { capture: true })
+    }
+    if (playButton) {
+      playButton.addEventListener('pointerdown', preventDefault, { capture: true })
+      playButton.addEventListener('mousedown', preventDefault, { capture: true })
+      playButton.addEventListener('touchstart', preventDefault, { capture: true })
+    }
+
+    return () => {
+      if (fileInput) {
+        fileInput.removeEventListener('pointerdown', preventDefault, { capture: true })
+        fileInput.removeEventListener('mousedown', preventDefault, { capture: true })
+        fileInput.removeEventListener('touchstart', preventDefault, { capture: true })
+      }
+      if (playButton) {
+        playButton.removeEventListener('pointerdown', preventDefault, { capture: true })
+        playButton.removeEventListener('mousedown', preventDefault, { capture: true })
+        playButton.removeEventListener('touchstart', preventDefault, { capture: true })
+      }
+    }
+  }, [])
+
+  // NOW we can safely do early returns - hooks are already called
   if (!node || node.nodeType !== 'SoundFileNode') {
     return <div className="text-red-500 text-xs">SoundFileNode not found</div>
   }
-
-  // Now we can safely call all hooks knowing the component will render normally
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const playButtonRef = useRef<HTMLButtonElement>(null)
 
   const fileName = node.properties.get('fileName') || ''
   const loaded = node.outputs.get('loaded') || 0
@@ -30,73 +65,30 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
   }
 
   const handlePlay = () => {
-    console.log(`▶️ SoundFileNode ${nodeId}: Play button clicked`)
+    console.log(`▶️ SoundFileNode ${nodeId}: Playing`)
     node.trigger()
   }
 
-  // Prevent React Flow drag when interacting with controls
-  useEffect(() => {
-    const fileInput = fileInputRef.current
-    const playButton = playButtonRef.current
-
-    const preventDefault = (e: Event) => {
-      e.stopPropagation()
-    }
-
-    const elements = [fileInput, playButton].filter(Boolean) as HTMLElement[]
-
-    elements.forEach(element => {
-      // Don't prevent click events - we need those for button and input functionality
-      element.addEventListener('pointerdown', preventDefault, { capture: true })
-      element.addEventListener('mousedown', preventDefault, { capture: true })
-      element.addEventListener('touchstart', preventDefault, { capture: true })
-    })
-
-    return () => {
-      elements.forEach(element => {
-        element.removeEventListener('pointerdown', preventDefault, { capture: true })
-        element.removeEventListener('mousedown', preventDefault, { capture: true })
-        element.removeEventListener('touchstart', preventDefault, { capture: true })
-      })
-    }
-  }, [])
-
   return (
-    <div className="p-2 space-y-2 min-w-48">
+    <div className="p-2 space-y-2">
       <div className="text-xs font-medium text-gray-700">Sound File</div>
-
-      <div className="space-y-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="audio/*"
-          onChange={handleFileSelect}
-          className="text-xs w-full"
-        />
-
-        {fileName && (
-          <div className="text-xs text-gray-600 truncate" title={fileName}>
-            📁 {fileName}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between">
-          <button
-            ref={playButtonRef}
-            onClick={handlePlay}
-            disabled={!loaded}
-            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-          >
-            ▶️ Play
-          </button>
-
-          <div
-            className={`text-xs px-2 py-1 rounded ${loaded ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}
-          >
-            {loaded ? 'Loaded' : 'No file'}
-          </div>
-        </div>
-      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/*"
+        onChange={handleFileSelect}
+        className="w-full text-xs file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-medium file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+      />
+      {fileName && <div className="text-xs text-gray-600 truncate">{fileName}</div>}
+      <div className="text-xs text-gray-500">Loaded: {loaded > 0 ? 'Yes' : 'No'}</div>
+      <button
+        ref={playButtonRef}
+        onClick={handlePlay}
+        disabled={loaded === 0}
+        className="w-full px-2 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-xs font-medium rounded transition-colors"
+      >
+        Play
+      </button>
     </div>
   )
 })

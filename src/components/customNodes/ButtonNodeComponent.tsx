@@ -9,20 +9,8 @@ interface ButtonNodeComponentProps {
 const ButtonNodeComponent: React.FC<ButtonNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
 
-  // Early return check BEFORE any other hooks
-  if (!node || node.nodeType !== 'ButtonNode') {
-    return <div className="text-red-500 text-xs">ButtonNode not found</div>
-  }
-
-  // Now we can safely call all hooks knowing the component will render normally
+  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const buttonRef = useRef<HTMLButtonElement>(null)
-
-  const label = node.properties.get('label') || 'Button'
-
-  const handleClick = () => {
-    console.log(`🔘 ButtonNode ${nodeId}: Triggered`)
-    node.trigger()
-  }
 
   // Prevent React Flow drag when clicking button
   useEffect(() => {
@@ -45,6 +33,18 @@ const ButtonNodeComponent: React.FC<ButtonNodeComponentProps> = observer(({ node
       button.removeEventListener('touchstart', preventDefault, { capture: true })
     }
   }, [])
+
+  // NOW we can safely do early returns - hooks are already called
+  if (!node || node.nodeType !== 'ButtonNode') {
+    return <div className="text-red-500 text-xs">ButtonNode not found</div>
+  }
+
+  const label = node.properties.get('label') || 'Button'
+
+  const handleClick = () => {
+    console.log(`🔘 ButtonNode ${nodeId}: Triggered`)
+    node.trigger()
+  }
 
   return (
     <div className="p-2">

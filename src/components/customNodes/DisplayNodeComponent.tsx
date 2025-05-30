@@ -9,6 +9,7 @@ interface DisplayNodeComponentProps {
 const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
 
+  // Early return check BEFORE any other hooks
   if (!node || node.nodeType !== 'DisplayNode') {
     return <div className="text-red-500 text-xs">DisplayNode not found</div>
   }
