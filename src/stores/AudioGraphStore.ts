@@ -185,11 +185,17 @@ export const AudioGraphStore = types
           }
         })
 
-        // Recreate regular audio nodes using metadata-driven approach
+        // Recreate all nodes using metadata-driven approach
         self.visualNodes.forEach(node => {
           try {
-            // Only recreate regular audio nodes, skip custom nodes since we updated them above
-            if (!self.customNodeFactory?.isCustomNodeType(node.data.nodeType)) {
+            // Check if it's a custom node type
+            if (self.customNodeFactory?.isCustomNodeType(node.data.nodeType)) {
+              // Only create custom node if it doesn't already exist
+              if (!self.customNodes.has(node.id)) {
+                actions.createAudioNode(node.id, node.data.nodeType)
+              }
+            } else {
+              // Always recreate regular audio nodes
               actions.createAudioNode(node.id, node.data.nodeType)
             }
           } catch (error) {
@@ -303,14 +309,25 @@ export const AudioGraphStore = types
           return
         }
 
-        const metadata = self.webAudioMetadata[nodeType]
+        // Get the visual node to extract properties and metadata
+        const visualNode = self.visualNodes.find(node => node.id === nodeId)
+
+        // Use metadata from the visual node if available (for loaded projects),
+        // otherwise fall back to global metadata (for new nodes)
+        let metadata: NodeMetadata
+        if (visualNode && visualNode.data.metadata) {
+          metadata = visualNode.data.metadata as NodeMetadata
+          console.log(`Using metadata from visual node for ${nodeType}:`, metadata.category)
+        } else {
+          metadata = self.webAudioMetadata[nodeType]
+          console.log(`Using global metadata for ${nodeType}:`, metadata?.category)
+        }
+
         if (!metadata) {
           console.error(`No metadata found for node type: ${nodeType}`)
           return
         }
 
-        // Get the visual node to extract properties
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
         const properties = visualNode
           ? Object.fromEntries(visualNode.data.properties.entries())
           : {}
@@ -360,6 +377,26 @@ export const AudioGraphStore = types
             }
 
             self.customNodes.set(nodeId, customNode)
+
+            // Apply properties to the MobX node that was already created by the factory
+            const mobxNode = customNodeStore.getNode(nodeId)
+            if (mobxNode) {
+              Object.entries(properties).forEach(([key, value]) => {
+                mobxNode.setProperty(key, value)
+                // Also set outputs for properties that correspond to outputs
+                const hasCorrespondingOutput = metadata.outputs?.some(
+                  (output: any) => output.name === key
+                )
+                if (hasCorrespondingOutput) {
+                  mobxNode.setOutput(key, value)
+                }
+                // Handle special case for 'value' property (most common output)
+                if (key === 'value') {
+                  mobxNode.setOutput('value', value)
+                }
+              })
+            }
+
             console.log(`Successfully created custom node: ${nodeType}`)
           } catch (error) {
             console.error('STORE: Error creating custom node:', error)

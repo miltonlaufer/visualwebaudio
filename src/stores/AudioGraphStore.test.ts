@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createAudioGraphStore } from './AudioGraphStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
+import { applySnapshot } from 'mobx-state-tree'
 
 // Mock Web Audio API
 const createMockAudioNode = () => ({
@@ -432,6 +433,165 @@ describe('AudioGraphStore', () => {
       expect(store.visualNodes[0].id).toBe(newNodeId)
       expect(store.canUndo).toBe(true) // New action should be undoable
       expect(store.canRedo).toBe(false) // No redo history yet
+    })
+  })
+
+  describe('AudioGraphStore - Backward Compatibility', () => {
+    it('should load projects with utility category nodes correctly', () => {
+      // Simulate a saved project with nodes that have "utility" category
+      const projectSnapshot = {
+        visualNodes: [
+          {
+            id: 'SliderNode-1234567890-1',
+            type: 'audioNode',
+            position: { x: 100, y: 100 },
+            data: {
+              nodeType: 'SliderNode',
+              metadata: {
+                name: 'Slider',
+                description: 'A slider control for adjusting values',
+                category: 'utility', // This is the old category that was causing issues
+                inputs: [],
+                outputs: [{ name: 'value', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 50, min: 0, max: 100 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 50 }, // Use plain object for snapshot
+            },
+          },
+          {
+            id: 'DisplayNode-1234567890-2',
+            type: 'audioNode',
+            position: { x: 300, y: 100 },
+            data: {
+              nodeType: 'DisplayNode',
+              metadata: {
+                name: 'Display',
+                description: 'Displays numeric values',
+                category: 'utility', // This is the old category that was causing issues
+                inputs: [{ name: 'input', type: 'control' }],
+                outputs: [{ name: 'output', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 0 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 0 }, // Use plain object for snapshot
+            },
+          },
+        ],
+        visualEdges: [],
+        audioConnections: [],
+        selectedNodeId: undefined,
+        isPlaying: false,
+        undoStack: [],
+        redoStack: [],
+        propertyChangeCounter: 0,
+        graphChangeCounter: 0,
+        isProjectModified: false,
+      }
+
+      // Apply the snapshot (simulating loading a project)
+      expect(() => {
+        applySnapshot(store, projectSnapshot)
+      }).not.toThrow()
+
+      // Recreate the audio graph to create the custom nodes
+      return store.recreateAudioGraph().then(() => {
+        // Verify the nodes were loaded correctly
+        expect(store.visualNodes).toHaveLength(2)
+        expect(store.visualNodes[0].data.nodeType).toBe('SliderNode')
+        expect(store.visualNodes[1].data.nodeType).toBe('DisplayNode')
+
+        // Verify the metadata category is preserved
+        expect(store.visualNodes[0].data.metadata.category).toBe('utility')
+        expect(store.visualNodes[1].data.metadata.category).toBe('utility')
+
+        // Verify that custom nodes were created successfully
+        expect(store.customNodes.size).toBe(2)
+        expect(store.customNodes.has('SliderNode-1234567890-1')).toBe(true)
+        expect(store.customNodes.has('DisplayNode-1234567890-2')).toBe(true)
+
+        // Verify the custom nodes have the correct properties
+        const sliderNode = store.customNodes.get('SliderNode-1234567890-1')
+        const displayNode = store.customNodes.get('DisplayNode-1234567890-2')
+
+        expect(sliderNode).toBeDefined()
+        expect(displayNode).toBeDefined()
+        expect(sliderNode?.properties.get('value')).toBe(50)
+        expect(displayNode?.properties.get('value')).toBe(0)
+      })
+    })
+
+    it('should handle mixed category nodes (utility and misc)', () => {
+      // Test that we can have both old "utility" nodes and new "misc" nodes in the same project
+      const projectSnapshot = {
+        visualNodes: [
+          {
+            id: 'SliderNode-old',
+            type: 'audioNode',
+            position: { x: 100, y: 100 },
+            data: {
+              nodeType: 'SliderNode',
+              metadata: {
+                name: 'Slider',
+                description: 'A slider control',
+                category: 'utility', // Old category
+                inputs: [],
+                outputs: [{ name: 'value', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 25 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 25 }, // Use plain object for snapshot
+            },
+          },
+          {
+            id: 'DisplayNode-new',
+            type: 'audioNode',
+            position: { x: 300, y: 100 },
+            data: {
+              nodeType: 'DisplayNode',
+              metadata: {
+                name: 'Display',
+                description: 'Displays values',
+                category: 'misc', // New category
+                inputs: [{ name: 'input', type: 'control' }],
+                outputs: [{ name: 'output', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 0 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 0 }, // Use plain object for snapshot
+            },
+          },
+        ],
+        visualEdges: [],
+        audioConnections: [],
+        selectedNodeId: undefined,
+        isPlaying: false,
+        undoStack: [],
+        redoStack: [],
+        propertyChangeCounter: 0,
+        graphChangeCounter: 0,
+        isProjectModified: false,
+      }
+
+      // Should load without errors
+      expect(() => {
+        applySnapshot(store, projectSnapshot)
+      }).not.toThrow()
+
+      // Recreate the audio graph to create the custom nodes
+      return store.recreateAudioGraph().then(() => {
+        // Both nodes should be created successfully
+        expect(store.visualNodes).toHaveLength(2)
+        expect(store.customNodes.size).toBe(2)
+
+        // Categories should be preserved as they were saved
+        expect(store.visualNodes[0].data.metadata.category).toBe('utility')
+        expect(store.visualNodes[1].data.metadata.category).toBe('misc')
+      })
     })
   })
 })

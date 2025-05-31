@@ -20,7 +20,18 @@ export interface NodeProperty {
 export interface NodeMetadata {
   name: string
   description: string
-  category: 'source' | 'effect' | 'destination' | 'analysis' | 'processing' | 'context'
+  category:
+    | 'source'
+    | 'effect'
+    | 'destination'
+    | 'analysis'
+    | 'processing'
+    | 'context'
+    | 'control'
+    | 'logic'
+    | 'input'
+    | 'utility'
+    | 'misc'
   inputs: Array<{ name: string; type: 'audio' | 'control' }>
   outputs: Array<{ name: string; type: 'audio' | 'control' }>
   properties: Array<{
