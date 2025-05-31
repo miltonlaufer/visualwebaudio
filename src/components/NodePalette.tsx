@@ -58,27 +58,24 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   }, [store.availableNodeTypes, store.webAudioMetadata, searchText, selectedCategories])
 
   // Clear filters function
-  const clearFilters = useCallback(() => {
+  const clearFilters = () => {
     setSearchText('')
     setSelectedCategories([])
-  }, [])
-
-  // Check if scroll indicator should be shown
-  const checkScrollIndicator = useCallback(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
-
-    const { scrollTop, scrollHeight, clientHeight } = container
-    const isScrollable = scrollHeight > clientHeight
-    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10 // 10px threshold
-
-    setShowScrollIndicator(isScrollable && !isAtBottom)
-  }, [])
+  }
 
   // Set up scroll detection
   useEffect(() => {
     const container = scrollContainerRef.current
     if (!container) return
+
+    // Check if scroll indicator should be shown
+    const checkScrollIndicator = () => {
+      const { scrollTop, scrollHeight, clientHeight } = container
+      const isScrollable = scrollHeight > clientHeight
+      const isAtBottom = scrollTop + clientHeight >= scrollHeight - 10 // 10px threshold
+
+      setShowScrollIndicator(isScrollable && !isAtBottom)
+    }
 
     // Initial check
     checkScrollIndicator()
@@ -94,9 +91,10 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
       container.removeEventListener('scroll', checkScrollIndicator)
       resizeObserver.disconnect()
     }
-  }, [checkScrollIndicator, store.availableNodeTypes]) // Re-run when node types change
+  }, [store.availableNodeTypes]) // Re-run when node types change
 
-  const handleScrollDown = useCallback(() => {
+  // Remove useCallback from simple HTML element handlers
+  const handleScrollDown = () => {
     const container = scrollContainerRef.current
     if (!container) return
 
@@ -104,53 +102,64 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
       top: container.scrollHeight,
       behavior: 'smooth',
     })
-  }, [])
-
-  const handleDragStart = (event: React.DragEvent, nodeType: string) => {
-    event.dataTransfer.setData('application/reactflow', nodeType)
-    event.dataTransfer.effectAllowed = 'move'
   }
 
-  const handleNodeClick = (nodeType: string) => {
-    // Add node at a default position with automatic spacing
-    const basePosition = { x: 100, y: 100 }
-    const nodeSpacing = 250
-    const existingNodes = store.visualNodes
+  const handleDragStart = useCallback((event: React.DragEvent, nodeType: string) => {
+    event.dataTransfer.setData('application/reactflow', nodeType)
+    event.dataTransfer.effectAllowed = 'move'
+  }, [])
 
-    // Find a good position that doesn't overlap
-    let position = { ...basePosition }
-    let attempts = 0
-    const maxAttempts = 20
+  const handleNodeClick = useCallback(
+    (nodeType: string) => {
+      // Add node at a default position with automatic spacing
+      const basePosition = { x: 100, y: 100 }
+      const nodeSpacing = 250
+      const existingNodes = store.visualNodes
 
-    while (attempts < maxAttempts) {
-      let tooClose = false
+      // Find a good position that doesn't overlap
+      let position = { ...basePosition }
+      let attempts = 0
+      const maxAttempts = 20
 
-      for (const existingNode of existingNodes) {
-        const distance = Math.sqrt(
-          Math.pow(position.x - existingNode.position.x, 2) +
-            Math.pow(position.y - existingNode.position.y, 2)
-        )
+      while (attempts < maxAttempts) {
+        let tooClose = false
 
-        if (distance < nodeSpacing) {
-          tooClose = true
-          break
+        for (const existingNode of existingNodes) {
+          const distance = Math.sqrt(
+            Math.pow(position.x - existingNode.position.x, 2) +
+              Math.pow(position.y - existingNode.position.y, 2)
+          )
+
+          if (distance < nodeSpacing) {
+            tooClose = true
+            break
+          }
         }
+
+        if (!tooClose) break
+
+        // Adjust position in a spiral pattern
+        const angle = attempts * 0.5 * Math.PI
+        const radius = nodeSpacing + attempts * 50
+        position = {
+          x: basePosition.x + Math.cos(angle) * radius,
+          y: basePosition.y + Math.sin(angle) * radius,
+        }
+
+        attempts++
       }
 
-      if (!tooClose) break
+      store.addNode(nodeType, position)
+    },
+    [store]
+  )
 
-      // Adjust position in a spiral pattern
-      const angle = attempts * 0.5 * Math.PI
-      const radius = nodeSpacing + attempts * 50
-      position = {
-        x: basePosition.x + Math.cos(angle) * radius,
-        y: basePosition.y + Math.sin(angle) * radius,
-      }
+  const handleSearchTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchText(e.target.value)
+  }
 
-      attempts++
-    }
-
-    store.addNode(nodeType, position)
+  const handleClearSearch = () => {
+    setSearchText('')
   }
 
   const getCategoryColor = (category: string) => {
@@ -287,15 +296,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
               type="text"
               placeholder="Search nodes to add..."
               value={searchText}
-              onChange={e => setSearchText(e.target.value)}
+              onChange={handleSearchTextChange}
               className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
             {searchText && (
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <button
-                  onClick={() => setSearchText('')}
-                  className="text-gray-400 hover:text-gray-600"
-                >
+                <button onClick={handleClearSearch} className="text-gray-400 hover:text-gray-600">
                   <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>

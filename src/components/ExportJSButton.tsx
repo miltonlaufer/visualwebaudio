@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import type { Node, Edge } from '@xyflow/react'
@@ -23,17 +23,16 @@ const ExportJSButton: React.FC = observer(() => {
   const modalRef = useRef<HTMLDivElement>(null)
 
   const nodes = store.visualNodes as AudioNode[]
-  const edges = store.visualEdges as Edge[]
   const hasNodes = nodes.length > 0
 
-  // Handle click outside
-  useOnClickOutside(modalRef as React.RefObject<HTMLElement>, () => {
-    if (isModalOpen) {
-      setIsModalOpen(false)
-    }
-  })
+  // Handle click outside to close modal
+  const handleClickOutside = useCallback(() => {
+    setIsModalOpen(false)
+  }, [])
 
-  // Handle ESC key
+  useOnClickOutside(modalRef as React.RefObject<HTMLElement>, handleClickOutside)
+
+  // Handle ESC key to close modal
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isModalOpen) {
@@ -44,8 +43,12 @@ const ExportJSButton: React.FC = observer(() => {
     return () => window.removeEventListener('keydown', handleEsc)
   }, [isModalOpen])
 
+  // Remove useCallback from simple HTML element handlers
   const handleExport = () => {
     if (!hasNodes) return
+
+    const nodes = store.visualNodes as AudioNode[]
+    const edges = store.visualEdges
 
     // Check if there are any custom nodes
     const hasCustomNodes = nodes.some(node => {
@@ -71,31 +74,32 @@ const ExportJSButton: React.FC = observer(() => {
       return
     }
 
-    const generated = generateJavaScriptCode(nodes, edges)
-    setCode(generated)
+    const generatedCode = generateJavaScriptCode(nodes, edges)
+    setCode(generatedCode)
     setIsModalOpen(true)
   }
 
   const handleCopy = async () => {
+    if (!code) return
+
+    // Create a temporary textarea element to copy the code
+    const textarea = document.createElement('textarea')
+    textarea.value = code
+    document.body.appendChild(textarea)
+    textarea.select()
+
     try {
-      await navigator.clipboard.writeText(code)
+      document.execCommand('copy')
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      // fallback for older browsers
-      const textarea = document.createElement('textarea')
-      textarea.value = code
-      document.body.appendChild(textarea)
-      textarea.select()
-      try {
-        document.execCommand('copy')
-        setCopied(true)
-        setTimeout(() => setCopied(false), 1500)
-      } catch {
-        // Ignore copy errors
-      }
-      document.body.removeChild(textarea)
+      // Ignore copy errors
     }
+    document.body.removeChild(textarea)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
   }
 
   const sanitizeId = (id: string) => {
@@ -248,7 +252,7 @@ createAudioGraph().catch(console.error);`
           >
             <button
               className="absolute top-2 right-2 text-gray-500 hover:text-gray-900 dark:hover:text-white"
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleCloseModal}
               aria-label="Close"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

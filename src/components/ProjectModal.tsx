@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
@@ -28,11 +28,13 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   const modalRef = useRef<HTMLDivElement>(null)
 
   // Handle click outside to close modal
-  useOnClickOutside(modalRef as React.RefObject<HTMLElement>, () => {
+  const handleClickOutside = useCallback(() => {
     if (isOpen) {
       onClose()
     }
-  })
+  }, [isOpen, onClose])
+
+  useOnClickOutside(modalRef as React.RefObject<HTMLElement>, handleClickOutside)
 
   // Handle ESC key to close modal
   useEffect(() => {
@@ -166,191 +168,19 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     }
   }
 
-  const handleLoad = async (project: SavedProject) => {
-    // Check if there are unsaved changes
-    if (store.visualNodes.length > 0 && store.isProjectModified) {
-      if (!confirm('You will lose your changes. Are you sure you want to load this project?')) {
-        return
+  const handleLoad = useCallback(
+    async (project: SavedProject) => {
+      // Check if there are unsaved changes
+      if (store.visualNodes.length > 0 && store.isProjectModified) {
+        if (!confirm('You will lose your changes. Are you sure you want to load this project?')) {
+          return
+        }
       }
-    }
-
-    try {
-      setStorageError(null)
-
-      const importData = JSON.parse(project.data)
-
-      // Validate the import data structure
-      if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
-        throw new Error('Invalid project file format. Missing required fields.')
-      }
-
-      // Clear existing project
-      store.clearAllNodes()
-
-      // Set flag to prevent marking as modified during loading
-      store.setLoadingProject(true)
 
       try {
-        // Apply the imported data
-        const newSnapshot = {
-          ...getSnapshot(store),
-          visualNodes: importData.visualNodes,
-          visualEdges: importData.visualEdges,
-          audioConnections: importData.audioConnections,
-        }
+        setStorageError(null)
 
-        applySnapshot(store, newSnapshot)
-
-        // Restore custom nodes data if present
-        if (importData.customNodes) {
-          console.log('Restoring custom nodes data from import...')
-          Object.entries(importData.customNodes).forEach(([nodeId, nodeData]: [string, any]) => {
-            const customNode = store.customNodes.get(nodeId)
-            if (customNode) {
-              // Restore properties (including audio buffer data)
-              Object.entries(nodeData.properties || {}).forEach(([key, value]) => {
-                customNode.properties.set(key, value)
-              })
-
-              // Restore outputs
-              Object.entries(nodeData.outputs || {}).forEach(([key, value]) => {
-                customNode.outputs.set(key, value)
-              })
-
-              console.log(
-                `Restored custom node ${nodeId} with properties:`,
-                Object.keys(nodeData.properties || {})
-              )
-            }
-          })
-        }
-
-        // Recreate the audio graph and wait for it to complete
-        await store.recreateAudioGraph()
-
-        setCurrentProjectId(project.id || null)
-        setCurrentProjectName(project.name)
-        setStorageSuccess(`Project "${project.name}" loaded successfully!`)
-
-        // Mark project as unmodified after successful load
-        store.setProjectModified(false)
-
-        setTimeout(() => {
-          setStorageSuccess(null)
-          onClose()
-        }, 2000)
-      } finally {
-        // Always reset the flag, even if there's an error
-        store.setLoadingProject(false)
-      }
-    } catch (error) {
-      setStorageError('Failed to load project: ' + (error as Error).message)
-    }
-  }
-
-  const handleDelete = async (project: SavedProject) => {
-    if (!project.id) return
-
-    if (
-      !confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)
-    ) {
-      return
-    }
-
-    try {
-      setStorageError(null)
-      await projectOperations.deleteProject(project.id)
-
-      // If we deleted the current project, reset current project info
-      if (currentProjectId === project.id) {
-        setCurrentProjectId(null)
-        setCurrentProjectName('')
-      }
-
-      setStorageSuccess(`Project "${project.name}" deleted successfully!`)
-      await loadSavedProjects()
-      setTimeout(() => setStorageSuccess(null), 3000)
-    } catch (error) {
-      setStorageError('Failed to delete project: ' + (error as Error).message)
-    }
-  }
-
-  const handleExport = () => {
-    try {
-      // Get snapshot of the store
-      const snapshot = getSnapshot(store)
-
-      // Debug: Log store custom nodes info
-      console.log('🔍 Export Debug: store.customNodes size:', store.customNodes.size)
-      console.log('🔍 Export Debug: store.customNodes keys:', Array.from(store.customNodes.keys()))
-      console.log('🔍 Export Debug: store.visualNodes length:', store.visualNodes.length)
-
-      // Log each visual node to see which are custom nodes
-      store.visualNodes.forEach(node => {
-        console.log(`🔍 Visual Node: ${node.id} - Type: ${node.data.nodeType}`)
-      })
-
-      // Serialize custom nodes data (including audio buffer data)
-      const customNodesData: Record<string, any> = {}
-      store.customNodes.forEach((customNode, nodeId) => {
-        console.log(`🔍 Processing custom node: ${nodeId}`, customNode)
-        customNodesData[nodeId] = {
-          id: customNode.id || nodeId,
-          type: customNode.type,
-          // Convert Maps to objects for JSON serialization
-          properties: Object.fromEntries(customNode.properties.entries()),
-          outputs: Object.fromEntries(customNode.outputs.entries()),
-        }
-      })
-
-      console.log('🔍 Export Debug: customNodesData:', customNodesData)
-
-      // Create a clean export object with only the necessary data
-      const exportData = {
-        version: '1.0.0',
-        timestamp: new Date().toISOString(),
-        visualNodes: snapshot.visualNodes,
-        visualEdges: snapshot.visualEdges,
-        audioConnections: snapshot.audioConnections,
-        // Include custom nodes data for full project preservation
-        customNodes: customNodesData,
-      }
-
-      console.log('🔍 Export Debug: final exportData.customNodes:', exportData.customNodes)
-
-      // Create and download the file
-      const dataStr = JSON.stringify(exportData, null, 2)
-      const dataBlob = new Blob([dataStr], { type: 'application/json' })
-      const url = URL.createObjectURL(dataBlob)
-
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `visual-web-audio-project-${new Date().toISOString().split('T')[0]}.json`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-
-      URL.revokeObjectURL(url)
-
-      console.log('Project exported successfully with custom nodes data')
-
-      // Mark project as unmodified after successful export
-      store.setProjectModified(false)
-    } catch (error) {
-      console.error('Export failed:', error)
-      setImportError('Export failed: ' + (error as Error).message)
-    }
-  }
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    const reader = new FileReader()
-    reader.onload = async e => {
-      try {
-        const content = e.target?.result as string
-        const importData = JSON.parse(content)
+        const importData = JSON.parse(project.data)
 
         // Validate the import data structure
         if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
@@ -374,71 +204,188 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
           applySnapshot(store, newSnapshot)
 
-          // Restore custom nodes data if present
-          if (importData.customNodes) {
-            console.log('Restoring custom nodes data from import...')
-            Object.entries(importData.customNodes).forEach(([nodeId, nodeData]: [string, any]) => {
-              const customNode = store.customNodes.get(nodeId)
-              if (customNode) {
-                // Restore properties (including audio buffer data)
-                Object.entries(nodeData.properties || {}).forEach(([key, value]) => {
-                  customNode.properties.set(key, value)
-                })
+          // Set current project info
+          setCurrentProjectId(project.id || null)
+          setCurrentProjectName(project.name)
 
-                // Restore outputs
-                Object.entries(nodeData.outputs || {}).forEach(([key, value]) => {
-                  customNode.outputs.set(key, value)
-                })
+          setStorageSuccess(`Project "${project.name}" loaded successfully!`)
+          setTimeout(() => setStorageSuccess(null), 3000)
 
-                console.log(
-                  `Restored custom node ${nodeId} with properties:`,
-                  Object.keys(nodeData.properties || {})
-                )
-              }
-            })
-          }
-
-          // Recreate the audio graph and wait for it to complete
-          await store.recreateAudioGraph()
-
-          setImportSuccess(true)
-          setImportError(null)
-
-          console.log('Project imported successfully with custom nodes data')
-
-          // Mark project as unmodified after successful import
+          // Mark project as unmodified after successful load
           store.setProjectModified(false)
-
-          // Auto-close after success
-          setTimeout(() => {
-            setImportSuccess(false)
-            onClose()
-          }, 2000)
         } finally {
-          // Always reset the flag, even if there's an error
+          // Always clear the loading flag
           store.setLoadingProject(false)
         }
       } catch (error) {
-        console.error('Import failed:', error)
-        setImportError('Import failed: ' + (error as Error).message)
-        setImportSuccess(false)
+        setStorageError('Failed to load project: ' + (error as Error).message)
+        // Clear the loading flag on error too
+        store.setLoadingProject(false)
       }
-    }
+    },
+    [store]
+  )
 
-    reader.readAsText(file)
-  }
-
-  const handleImportClick = () => {
-    // Check if there are unsaved changes
-    if (store.visualNodes.length > 0 && store.isProjectModified) {
-      if (!confirm('You will lose your changes. Are you sure you want to import a project?')) {
+  const handleDelete = useCallback(
+    async (project: SavedProject) => {
+      if (!project.id) {
+        setStorageError('Cannot delete project: Invalid project ID')
         return
       }
-    }
 
-    setImportError(null)
-    setImportSuccess(false)
+      if (
+        !confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)
+      ) {
+        return
+      }
+
+      try {
+        setStorageError(null)
+        await projectOperations.deleteProject(project.id)
+
+        // If we deleted the currently loaded project, clear the current project info
+        if (currentProjectId === project.id) {
+          setCurrentProjectId(null)
+          setCurrentProjectName('')
+        }
+
+        await loadSavedProjects()
+        setStorageSuccess(`Project "${project.name}" deleted successfully!`)
+        setTimeout(() => setStorageSuccess(null), 3000)
+      } catch (error) {
+        setStorageError('Failed to delete project: ' + (error as Error).message)
+      }
+    },
+    [currentProjectId]
+  )
+
+  // Remove useCallback from simple HTML element handlers
+  const handleSetActiveTabStorage = () => {
+    setActiveTab('storage')
+  }
+
+  const handleSetActiveTabExport = () => {
+    setActiveTab('export')
+  }
+
+  const handleSetActiveTabImport = () => {
+    setActiveTab('import')
+  }
+
+  const handleShowSaveAsDialog = () => {
+    setShowSaveAsDialog(true)
+  }
+
+  const handleNewProjectNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewProjectName(e.target.value)
+  }
+
+  const handleNewProjectNameKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSaveAs()
+    }
+  }
+
+  const handleSaveAsDialogClose = () => {
+    setShowSaveAsDialog(false)
+    setNewProjectName('')
+  }
+
+  const handleExport = () => {
+    const projectData = getCurrentProjectData()
+    const blob = new Blob([projectData], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${currentProjectName || 'project'}.json`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  const handleFileSelect = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0]
+      if (!file) return
+
+      // Check if there are unsaved changes
+      if (store.visualNodes.length > 0 && store.isProjectModified) {
+        if (!confirm('You will lose your changes. Are you sure you want to import this project?')) {
+          // Reset the file input
+          if (fileInputRef.current) {
+            fileInputRef.current.value = ''
+            setImportError(null)
+            setImportSuccess(false)
+          }
+          return
+        }
+      }
+
+      const reader = new FileReader()
+      reader.onload = async e => {
+        try {
+          const content = e.target?.result as string
+          const importData = JSON.parse(content)
+
+          // Validate the import data structure
+          if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
+            throw new Error('Invalid project file format. Missing required fields.')
+          }
+
+          // Clear existing project
+          store.clearAllNodes()
+
+          // Set flag to prevent marking as modified during loading
+          store.setLoadingProject(true)
+
+          try {
+            // Apply the imported data
+            const newSnapshot = {
+              ...getSnapshot(store),
+              visualNodes: importData.visualNodes,
+              visualEdges: importData.visualEdges,
+              audioConnections: importData.audioConnections,
+            }
+
+            applySnapshot(store, newSnapshot)
+
+            // Clear current project info since this is an import
+            setCurrentProjectId(null)
+            setCurrentProjectName('')
+
+            setImportSuccess(true)
+            setTimeout(() => setImportSuccess(false), 3000)
+
+            // Mark project as unmodified after successful import
+            store.setProjectModified(false)
+          } finally {
+            // Always clear the loading flag
+            store.setLoadingProject(false)
+          }
+        } catch (error) {
+          setImportError('Failed to import project: ' + (error as Error).message)
+          // Clear the loading flag on error too
+          store.setLoadingProject(false)
+        }
+
+        // Reset the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ''
+        }
+      }
+
+      reader.readAsText(file)
+    },
+    [store]
+  )
+
+  const handleImportClick = () => {
     fileInputRef.current?.click()
+  }
+
+  const handleRefreshProjects = () => {
+    loadSavedProjects()
   }
 
   if (!isOpen) {
@@ -469,7 +416,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         {/* Tabs */}
         <div className="flex border-b border-gray-200">
           <button
-            onClick={() => setActiveTab('storage')}
+            onClick={handleSetActiveTabStorage}
             className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'storage'
                 ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -479,7 +426,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
             Storage
           </button>
           <button
-            onClick={() => setActiveTab('export')}
+            onClick={handleSetActiveTabExport}
             className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'export'
                 ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -489,7 +436,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
             Export
           </button>
           <button
-            onClick={() => setActiveTab('import')}
+            onClick={handleSetActiveTabImport}
             className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'import'
                 ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
@@ -537,7 +484,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                   Save
                 </button>
                 <button
-                  onClick={() => setShowSaveAsDialog(true)}
+                  onClick={handleShowSaveAsDialog}
                   disabled={store.visualNodes.length === 0 || !store.isProjectModified}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
@@ -552,10 +499,10 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                   <input
                     type="text"
                     value={newProjectName}
-                    onChange={e => setNewProjectName(e.target.value)}
+                    onChange={handleNewProjectNameChange}
                     placeholder="Enter project name..."
                     className="w-full px-3 py-2 border border-blue-300 rounded-md text-sm mb-3"
-                    onKeyDown={e => e.key === 'Enter' && handleSaveAs()}
+                    onKeyDown={handleNewProjectNameKeyDown}
                   />
                   <div className="flex gap-2">
                     <button
@@ -565,11 +512,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                       Save
                     </button>
                     <button
-                      onClick={() => {
-                        setShowSaveAsDialog(false)
-                        setNewProjectName('')
-                        setStorageError(null)
-                      }}
+                      onClick={handleSaveAsDialogClose}
                       className="px-3 py-1 bg-gray-300 text-gray-700 rounded text-sm hover:bg-gray-400"
                     >
                       Cancel
@@ -583,7 +526,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-gray-700">Saved Projects</h4>
                   <button
-                    onClick={loadSavedProjects}
+                    onClick={handleRefreshProjects}
                     className="text-xs text-blue-600 hover:text-blue-800"
                   >
                     Refresh
