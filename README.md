@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-197%2F197%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-210%2F210%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
