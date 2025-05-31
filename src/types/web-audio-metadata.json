@@ -59,9 +59,7 @@
         "defaultValue": null
       }
     ],
-    "methods": [
-      "start"
-    ],
+    "methods": ["start"],
     "events": []
   },
   "AudioContext": {
@@ -118,9 +116,7 @@
       }
     ],
     "methods": [],
-    "events": [
-      "processorerror"
-    ]
+    "events": ["processorerror"]
   },
   "BiquadFilterNode": {
     "name": "BiquadFilterNode",
@@ -176,8 +172,8 @@
         "name": "gain",
         "type": "AudioParam",
         "defaultValue": 1,
-        "min": 0,
-        "max": 1
+        "min": -100,
+        "max": 100
       },
       {
         "name": "type",
@@ -265,6 +261,34 @@
       }
     ],
     "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "ConstantSourceNode": {
+    "name": "ConstantSourceNode",
+    "description": "[MDN Reference](https://developer.mozilla.org/docs/Web/API/ConstantSourceNode)",
+    "category": "source",
+    "inputs": [
+      {
+        "name": "offset",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "offset",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -100,
+        "max": 100
+      }
+    ],
     "methods": [],
     "events": []
   },
@@ -421,10 +445,30 @@
         "name": "gain",
         "type": "AudioParam",
         "defaultValue": 1,
-        "min": 0,
-        "max": 1
+        "min": -100,
+        "max": 100
       }
     ],
+    "methods": [],
+    "events": []
+  },
+  "IIRFilterNode": {
+    "name": "IIRFilterNode",
+    "description": "The IIRFilterNode interface of the Web Audio API is a AudioNode processor which implements a general infinite impulse response (IIR)  filter; this type of filter can be used to implement tone control devices and graphic equalizers as well. It lets the parameters of the filter response be specified, so that it can be tuned as needed.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/IIRFilterNode)",
+    "category": "effect",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [],
     "methods": [],
     "events": []
   },
@@ -439,6 +483,21 @@
         "type": "audio"
       }
     ],
+    "properties": [],
+    "methods": [],
+    "events": []
+  },
+  "MediaStreamAudioDestinationNode": {
+    "name": "MediaStreamAudioDestinationNode",
+    "description": "[MDN Reference](https://developer.mozilla.org/docs/Web/API/MediaStreamAudioDestinationNode)",
+    "category": "destination",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      }
+    ],
+    "outputs": [],
     "properties": [],
     "methods": [],
     "events": []
@@ -502,6 +561,93 @@
     "methods": [],
     "events": []
   },
+  "PannerNode": {
+    "name": "PannerNode",
+    "description": "A PannerNode always has exactly one input and one output: the input can be mono or stereo but the output is always stereo (2 channels); you can't have panning effects without at least two audio channels!\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/PannerNode)",
+    "category": "processing",
+    "inputs": [
+      {
+        "name": "input",
+        "type": "audio"
+      },
+      {
+        "name": "positionX",
+        "type": "control"
+      },
+      {
+        "name": "positionY",
+        "type": "control"
+      },
+      {
+        "name": "positionZ",
+        "type": "control"
+      },
+      {
+        "name": "orientationX",
+        "type": "control"
+      },
+      {
+        "name": "orientationY",
+        "type": "control"
+      },
+      {
+        "name": "orientationZ",
+        "type": "control"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "output",
+        "type": "audio"
+      }
+    ],
+    "properties": [
+      {
+        "name": "orientationX",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1,
+        "max": 1
+      },
+      {
+        "name": "orientationY",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1,
+        "max": 1
+      },
+      {
+        "name": "orientationZ",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1,
+        "max": 1
+      },
+      {
+        "name": "positionX",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "positionY",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1000,
+        "max": 1000
+      },
+      {
+        "name": "positionZ",
+        "type": "AudioParam",
+        "defaultValue": null,
+        "min": -1000,
+        "max": 1000
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
   "ScriptProcessorNode": {
     "name": "ScriptProcessorNode",
     "description": "Allows the generation, processing, or analyzing of audio using JavaScript.",
@@ -520,9 +666,7 @@
     ],
     "properties": [],
     "methods": [],
-    "events": [
-      "audioprocess"
-    ]
+    "events": ["audioprocess"]
   },
   "StereoPannerNode": {
     "name": "StereoPannerNode",

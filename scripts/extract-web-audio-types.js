@@ -26,6 +26,27 @@ const WEB_AUDIO_NODES = [
   'MediaStreamAudioSourceNode',
   'ScriptProcessorNode',
   'AudioWorkletNode',
+  'ConstantSourceNode',
+  'IIRFilterNode',
+  'PannerNode',
+  'MediaStreamAudioDestinationNode',
+]
+
+// Interfaces to exclude (abstract, deprecated, or not user-creatable)
+const EXCLUDED_INTERFACES = [
+  'AudioNode', // Abstract base class
+  'AudioScheduledSourceNode', // Abstract base class
+  'BaseAudioContext', // Abstract base class
+  'AudioBuffer', // Not a node, it's a data container
+  'AudioListener', // Not a node, it's a property of AudioContext
+  'AudioProcessingEvent', // Deprecated event
+  'AudioSinkInfo', // Experimental, not a node
+  'AudioWorklet', // Not a node, it's a worklet interface
+  'AudioWorkletGlobalScope', // Not a node, it's a global scope
+  'AudioWorkletProcessor', // Not a node, it's a processor class
+  'OfflineAudioCompletionEvent', // Event, not a node
+  'OfflineAudioContext', // Context, handled separately
+  'PeriodicWave', // Not a node, it's a waveform data
 ]
 
 // Extract type information from TypeScript lib files
@@ -49,11 +70,21 @@ function extractWebAudioTypes() {
     return createFallbackMetadata()
   }
 
+  // Dynamically discover audio nodes
+  console.log('🔍 Dynamically discovering Web Audio interfaces...')
+  const discoveredNodes = discoverWebAudioNodes(sourceFile, checker)
+
+  // Combine hardcoded list with discovered nodes for maximum coverage
+  const allNodes = [...new Set([...WEB_AUDIO_NODES, ...discoveredNodes])]
+  console.log(
+    `📋 Processing ${allNodes.length} audio interfaces (${WEB_AUDIO_NODES.length} hardcoded + ${discoveredNodes.length - WEB_AUDIO_NODES.filter(n => discoveredNodes.includes(n)).length} discovered)`
+  )
+
   const nodeMetadata = {}
 
   // Visit all nodes in the source file
   function visit(node) {
-    if (ts.isInterfaceDeclaration(node) && WEB_AUDIO_NODES.includes(node.name.text)) {
+    if (ts.isInterfaceDeclaration(node) && allNodes.includes(node.name.text)) {
       const nodeType = node.name.text
       console.log(`📝 Extracting ${nodeType}...`)
 
@@ -75,7 +106,7 @@ function extractWebAudioTypes() {
   visit(sourceFile)
 
   // Fill in any missing nodes with fallback data
-  WEB_AUDIO_NODES.forEach(nodeType => {
+  allNodes.forEach(nodeType => {
     if (!nodeMetadata[nodeType]) {
       console.log(`⚠️  ${nodeType} not found in TS definitions, using fallback`)
       nodeMetadata[nodeType] = createFallbackNodeMetadata(nodeType)
@@ -220,7 +251,7 @@ function getAudioParamRange(propertyName) {
   const ranges = {
     frequency: { min: 0, max: 20000 },
     detune: { min: -1200, max: 1200 },
-    gain: { min: 0, max: 1 },
+    gain: { min: -100, max: 100 },
     Q: { min: 0.0001, max: 1000 },
     delayTime: { min: 0, max: 1 },
     threshold: { min: -100, max: 0 },
@@ -229,6 +260,13 @@ function getAudioParamRange(propertyName) {
     attack: { min: 0, max: 1 },
     release: { min: 0, max: 1 },
     pan: { min: -1, max: 1 },
+    offset: { min: -100, max: 100 }, // ConstantSourceNode offset
+    positionX: { min: -1000, max: 1000 }, // PannerNode position
+    positionY: { min: -1000, max: 1000 },
+    positionZ: { min: -1000, max: 1000 },
+    orientationX: { min: -1, max: 1 }, // PannerNode orientation (normalized)
+    orientationY: { min: -1, max: 1 },
+    orientationZ: { min: -1, max: 1 },
   }
 
   return ranges[propertyName] || { min: undefined, max: undefined }
@@ -275,7 +313,8 @@ function getNodeInputs(nodeType) {
   if (
     !nodeType.includes('Source') &&
     nodeType !== 'AudioContext' &&
-    nodeType !== 'OscillatorNode'
+    nodeType !== 'OscillatorNode' &&
+    nodeType !== 'ConstantSourceNode' // ConstantSourceNode is also a source
   ) {
     if (nodeType === 'ChannelMergerNode') {
       inputs.push(
@@ -303,8 +342,8 @@ function getNodeInputs(nodeType) {
 }
 
 function getNodeOutputs(nodeType) {
-  if (nodeType === 'AudioDestinationNode') {
-    return []
+  if (nodeType === 'AudioDestinationNode' || nodeType === 'MediaStreamAudioDestinationNode') {
+    return [] // These nodes output to hardware/stream, not to other audio nodes
   }
   if (nodeType === 'ChannelSplitterNode') {
     return [
@@ -350,6 +389,29 @@ function getNodeProperties(nodeType) {
       ]
     case 'StereoPannerNode':
       return [{ name: 'pan', type: 'AudioParam', defaultValue: 0 }]
+    case 'ConstantSourceNode':
+      return [{ name: 'offset', type: 'AudioParam', defaultValue: 1 }]
+    case 'IIRFilterNode':
+      return [] // IIR filters are configured with feedforward/feedback coefficients, not simple properties
+    case 'PannerNode':
+      return [
+        { name: 'positionX', type: 'AudioParam', defaultValue: 0 },
+        { name: 'positionY', type: 'AudioParam', defaultValue: 0 },
+        { name: 'positionZ', type: 'AudioParam', defaultValue: 0 },
+        { name: 'orientationX', type: 'AudioParam', defaultValue: 1 },
+        { name: 'orientationY', type: 'AudioParam', defaultValue: 0 },
+        { name: 'orientationZ', type: 'AudioParam', defaultValue: 0 },
+        { name: 'panningModel', type: 'PanningModelType', defaultValue: 'equalpower' },
+        { name: 'distanceModel', type: 'DistanceModelType', defaultValue: 'inverse' },
+        { name: 'refDistance', type: 'number', defaultValue: 1 },
+        { name: 'maxDistance', type: 'number', defaultValue: 10000 },
+        { name: 'rolloffFactor', type: 'number', defaultValue: 1 },
+        { name: 'coneInnerAngle', type: 'number', defaultValue: 360 },
+        { name: 'coneOuterAngle', type: 'number', defaultValue: 360 },
+        { name: 'coneOuterGain', type: 'number', defaultValue: 0 },
+      ]
+    case 'MediaStreamAudioDestinationNode':
+      return [] // No configurable properties
     default:
       return commonProperties
   }
@@ -361,6 +423,7 @@ function getNodeMethods(nodeType) {
   switch (nodeType) {
     case 'OscillatorNode':
     case 'AudioBufferSourceNode':
+    case 'ConstantSourceNode':
       return [...commonMethods, 'start', 'stop']
     case 'AudioContext':
       return [
@@ -369,6 +432,10 @@ function getNodeMethods(nodeType) {
         'createBiquadFilter',
         'createDelay',
         'createAnalyser',
+        'createConstantSource',
+        'createIIRFilter',
+        'createPanner',
+        'createMediaStreamDestination',
         'resume',
         'suspend',
         'close',
@@ -428,9 +495,57 @@ function getManualDescription(nodeType) {
     MediaStreamAudioSourceNode: 'Creates an audio source from MediaStream (microphone, etc.).',
     ScriptProcessorNode: 'Allows custom audio processing using JavaScript (deprecated).',
     AudioWorkletNode: 'Modern replacement for ScriptProcessorNode for custom audio processing.',
+    ConstantSourceNode: 'Generates a constant audio signal with a configurable offset value.',
+    IIRFilterNode: 'Implements infinite impulse response filters with custom coefficients.',
+    PannerNode: 'Provides 3D spatial audio positioning and orientation effects.',
+    MediaStreamAudioDestinationNode:
+      'Outputs audio to a MediaStream for recording or transmission.',
   }
 
   return descriptions[nodeType] || 'Web Audio API node for audio processing.'
+}
+
+// Function to dynamically discover Web Audio nodes
+function discoverWebAudioNodes(sourceFile, checker) {
+  const discoveredNodes = new Set()
+
+  function visit(node) {
+    if (ts.isInterfaceDeclaration(node) && node.name) {
+      const interfaceName = node.name.text
+
+      // Skip excluded interfaces
+      if (EXCLUDED_INTERFACES.includes(interfaceName)) {
+        return
+      }
+
+      // Check if it extends AudioNode or is a known audio interface
+      const isAudioNode = node.heritageClauses?.some(clause =>
+        clause.types.some(type => {
+          const typeName = type.expression.getText()
+          return (
+            typeName === 'AudioNode' ||
+            typeName === 'AudioScheduledSourceNode' ||
+            typeName === 'BaseAudioContext'
+          )
+        })
+      )
+
+      // Check if it's a known audio-related interface by name patterns
+      const isAudioInterface =
+        interfaceName.includes('Audio') &&
+        (interfaceName.endsWith('Node') || interfaceName.endsWith('Context'))
+
+      if (isAudioNode || isAudioInterface) {
+        discoveredNodes.add(interfaceName)
+        console.log(`🔍 Discovered audio interface: ${interfaceName}`)
+      }
+    }
+
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return Array.from(discoveredNodes)
 }
 
 // Generate the metadata file
