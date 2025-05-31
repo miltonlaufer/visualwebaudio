@@ -4,6 +4,7 @@ import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { projectOperations, type SavedProject } from '~/utils/database'
+import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -171,10 +172,13 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   const handleLoad = useCallback(
     async (project: SavedProject) => {
       // Check if there are unsaved changes
-      if (store.visualNodes.length > 0 && store.isProjectModified) {
-        if (!confirm('You will lose your changes. Are you sure you want to load this project?')) {
-          return
-        }
+      if (
+        !confirmUnsavedChanges(
+          store,
+          'You will lose your changes. Are you sure you want to load this project?'
+        )
+      ) {
+        return
       }
 
       try {
@@ -309,16 +313,19 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     if (!file) return
 
     // Check if there are unsaved changes
-    if (store.visualNodes.length > 0 && store.isProjectModified) {
-      if (!confirm('You will lose your changes. Are you sure you want to import this project?')) {
-        // Reset the file input
-        if (fileInputRef.current) {
-          fileInputRef.current.value = ''
-          setImportError(null)
-          setImportSuccess(false)
-        }
-        return
+    if (
+      !confirmUnsavedChanges(
+        store,
+        'You will lose your changes. Are you sure you want to import this project?'
+      )
+    ) {
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+        setImportError(null)
+        setImportSuccess(false)
       }
+      return
     }
 
     const reader = new FileReader()

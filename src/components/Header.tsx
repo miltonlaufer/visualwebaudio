@@ -6,6 +6,7 @@ import ProjectModal from './ProjectModal'
 import ExportJSButton from './ExportJSButton'
 import ExamplesDropdown from './ExamplesDropdown'
 import { useExamples } from './Examples'
+import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
 interface HeaderProps {
   isNodePaletteOpen?: boolean
@@ -94,10 +95,10 @@ const Header: React.FC<HeaderProps> = observer(
 
     const handleGitHubClick = async () => {
       // Check if there are unsaved changes
-      if (store.visualNodes.length > 0 && store.isProjectModified) {
-        if (!confirm('You will lose your changes. Are you sure you want to leave?')) {
-          return
-        }
+      if (
+        !confirmUnsavedChanges(store, 'You will lose your changes. Are you sure you want to leave?')
+      ) {
+        return
       }
       window.open('https://github.com/miltonlaufer/visualwebaudio', '_blank')
     }
@@ -105,10 +106,13 @@ const Header: React.FC<HeaderProps> = observer(
     const handleExampleSelect = useCallback(
       async (example: any) => {
         // Check if there are unsaved changes
-        if (store.visualNodes.length > 0 && store.isProjectModified) {
-          if (!confirm('You will lose your changes. Are you sure you want to load this example?')) {
-            return
-          }
+        if (
+          !confirmUnsavedChanges(
+            store,
+            'You will lose your changes. Are you sure you want to load this example?'
+          )
+        ) {
+          return
         }
 
         await example.create()
