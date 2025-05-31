@@ -6,10 +6,19 @@ import {
   MiniMap,
   useNodesState,
   useEdgesState,
+  useReactFlow,
   ConnectionMode,
   ConnectionLineType,
 } from '@xyflow/react'
-import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '@xyflow/react'
+import type {
+  Connection,
+  Node,
+  Edge,
+  NodeChange,
+  EdgeChange,
+  NodeTypes,
+  ReactFlowInstance,
+} from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 import { getSnapshot } from 'mobx-state-tree'
@@ -27,6 +36,54 @@ import Header from '~/components/Header'
 const nodeTypes: NodeTypes = {
   audioNode: AudioNode,
 }
+
+// Component to handle auto-fit functionality from within ReactFlow context
+const AutoFitHandler: React.FC = observer(() => {
+  const store = useAudioGraphStore()
+  const { fitView } = useReactFlow()
+  const [previousNodeCount, setPreviousNodeCount] = useState(0)
+
+  // Auto-fit view when nodes are loaded (examples, projects, imports)
+  useEffect(() => {
+    const currentNodeCount = store.visualNodes.length
+
+    // Only auto-fit if:
+    // 1. We have nodes (not clearing)
+    // 2. The node count increased significantly (likely from loading)
+    // 3. We're not just adding one node (manual addition)
+    if (currentNodeCount > 0 && currentNodeCount > previousNodeCount + 1) {
+      console.log('Auto-fitting view after loading nodes:', currentNodeCount)
+      // Small delay to ensure nodes are rendered
+      setTimeout(() => {
+        fitView({
+          padding: 0.1, // 10% padding around nodes
+          duration: 800, // Smooth animation
+          maxZoom: 1.2, // Don't zoom in too much
+        })
+      }, 100)
+    }
+
+    setPreviousNodeCount(currentNodeCount)
+  }, [store.visualNodes.length, fitView, previousNodeCount])
+
+  // Auto-fit view when project loading finishes
+  useEffect(() => {
+    // When loading finishes and we have nodes, auto-fit the view
+    if (!store.isLoadingProject && store.visualNodes.length > 0) {
+      console.log('Auto-fitting view after project loading finished')
+      // Small delay to ensure nodes are rendered
+      setTimeout(() => {
+        fitView({
+          padding: 0.1, // 10% padding around nodes
+          duration: 800, // Smooth animation
+          maxZoom: 1.2, // Don't zoom in too much
+        })
+      }, 150) // Slightly longer delay for project loading
+    }
+  }, [store.isLoadingProject, store.visualNodes.length, fitView])
+
+  return null // This component doesn't render anything
+})
 
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
@@ -522,6 +579,7 @@ const AppContent: React.FC = observer(() => {
               className="bg-gray-50 w-full h-full"
               onInit={canvasOnInit}
             >
+              <AutoFitHandler />
               <Background />
               <Controls />
               <MiniMap />

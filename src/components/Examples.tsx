@@ -89,14 +89,14 @@ export const useExamples = () => {
         // Load the complete project data
         const projectData = {
           version: '1.0.0',
-          timestamp: '2025-05-31T11:32:52.451Z',
+          timestamp: '2025-05-31T11:40:09.763Z',
           visualNodes: [
             {
               id: 'SliderNode-1748685942561-12',
               type: 'audioNode',
               position: {
-                x: 213.37993395350037,
-                y: 481.0759235039577,
+                x: 385.5774441943615,
+                y: 261.76777366889877,
               },
               data: {
                 nodeType: 'SliderNode',
@@ -152,7 +152,7 @@ export const useExamples = () => {
                   min: 48,
                   max: 84,
                   step: 1,
-                  value: 56,
+                  value: 58,
                   label: 'MIDI Note',
                 },
               },
@@ -161,8 +161,8 @@ export const useExamples = () => {
               id: 'DisplayNode-1748685942566-13',
               type: 'audioNode',
               position: {
-                x: 71.31611136501074,
-                y: 232.5119899292198,
+                x: 150.91684723106914,
+                y: 263.37758138748734,
               },
               data: {
                 nodeType: 'DisplayNode',
@@ -216,8 +216,8 @@ export const useExamples = () => {
               id: 'MidiToFreqNode-1748685942567-14',
               type: 'audioNode',
               position: {
-                x: 269.03647005056547,
-                y: 19.111448796764165,
+                x: 117.95752238641381,
+                y: 71.09560283174109,
               },
               data: {
                 nodeType: 'MidiToFreqNode',
@@ -266,8 +266,8 @@ export const useExamples = () => {
               id: 'DisplayNode-1748685942567-15',
               type: 'audioNode',
               position: {
-                x: 349.60216452982104,
-                y: 209.40628596561203,
+                x: 331.7326115802977,
+                y: 58.327338301460344,
               },
               data: {
                 nodeType: 'DisplayNode',
@@ -374,7 +374,7 @@ export const useExamples = () => {
                 properties: {
                   detune: null,
                   frequency: 440,
-                  type: 'sine',
+                  type: 'sawtooth',
                 },
               },
             },
@@ -410,8 +410,8 @@ export const useExamples = () => {
               id: 'DelayNode-1748685958111-18',
               type: 'audioNode',
               position: {
-                x: 639.6256465911865,
-                y: 334.00000000000006,
+                x: 728.9734113388032,
+                y: 186.1700619630344,
               },
               data: {
                 nodeType: 'DelayNode',
@@ -551,8 +551,8 @@ export const useExamples = () => {
               id: 'GainNode-1748686196223-24',
               type: 'audioNode',
               position: {
-                x: 907.0017242431641,
-                y: 319.4513854980469,
+                x: 970.3574119732923,
+                y: 283.7122795990003,
               },
               data: {
                 nodeType: 'GainNode',
@@ -598,8 +598,8 @@ export const useExamples = () => {
               id: 'DelayNode-1748686239866-25',
               type: 'audioNode',
               position: {
-                x: 474.00172424316406,
-                y: 535.4513854980469,
+                x: 616.9581478393507,
+                y: 423.96961872534393,
               },
               data: {
                 nodeType: 'DelayNode',
@@ -645,8 +645,8 @@ export const useExamples = () => {
               id: 'GainNode-1748686283731-26',
               type: 'audioNode',
               position: {
-                x: 744.0017242431641,
-                y: 540.4513854980469,
+                x: 865.8395852626412,
+                y: 494.96525071744213,
               },
               data: {
                 nodeType: 'GainNode',
@@ -849,6 +849,57 @@ export const useExamples = () => {
               targetInput: 'input',
             },
           ],
+          customNodes: {
+            'SliderNode-1748685942561-12': {
+              id: 'SliderNode-1748685942561-12',
+              type: 'SliderNode',
+              properties: {
+                min: 48,
+                max: 84,
+                step: 1,
+                value: 58,
+                label: 'MIDI Note',
+              },
+              outputs: {
+                value: 58,
+              },
+            },
+            'DisplayNode-1748685942566-13': {
+              id: 'DisplayNode-1748685942566-13',
+              type: 'DisplayNode',
+              properties: {
+                currentValue: 58,
+                precision: 2,
+                label: 'Display',
+              },
+              outputs: {
+                output: 58,
+              },
+            },
+            'MidiToFreqNode-1748685942567-14': {
+              id: 'MidiToFreqNode-1748685942567-14',
+              type: 'MidiToFreqNode',
+              properties: {
+                baseFreq: 440,
+                baseMidi: 69,
+              },
+              outputs: {
+                frequency: 233.08188075904496,
+              },
+            },
+            'DisplayNode-1748685942567-15': {
+              id: 'DisplayNode-1748685942567-15',
+              type: 'DisplayNode',
+              properties: {
+                currentValue: 233.08188075904496,
+                precision: 2,
+                label: 'Display',
+              },
+              outputs: {
+                output: 233.08188075904496,
+              },
+            },
+          },
         }
 
         // Apply the project snapshot to load all nodes and connections
@@ -863,10 +914,10 @@ export const useExamples = () => {
         } catch (error) {
           console.warn('Failed to apply snapshot, falling back to manual creation:', error)
           // Fallback: create a simpler version manually
-          const sliderId = store.addNode('SliderNode', { x: 213, y: 481 })
-          const displayId = store.addNode('DisplayNode', { x: 71, y: 232 })
-          const midiToFreqId = store.addNode('MidiToFreqNode', { x: 269, y: 19 })
-          const freqDisplayId = store.addNode('DisplayNode', { x: 349, y: 209 })
+          const sliderId = store.addNode('SliderNode', { x: 385, y: 261 })
+          const displayId = store.addNode('DisplayNode', { x: 150, y: 263 })
+          const midiToFreqId = store.addNode('MidiToFreqNode', { x: 117, y: 71 })
+          const freqDisplayId = store.addNode('DisplayNode', { x: 331, y: 58 })
           const oscId = store.addNode('OscillatorNode', { x: 543, y: -28 })
           const gainId = store.addNode('GainNode', { x: 785, y: -20 })
           const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
@@ -874,8 +925,9 @@ export const useExamples = () => {
           // Configure nodes
           store.updateNodeProperty(sliderId, 'min', 48)
           store.updateNodeProperty(sliderId, 'max', 84)
-          store.updateNodeProperty(sliderId, 'value', 56)
+          store.updateNodeProperty(sliderId, 'value', 58)
           store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
+          store.updateNodeProperty(oscId, 'type', 'sawtooth')
           store.updateNodeProperty(gainId, 'gain', 0.61)
 
           // Create connections
