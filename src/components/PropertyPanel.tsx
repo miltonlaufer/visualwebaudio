@@ -112,12 +112,77 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     defaultValue: unknown
     min?: number
     max?: number
+    step?: number
+    options?: unknown[]
   }) => {
     const currentValue = selectedNode?.data.properties
       ? (getPropertyValue(selectedNode.data.properties, property.name) ?? property.defaultValue)
       : property.defaultValue
 
+    // If property has options, render as dropdown
+    if (property.options && Array.isArray(property.options)) {
+      const selectValue =
+        currentValue !== undefined && currentValue !== null
+          ? currentValue.toString()
+          : property.defaultValue?.toString() || ''
+
+      return (
+        <select
+          value={selectValue}
+          onChange={handleStringPropertyChange(property.name)}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {property.options.map(option => (
+            <option key={option?.toString()} value={option?.toString()}>
+              {option?.toString()}
+            </option>
+          ))}
+        </select>
+      )
+    }
+
     switch (property.type) {
+      case 'number': {
+        // Handle numeric properties with proper step, min, max
+        const numericValue =
+          typeof currentValue === 'number' ? currentValue : (property.defaultValue as number) || 0
+        return (
+          <input
+            type="number"
+            value={numericValue}
+            onChange={handleNumberPropertyChange(property.name)}
+            step={
+              property.step || (property.name === 'delay' || property.name === 'interval' ? 10 : 1)
+            }
+            min={property.min}
+            max={property.max}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        )
+      }
+
+      case 'boolean': {
+        // Handle boolean properties as checkboxes
+        const boolValue =
+          typeof currentValue === 'boolean'
+            ? currentValue
+            : (property.defaultValue as boolean) || false
+        return (
+          <label className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              checked={boolValue}
+              onChange={e => {
+                const newValue = e.target.checked
+                store.updateNodeProperty(selectedNode!.id, property.name, newValue)
+              }}
+              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-700">{boolValue ? 'Enabled' : 'Disabled'}</span>
+          </label>
+        )
+      }
+
       case 'AudioParam': {
         // Ensure the value is always a number, never undefined
         const numericValue =

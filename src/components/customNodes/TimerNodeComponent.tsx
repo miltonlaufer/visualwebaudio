@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { observer } from 'mobx-react-lite'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 interface TimerNodeComponentProps {
   nodeId: string
@@ -8,6 +9,7 @@ interface TimerNodeComponentProps {
 
 const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
+  const audioStore = useAudioGraphStore()
   const [isRunning, setIsRunning] = useState(false)
   const [triggerCount, setTriggerCount] = useState(0)
   const [timeoutId, setTimeoutId] = useState<number | undefined>()
@@ -22,24 +24,21 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   const delay = node.properties.get('delay') || 1000
   const interval = node.properties.get('interval') || 1000
   const startMode = node.properties.get('startMode') || 'auto'
-  const enabled = node.properties.get('enabled') !== false
+  const enabled = (node.properties.get('enabled') || 'true') === 'true'
+
+  // Check if audio context is active (not closed or suspended)
+  const isAudioContextActive =
+    audioStore.audioContext &&
+    audioStore.audioContext.state !== 'closed' &&
+    audioStore.audioContext.state !== 'suspended'
 
   const fireTrigger = useCallback(() => {
     const newCount = triggerCount + 1
     setTriggerCount(newCount)
 
-    // Update node outputs
-    node.setOutput('trigger', 1)
-    node.setOutput('count', newCount)
-    node.setProperty('count', newCount)
-
-    console.log(`TimerNode ${nodeId}: Trigger fired (count: ${newCount})`)
-
-    // Reset trigger output after a brief moment
-    setTimeout(() => {
-      node.setOutput('trigger', 0)
-    }, 10)
-  }, [node, nodeId, triggerCount])
+    // Use MST action to update node outputs
+    node.fireTimerTrigger(newCount)
+  }, [node, triggerCount])
 
   const stopTimer = useCallback(() => {
     if (!isRunning) {
@@ -62,7 +61,7 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   }, [isRunning, timeoutId, intervalId, nodeId])
 
   const startTimer = useCallback(() => {
-    if (isRunning || !enabled) {
+    if (isRunning || !enabled || !isAudioContextActive) {
       return
     }
 
@@ -71,34 +70,56 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
 
     // Start with initial delay
     const timeout = window.setTimeout(() => {
-      fireTrigger()
+      // Check if audio context is still active before firing
+      if (isAudioContextActive) {
+        fireTrigger()
 
-      // If loop mode, start interval
-      if (mode === 'loop') {
-        const intervalTimer = window.setInterval(() => {
-          fireTrigger()
-        }, interval)
-        setIntervalId(intervalTimer)
+        // If loop mode, start interval
+        if (mode === 'loop') {
+          const intervalTimer = window.setInterval(() => {
+            // Check if audio context is still active before each trigger
+            if (isAudioContextActive) {
+              fireTrigger()
+            } else {
+              // Stop the timer if audio context becomes inactive
+              clearInterval(intervalTimer)
+              setIsRunning(false)
+              console.log(`TimerNode ${nodeId}: Stopped due to inactive audio context`)
+            }
+          }, interval)
+          setIntervalId(intervalTimer)
+        } else {
+          // One-shot mode, stop after first trigger
+          setIsRunning(false)
+        }
       } else {
-        // One-shot mode, stop after first trigger
+        // Audio context became inactive, stop the timer
         setIsRunning(false)
+        console.log(`TimerNode ${nodeId}: Stopped due to inactive audio context`)
       }
     }, delay)
 
     setTimeoutId(timeout)
-  }, [isRunning, enabled, delay, mode, interval, fireTrigger, nodeId])
+  }, [isRunning, enabled, delay, mode, interval, fireTrigger, nodeId, isAudioContextActive])
 
   const resetTimer = useCallback(() => {
     stopTimer()
     setTriggerCount(0)
-    node.setOutput('count', 0)
-    node.setProperty('count', 0)
-    console.log(`TimerNode ${nodeId}: Timer reset`)
-  }, [stopTimer, node, nodeId])
+    // Use MST action to reset timer count
+    node.resetTimerCount()
+  }, [stopTimer, node])
+
+  // Monitor audio context state and stop timer when audio is paused
+  useEffect(() => {
+    if (!isAudioContextActive && isRunning) {
+      console.log(`TimerNode ${nodeId}: Audio context inactive, stopping timer`)
+      stopTimer()
+    }
+  }, [isAudioContextActive, isRunning, stopTimer, nodeId])
 
   // Auto-start effect - only run once on mount if conditions are met
   useEffect(() => {
-    if (startMode === 'auto' && enabled && !isRunning) {
+    if (startMode === 'auto' && enabled && !isRunning && isAudioContextActive) {
       startTimer()
     }
     // Cleanup on unmount
@@ -115,7 +136,7 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
       stopTimer()
       // Use a small delay to ensure state is updated before restarting
       setTimeout(() => {
-        if (enabled) {
+        if (enabled && isAudioContextActive) {
           startTimer()
         }
       }, 50)
@@ -127,11 +148,20 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   useEffect(() => {
     if (!enabled && isRunning) {
       stopTimer()
-    } else if (enabled && !isRunning && startMode === 'auto') {
+    } else if (enabled && !isRunning && startMode === 'auto' && isAudioContextActive) {
       startTimer()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]) // Only watch enabled property
+
+  // Handle audio context state changes
+  useEffect(() => {
+    if (isAudioContextActive && enabled && !isRunning && startMode === 'auto') {
+      // Audio context became active, auto-start if configured
+      startTimer()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAudioContextActive]) // Only watch audio context state
 
   return (
     <div className="p-2 space-y-2 min-w-[200px]">
@@ -141,6 +171,7 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
         <span className={`${isRunning ? 'text-green-600' : 'text-red-600'}`}>
           {isRunning ? 'Running' : 'Stopped'}
         </span>
+        {!isAudioContextActive && <span className="text-orange-600 ml-2">(Audio Paused)</span>}
       </div>
 
       {/* Count display */}
@@ -161,7 +192,7 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
       <div className="flex gap-1">
         <button
           onClick={startTimer}
-          disabled={isRunning}
+          disabled={isRunning || !isAudioContextActive}
           className="px-2 py-1 text-xs bg-green-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
           Start

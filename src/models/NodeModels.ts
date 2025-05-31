@@ -16,6 +16,9 @@ export const NodeProperty = types.model('NodeProperty', {
   defaultValue: types.frozen(),
   min: types.maybe(types.number),
   max: types.maybe(types.number),
+  step: types.maybe(types.number),
+  options: types.maybe(types.array(types.frozen())),
+  description: types.maybe(types.string),
 })
 
 export const NodeMetadataModel = types.model('NodeMetadata', {

@@ -449,9 +449,9 @@
       },
       {
         "name": "enabled",
-        "type": "boolean",
-        "defaultValue": true,
-        "options": [true, false],
+        "type": "string",
+        "defaultValue": "true",
+        "options": ["true", "false"],
         "description": "Whether the timer is enabled"
       },
       {

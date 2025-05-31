@@ -321,6 +321,36 @@ const CustomNodeState = types
         self.bufferSource.start()
         console.log('MST SoundFileNode: Audio playback started')
       },
+
+      // Timer-specific actions
+      fireTimerTrigger(count: number): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        this.setOutput('trigger', 1)
+        this.setOutput('count', count)
+        this.setProperty('count', count)
+
+        console.log(`MST TimerNode ${self.id}: Trigger fired (count: ${count})`)
+
+        // Reset trigger output after a brief moment
+        setTimeout(() => {
+          this.resetTimerTrigger()
+        }, 10)
+      },
+
+      resetTimerTrigger(): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        this.setOutput('trigger', 0)
+      },
+
+      resetTimerCount(): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        this.setOutput('count', 0)
+        this.setProperty('count', 0)
+        console.log(`MST TimerNode ${self.id}: Timer reset`)
+      },
     }
   })
 

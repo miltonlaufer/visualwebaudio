@@ -40,6 +40,9 @@ export interface NodeMetadata {
     defaultValue: unknown
     min?: number
     max?: number
+    step?: number
+    options?: unknown[]
+    description?: string
   }>
   methods: string[]
   events: string[]
