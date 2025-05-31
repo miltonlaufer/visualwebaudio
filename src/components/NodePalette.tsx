@@ -202,6 +202,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
     'DisplayNode',
     'SoundFileNode',
     'RandomNode',
+    'TimerNode',
   ]
 
   // Group nodes by category, separating Web Audio and Custom nodes

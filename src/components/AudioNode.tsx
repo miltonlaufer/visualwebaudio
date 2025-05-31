@@ -30,6 +30,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
     'DisplayNode',
     'SoundFileNode',
     'RandomNode',
+    'TimerNode',
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
 
