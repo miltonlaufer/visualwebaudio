@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { customNodeStore } from './CustomNodeStore'
+import { customNodeStore, CustomNodeStore } from './CustomNodeStore'
 
 describe('CustomNodeStore Reactive Connections', () => {
   beforeEach(() => {
@@ -39,7 +39,7 @@ describe('CustomNodeStore Reactive Connections', () => {
     expect(displayNode.properties.get('currentValue')).toBe(0)
 
     // Create reactive connection
-    customNodeStore.connectNodes('test-slider', 'test-display', 'value', 'input')
+    customNodeStore.connectNodes('test-slider', 'value', 'test-display', 'input')
 
     // Display should now show the slider value reactively
     expect(displayNode.properties.get('currentValue')).toBe(50)
@@ -76,11 +76,11 @@ describe('CustomNodeStore Reactive Connections', () => {
     const display = customNodeStore.addNode('display', 'DisplayNode', displayMetadata)
 
     // Connect first slider (should update display to 10)
-    customNodeStore.connectNodes('slider1', 'display', 'value', 'input')
+    customNodeStore.connectNodes('slider1', 'value', 'display', 'input')
     expect(display.properties.get('currentValue')).toBe(10)
 
     // Connect second slider to same input (should update display to 20)
-    customNodeStore.connectNodes('slider2', 'display', 'value', 'input')
+    customNodeStore.connectNodes('slider2', 'value', 'display', 'input')
     expect(display.properties.get('currentValue')).toBe(20) // Last connection wins
 
     // Verify both connections exist
@@ -110,7 +110,7 @@ describe('CustomNodeStore Reactive Connections', () => {
     const display = customNodeStore.addNode('display', 'DisplayNode', displayMetadata)
 
     // Connect nodes
-    customNodeStore.connectNodes('slider', 'display', 'value', 'input')
+    customNodeStore.connectNodes('slider', 'value', 'display', 'input')
     expect(display.inputConnections).toHaveLength(1)
 
     // Remove slider node
@@ -139,12 +139,12 @@ describe('CustomNodeStore Reactive Connections', () => {
     const display = customNodeStore.addNode('display', 'DisplayNode', displayMetadata)
 
     // Connect nodes
-    customNodeStore.connectNodes('slider', 'display', 'value', 'input')
+    customNodeStore.connectNodes('slider', 'value', 'display', 'input')
     expect(display.inputConnections).toHaveLength(1)
     expect(display.properties.get('currentValue')).toBe(50)
 
     // Disconnect
-    customNodeStore.disconnectNodes('slider', 'display', 'value', 'input')
+    customNodeStore.disconnectNodes('slider', 'value', 'display', 'input')
     expect(display.inputConnections).toHaveLength(0)
 
     // Changes to slider should no longer affect display
@@ -171,7 +171,7 @@ describe('CustomNodeStore Reactive Connections', () => {
     const midiToFreq = customNodeStore.addNode('midi', 'MidiToFreqNode', midiMetadata)
 
     // Connect slider to MIDI converter
-    customNodeStore.connectNodes('slider', 'midi', 'value', 'midiNote')
+    customNodeStore.connectNodes('slider', 'value', 'midi', 'midiNote')
 
     // Should calculate frequency for MIDI note 60
     // Formula: 440 * 2^((60-69)/12) = 440 * 2^(-0.75) ≈ 261.63 Hz (middle C)
@@ -241,9 +241,9 @@ describe('CustomNodeStore Reactive Connections', () => {
     // MidiSlider -> MidiDisplay (to show MIDI note)
     // MidiSlider -> MidiToFreq (to convert MIDI to frequency)
     // MidiToFreq -> FreqDisplay (to show frequency)
-    customNodeStore.connectNodes('midi-slider', 'midi-display', 'value', 'input')
-    customNodeStore.connectNodes('midi-slider', 'midi-to-freq', 'value', 'midiNote')
-    customNodeStore.connectNodes('midi-to-freq', 'freq-display', 'frequency', 'input')
+    customNodeStore.connectNodes('midi-slider', 'value', 'midi-display', 'input')
+    customNodeStore.connectNodes('midi-slider', 'value', 'midi-to-freq', 'midiNote')
+    customNodeStore.connectNodes('midi-to-freq', 'frequency', 'freq-display', 'input')
 
     // Verify connections were created
     expect(midiDisplay.inputConnections).toHaveLength(1)
@@ -291,5 +291,20 @@ describe('CustomNodeStore Reactive Connections', () => {
     expect(midiDisplay.properties.get('currentValue')).toBe(127)
     expect(midiToFreq.outputs.get('frequency')).toBeCloseTo(expectedFreqHigh, 1)
     expect(freqDisplay.properties.get('currentValue')).toBeCloseTo(expectedFreqHigh, 1)
+  })
+
+  it('should create new store instances for testing', () => {
+    // Test that we can create new isolated store instances
+    const testStore = CustomNodeStore.create({ nodes: {} })
+
+    expect(testStore.nodes.size).toBe(0)
+    expect(customNodeStore.nodes.size).toBe(0)
+
+    // Add node to test store
+    const metadata = { properties: [], outputs: [] }
+    testStore.addNode('test', 'TestNode', metadata)
+
+    expect(testStore.nodes.size).toBe(1)
+    expect(customNodeStore.nodes.size).toBe(0) // Should remain isolated
   })
 })

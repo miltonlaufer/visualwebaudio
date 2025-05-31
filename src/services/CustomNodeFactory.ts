@@ -10,6 +10,7 @@ export interface CustomNode {
   outputs: Map<string, any>
   disconnect(): void
   setValue?(value: any): void
+  setProperty?(name: string, value: any): void
   trigger?(): void
   receiveInput?(inputName: string, value: any): void
   createUIElement?(container: HTMLElement): void
@@ -41,11 +42,11 @@ class MobXCustomNodeAdapter implements CustomNode {
   }
 
   get properties(): Map<string, any> {
-    return this.mobxNode.properties
+    return this.mobxNode.properties as any
   }
 
   get outputs(): Map<string, any> {
-    return this.mobxNode.outputs
+    return this.mobxNode.outputs as any
   }
 
   disconnect(): void {
@@ -54,6 +55,10 @@ class MobXCustomNodeAdapter implements CustomNode {
 
   setValue(value: any): void {
     this.mobxNode.setValue(value)
+  }
+
+  setProperty(name: string, value: any): void {
+    this.mobxNode.setProperty(name, value)
   }
 
   trigger(): void {
@@ -92,7 +97,11 @@ class MobXCustomNodeAdapter implements CustomNode {
   }
 
   getAudioOutput(): AudioNode | null {
-    return this.mobxNode.getAudioOutput?.() || null
+    // For SoundFileNode, return the gain node if available
+    if (this.mobxNode.nodeType === 'SoundFileNode') {
+      return (this.mobxNode as any).gainNode || null
+    }
+    return null
   }
 
   setOutputChangeCallback(
@@ -1373,12 +1382,12 @@ export class CustomNodeFactory {
     const id = `${nodeType}-${Date.now()}`
     const node = this.createNode(id, nodeType, metadata)
 
-    // Apply any initial properties
+    // Apply any initial properties using MST actions
     Object.entries(properties).forEach(([key, value]) => {
       if (node.setValue && key === 'value') {
         node.setValue(value)
-      } else {
-        node.properties.set(key, value)
+      } else if (node.setProperty) {
+        node.setProperty(key, value)
       }
     })
 

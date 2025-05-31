@@ -844,8 +844,8 @@ export const AudioGraphStore = types
         // Handle custom node to custom node connections
         if (sourceCustomNode && targetCustomNode) {
           try {
-            // Use the new reactive connection system
-            customNodeStore.connectNodes(sourceId, targetId, sourceOutput, targetInput)
+            // Connect the custom nodes via the MST store (correct parameter order)
+            customNodeStore.connectNodes(sourceId, sourceOutput, targetId, targetInput)
 
             self.audioConnections.push({
               sourceNodeId: sourceId,
@@ -854,9 +854,7 @@ export const AudioGraphStore = types
               targetInput,
             })
 
-            console.log(
-              `🔗 Connected custom node ${sourceId}.${sourceOutput} → ${targetId}.${targetInput} (reactive)`
-            )
+            console.log(`Connected custom node ${sourceId} to custom node ${targetId}`)
           } catch (error) {
             console.error('Failed to connect custom node to custom node:', error)
           }
@@ -1282,7 +1280,8 @@ export const AudioGraphStore = types
 
         const visualNode = self.visualNodes.find(node => node.id === nodeId)
         const audioNode = self.audioNodes.get(nodeId)
-        const customNode = self.customNodes.get(nodeId)
+        // Use the MST-based custom node store instead of legacy map
+        const customNode = customNodeStore.getNode(nodeId)
 
         if (visualNode) {
           // Update the property using MST map API
@@ -1293,10 +1292,10 @@ export const AudioGraphStore = types
           self.propertyChangeCounter += 1
         }
 
-        // Handle custom node property updates
+        // Handle custom node property updates using MST store
         if (customNode && visualNode) {
-          // Update the custom node's property
-          customNode.properties.set(propertyName, value)
+          // Update the custom node's property using MST action
+          customNode.setProperty(propertyName, value)
 
           // Check if this property corresponds to an output and update bridges
           const nodeMetadata = visualNode.data.metadata
@@ -1305,8 +1304,8 @@ export const AudioGraphStore = types
           )
 
           if (hasCorrespondingOutput) {
-            // Update the custom node's output
-            customNode.outputs.set(propertyName, value)
+            // Update the custom node's output using MST action
+            customNode.setOutput(propertyName, value)
 
             // Update any bridges connected to this custom node output
             actions.updateCustomNodeBridges(nodeId, propertyName, value as number)
@@ -1314,7 +1313,7 @@ export const AudioGraphStore = types
 
           // Handle special case for 'value' property (most common output)
           if (propertyName === 'value') {
-            customNode.outputs.set('value', value)
+            customNode.setOutput('value', value)
             actions.updateCustomNodeBridges(nodeId, 'value', value as number)
           }
 

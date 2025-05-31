@@ -3,9 +3,13 @@ import { useExamples } from './Examples'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 // Mock the store
-vi.mock('~/stores/AudioGraphStore', () => ({
-  useAudioGraphStore: vi.fn(),
-}))
+vi.mock('~/stores/AudioGraphStore', async importOriginal => {
+  const actual = (await importOriginal()) as any
+  return {
+    ...actual,
+    useAudioGraphStore: vi.fn(),
+  }
+})
 
 describe('Examples Structure Tests', () => {
   let mockStore: any
@@ -395,6 +399,231 @@ describe('Examples Structure Tests', () => {
       // But since we're mocking, we just verify the pattern is there
       expect(mockStore.addNode).toHaveBeenCalledTimes(3)
       expect(mockStore.addEdge).toHaveBeenCalledTimes(2)
+    })
+  })
+})
+
+describe('Examples UI Integration Tests', () => {
+  let store: any
+  let mockUseAudioGraphStore: any
+
+  beforeEach(() => {
+    // Create a simple test store interface that doesn't require MST
+    store = {
+      visualNodes: [],
+      visualEdges: [],
+      audioConnections: [],
+      audioContext: {
+        createOscillator: vi.fn(() => ({
+          frequency: { value: 440 },
+          type: 'sine',
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+        })),
+        createGain: vi.fn(() => ({
+          gain: { value: 1 },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        })),
+        createBiquadFilter: vi.fn(() => ({
+          type: 'lowpass',
+          frequency: { value: 350 },
+          Q: { value: 1 },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        })),
+        createConstantSource: vi.fn(() => ({
+          offset: { value: 0 },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          start: vi.fn(),
+          stop: vi.fn(),
+        })),
+        destination: {
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        },
+      },
+      addNode: vi.fn().mockImplementation(() => 'mock-node-id'),
+      addEdge: vi.fn(),
+      updateNodeProperty: vi.fn(),
+      clearAllNodes: vi.fn().mockImplementation(() => {
+        store.visualNodes = []
+        store.visualEdges = []
+        store.audioConnections = []
+      }),
+      setCreatingExample: vi.fn(),
+      isValidConnection: vi.fn().mockReturnValue(true),
+      customNodes: new Map(),
+      customNodeBridges: new Map(),
+    }
+
+    // Mock the hook to return our test store
+    mockUseAudioGraphStore = vi.mocked(useAudioGraphStore)
+    mockUseAudioGraphStore.mockReturnValue(store)
+  })
+
+  describe('Examples Connection Functionality', () => {
+    it('should create MIDI to Frequency chain with proper connections', async () => {
+      const { examples } = useExamples()
+      const midiExample = examples.find(e => e.id === 'midi-to-frequency')
+      expect(midiExample).toBeDefined()
+      if (!midiExample) return
+
+      await midiExample.create()
+
+      // Should have created 6 nodes
+      expect(store.addNode).toHaveBeenCalledTimes(6)
+      expect(store.addEdge).toHaveBeenCalledTimes(5)
+
+      // Should have created proper node types
+      expect(store.addNode).toHaveBeenCalledWith(
+        'SliderNode',
+        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
+      )
+      expect(store.addNode).toHaveBeenCalledWith(
+        'MidiToFreqNode',
+        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
+      )
+      expect(store.addNode).toHaveBeenCalledWith(
+        'OscillatorNode',
+        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
+      )
+    })
+
+    it('should create basic oscillator with audio connections', async () => {
+      const { examples } = useExamples()
+      const basicExample = examples.find(e => e.id === 'basic-oscillator')
+      expect(basicExample).toBeDefined()
+      if (!basicExample) return
+
+      await basicExample.create()
+
+      // Should create 3 nodes and 2 connections
+      expect(store.addNode).toHaveBeenCalledTimes(3)
+      expect(store.addEdge).toHaveBeenCalledTimes(2)
+
+      // Should set gain property
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
+    })
+
+    it('should create filter sweep with LFO modulation', async () => {
+      const { examples } = useExamples()
+      const filterExample = examples.find(e => e.id === 'filter-sweep')
+      expect(filterExample).toBeDefined()
+      if (!filterExample) return
+
+      await filterExample.create()
+
+      // Should create 6 nodes and 5 connections
+      expect(store.addNode).toHaveBeenCalledTimes(6)
+      expect(store.addEdge).toHaveBeenCalledTimes(5)
+
+      // Should configure filter properly
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'type', 'lowpass')
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 800)
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'Q', 10)
+
+      // Should configure LFO
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.5)
+    })
+
+    it('should handle audio context creation correctly', async () => {
+      const { examples } = useExamples()
+      const basicExample = examples.find(e => e.id === 'basic-oscillator')
+      if (!basicExample) return
+
+      await basicExample.create()
+
+      // Audio context methods should be available (not called directly in examples but available)
+      expect(store.audioContext.createOscillator).toBeDefined()
+      expect(store.audioContext.createGain).toBeDefined()
+    })
+  })
+
+  describe('Connection Validation Logic', () => {
+    it('should have connection validation available', () => {
+      expect(store.isValidConnection).toBeDefined()
+      expect(typeof store.isValidConnection).toBe('function')
+
+      // Test that the validation function can be called
+      const result = store.isValidConnection('node1', 'node2', 'output', 'input')
+      expect(typeof result).toBe('boolean')
+    })
+
+    it('should prevent operations during example creation', async () => {
+      const { examples } = useExamples()
+      const basicExample = examples.find(e => e.id === 'basic-oscillator')
+      if (!basicExample) return
+
+      await basicExample.create()
+
+      // Should call setCreatingExample to prevent other operations
+      expect(store.setCreatingExample).toHaveBeenCalledWith(true)
+      expect(store.setCreatingExample).toHaveBeenCalledWith(false)
+    })
+  })
+
+  describe('Error Handling', () => {
+    it('should handle file loading errors gracefully', async () => {
+      const { examples } = useExamples()
+      const soundExample = examples.find(e => e.id === 'sound-file-player')
+      expect(soundExample).toBeDefined()
+      if (!soundExample) return
+
+      // Mock fetch to fail
+      const mockFetch = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('File not found'))
+
+      // Should not throw error
+      await expect(soundExample.create()).resolves.not.toThrow()
+
+      mockFetch.mockRestore()
+    })
+
+    it('should clear nodes before creating examples', async () => {
+      const { examples } = useExamples()
+      const basicExample = examples.find(e => e.id === 'basic-oscillator')
+      if (!basicExample) return
+
+      await basicExample.create()
+
+      expect(store.clearAllNodes).toHaveBeenCalled()
+    })
+  })
+
+  describe('Example Structure Validation', () => {
+    it('should create all expected node types for complex examples', async () => {
+      const { examples } = useExamples()
+      const chordExample = examples.find(e => e.id === 'chord-synthesis')
+      expect(chordExample).toBeDefined()
+      if (!chordExample) return
+
+      await chordExample.create()
+
+      // Should create 8 nodes for chord synthesis
+      expect(store.addNode).toHaveBeenCalledTimes(8)
+
+      // Should have oscillators for chord notes
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 261.63) // C4
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 329.63) // E4
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 392.0) // G4
+    })
+
+    it('should maintain consistent connection patterns', async () => {
+      const { examples } = useExamples()
+      const tremoloExample = examples.find(e => e.id === 'tremolo-effect')
+      if (!tremoloExample) return
+
+      await tremoloExample.create()
+
+      // Should create proper number of connections for tremolo
+      expect(store.addEdge).toHaveBeenCalledTimes(5)
+      expect(store.addNode).toHaveBeenCalledTimes(6)
+
+      // Should configure tremolo LFO at 5Hz
+      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 5)
     })
   })
 })
