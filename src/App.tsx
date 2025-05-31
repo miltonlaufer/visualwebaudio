@@ -436,14 +436,36 @@ const AppContent: React.FC = observer(() => {
     [handleEdgesChange]
   )
 
+  // Toggle functions using useCallback for better performance
+  const handleToggleNodePalette = useCallback(() => {
+    setIsNodePaletteOpen(!isNodePaletteOpen)
+  }, [isNodePaletteOpen])
+
+  const handleTogglePropertyPanel = useCallback(() => {
+    setIsPropertyPanelOpen(!isPropertyPanelOpen)
+  }, [isPropertyPanelOpen])
+
+  const handleCloseNodePalette = useCallback(() => {
+    setIsNodePaletteOpen(false)
+  }, [])
+
+  const handleClosePropertyPanel = useCallback(() => {
+    setIsPropertyPanelOpen(false)
+  }, [])
+
+  const handleClosePanels = useCallback(() => {
+    setIsNodePaletteOpen(false)
+    setIsPropertyPanelOpen(false)
+  }, [])
+
   return (
     <div className="h-screen flex flex-col bg-gray-100">
       {/* Full-width Header */}
       <Header
         isNodePaletteOpen={isNodePaletteOpen}
         isPropertyPanelOpen={isPropertyPanelOpen}
-        onToggleNodePalette={() => setIsNodePaletteOpen(!isNodePaletteOpen)}
-        onTogglePropertyPanel={() => setIsPropertyPanelOpen(!isPropertyPanelOpen)}
+        onToggleNodePalette={handleToggleNodePalette}
+        onTogglePropertyPanel={handleTogglePropertyPanel}
       />
 
       {/* Layout container */}
@@ -459,7 +481,7 @@ const AppContent: React.FC = observer(() => {
         `}
         >
           <div className="flex-1 overflow-y-auto">
-            <NodePalette onClose={() => setIsNodePaletteOpen(false)} />
+            <NodePalette onClose={handleCloseNodePalette} />
           </div>
         </div>
 
@@ -514,7 +536,7 @@ const AppContent: React.FC = observer(() => {
         `}
         >
           <div className="flex-1 overflow-y-auto">
-            <PropertyPanel onClose={() => setIsPropertyPanelOpen(false)} />
+            <PropertyPanel onClose={handleClosePropertyPanel} />
           </div>
         </div>
 
@@ -525,13 +547,10 @@ const AppContent: React.FC = observer(() => {
             lg:hidden
             ${isNodePaletteOpen || isPropertyPanelOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
           `}
-          onClick={() => {
-            setIsNodePaletteOpen(false)
-            setIsPropertyPanelOpen(false)
-          }}
+          onClick={handleClosePanels}
         />
       </div>
-      </div>
+    </div>
   )
 })
 
