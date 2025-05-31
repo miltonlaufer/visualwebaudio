@@ -304,84 +304,81 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     URL.revokeObjectURL(url)
   }
 
-  const handleFileSelect = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0]
-      if (!file) return
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
 
-      // Check if there are unsaved changes
-      if (store.visualNodes.length > 0 && store.isProjectModified) {
-        if (!confirm('You will lose your changes. Are you sure you want to import this project?')) {
-          // Reset the file input
-          if (fileInputRef.current) {
-            fileInputRef.current.value = ''
-            setImportError(null)
-            setImportSuccess(false)
-          }
-          return
-        }
-      }
-
-      const reader = new FileReader()
-      reader.onload = async e => {
-        try {
-          const content = e.target?.result as string
-          const importData = JSON.parse(content)
-
-          // Validate the import data structure
-          if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
-            throw new Error('Invalid project file format. Missing required fields.')
-          }
-
-          // Clear existing project
-          store.clearAllNodes()
-
-          // Set flag to prevent marking as modified during loading
-          store.setLoadingProject(true)
-
-          try {
-            // Apply the imported data
-            const newSnapshot = {
-              ...getSnapshot(store),
-              visualNodes: importData.visualNodes,
-              visualEdges: importData.visualEdges,
-              audioConnections: importData.audioConnections,
-            }
-
-            applySnapshot(store, newSnapshot)
-
-            // Clear current project info since this is an import
-            setCurrentProjectId(null)
-            setCurrentProjectName('')
-
-            setImportSuccess(true)
-            setTimeout(() => setImportSuccess(false), 3000)
-
-            // Mark project as unmodified after successful import
-            store.setProjectModified(false)
-
-            // Close the modal after successful import
-            onClose()
-          } finally {
-            // Always clear the loading flag
-            store.setLoadingProject(false)
-          }
-        } catch (error) {
-          setImportError('Failed to import project: ' + (error as Error).message)
-          // Clear the loading flag on error too
-          store.setLoadingProject(false)
-        }
-
+    // Check if there are unsaved changes
+    if (store.visualNodes.length > 0 && store.isProjectModified) {
+      if (!confirm('You will lose your changes. Are you sure you want to import this project?')) {
         // Reset the file input
         if (fileInputRef.current) {
           fileInputRef.current.value = ''
+          setImportError(null)
+          setImportSuccess(false)
         }
+        return
+      }
+    }
+
+    const reader = new FileReader()
+    reader.onload = async e => {
+      try {
+        const content = e.target?.result as string
+        const importData = JSON.parse(content)
+
+        // Validate the import data structure
+        if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
+          throw new Error('Invalid project file format. Missing required fields.')
+        }
+
+        // Clear existing project
+        store.clearAllNodes()
+
+        // Set flag to prevent marking as modified during loading
+        store.setLoadingProject(true)
+
+        try {
+          // Apply the imported data
+          const newSnapshot = {
+            ...getSnapshot(store),
+            visualNodes: importData.visualNodes,
+            visualEdges: importData.visualEdges,
+            audioConnections: importData.audioConnections,
+          }
+
+          applySnapshot(store, newSnapshot)
+
+          // Clear current project info since this is an import
+          setCurrentProjectId(null)
+          setCurrentProjectName('')
+
+          setImportSuccess(true)
+          setTimeout(() => setImportSuccess(false), 3000)
+
+          // Mark project as unmodified after successful import
+          store.setProjectModified(false)
+
+          // Close the modal after successful import
+          onClose()
+        } finally {
+          // Always clear the loading flag
+          store.setLoadingProject(false)
+        }
+      } catch (error) {
+        setImportError('Failed to import project: ' + (error as Error).message)
+        // Clear the loading flag on error too
+        store.setLoadingProject(false)
       }
 
-      reader.readAsText(file)
-    },
-    [store, onClose]
-  )
+      // Reset the file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+
+    reader.readAsText(file)
+  }
 
   const handleImportClick = () => {
     fileInputRef.current?.click()
