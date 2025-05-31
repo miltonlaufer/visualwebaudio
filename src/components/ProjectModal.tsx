@@ -213,6 +213,9 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
           // Mark project as unmodified after successful load
           store.setProjectModified(false)
+
+          // Close the modal after successful load
+          onClose()
         } finally {
           // Always clear the loading flag
           store.setLoadingProject(false)
@@ -223,7 +226,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(false)
       }
     },
-    [store]
+    [store, onClose]
   )
 
   const handleDelete = useCallback(
@@ -359,6 +362,9 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
             // Mark project as unmodified after successful import
             store.setProjectModified(false)
+
+            // Close the modal after successful import
+            onClose()
           } finally {
             // Always clear the loading flag
             store.setLoadingProject(false)
@@ -377,7 +383,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
       reader.readAsText(file)
     },
-    [store]
+    [store, onClose]
   )
 
   const handleImportClick = () => {
