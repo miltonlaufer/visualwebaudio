@@ -73,11 +73,8 @@ export const AudioGraphStore = types
   .actions(self => {
     const actions = {
       loadMetadata() {
-        console.log('=== STORE: Loading metadata ===')
         try {
           self.webAudioMetadata = getAllNodesMetadata()
-          console.log('STORE: Metadata loaded successfully:', Object.keys(self.webAudioMetadata))
-          console.log('STORE: Sample metadata:', self.webAudioMetadata['AudioDestinationNode'])
         } catch (error) {
           console.error('STORE: Error loading metadata:', error)
         }
@@ -233,12 +230,7 @@ export const AudioGraphStore = types
       },
 
       addNode(nodeType: string, position: { x: number; y: number }) {
-        console.log('=== STORE: Adding node ===')
-        console.log('STORE: nodeType:', nodeType)
-        console.log('STORE: position:', position)
-
         const metadata = self.webAudioMetadata[nodeType]
-        console.log('STORE: Found metadata for', nodeType, ':', metadata)
 
         if (!metadata) {
           console.error('STORE: Unknown node type:', nodeType)
@@ -248,14 +240,12 @@ export const AudioGraphStore = types
         // Increment counter and use it with timestamp to ensure uniqueness
         self.nodeIdCounter += 1
         const nodeId = `${nodeType}-${Date.now()}-${self.nodeIdCounter}`
-        console.log('STORE: Generated nodeId:', nodeId)
 
         // Create properties from metadata
         const propertiesObj: Record<string, unknown> = {}
         metadata.properties.forEach(prop => {
           propertiesObj[prop.name] = prop.defaultValue
         })
-        console.log('STORE: Created properties object from metadata:', propertiesObj)
 
         // Create the visual node with MST-compatible structure
         const visualNode = {
@@ -285,7 +275,6 @@ export const AudioGraphStore = types
         // This ensures CustomNodeStore has the MobX node before React renders
         try {
           actions.createAudioNode(nodeId, nodeType)
-          console.log('STORE: Successfully created audio node')
         } catch (error) {
           console.error('STORE: Error creating audio node:', error)
         }
@@ -293,7 +282,6 @@ export const AudioGraphStore = types
         // Now add the visual node to the store, so React components can find the MobX node
         try {
           self.visualNodes.push(visualNode)
-          console.log('STORE: Successfully added node to visualNodes array')
         } catch (error) {
           console.error('STORE: Error adding node to visualNodes:', error)
           throw error
@@ -306,10 +294,7 @@ export const AudioGraphStore = types
       },
 
       createAudioNode(nodeId: string, nodeType: string) {
-        console.log(`Creating node: ${nodeType} with ID: ${nodeId}`)
-
         if (!self.audioContext) {
-          console.log('No audio context, initializing...')
           actions.initializeAudioContext()
         }
 

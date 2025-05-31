@@ -57,21 +57,17 @@ export const useExamples = () => {
           y: 263.8463363195132,
         })
 
-        console.log('MIDI to Frequency: Setting up slider for MIDI note range...')
         store.updateNodeProperty(sliderId, 'min', 48)
         store.updateNodeProperty(sliderId, 'max', 84)
         store.updateNodeProperty(sliderId, 'value', 60)
         store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
 
-        console.log('MIDI to Frequency: Setting up MIDI to frequency converter...')
         store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
         store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
 
-        console.log('MIDI to Frequency: Setting up oscillator...')
         // Don't set frequency here - it will be controlled by the MIDI input
         store.updateNodeProperty(oscId, 'type', 'sine')
 
-        console.log('MIDI to Frequency: Connecting slider to display nodes and oscillator...')
         store.addEdge(sliderId, displayNode1Id, 'value', 'input')
         store.addEdge(displayNode1Id, midiToFreqId, 'output', 'midiNote')
         store.addEdge(midiToFreqId, displayNode2Id, 'frequency', 'input')
@@ -79,7 +75,6 @@ export const useExamples = () => {
         store.addEdge(oscId, destId, 'output', 'input')
 
         // Trigger initial value propagation through the chain
-        console.log('MIDI to Frequency: Triggering initial value propagation...')
         store.updateNodeProperty(sliderId, 'value', 60) // This will trigger the chain
       }),
     },

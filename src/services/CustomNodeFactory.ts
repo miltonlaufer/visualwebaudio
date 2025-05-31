@@ -176,7 +176,6 @@ class MobXCustomNodeAdapter implements CustomNode {
       this.mobxNode.setProperty('value', value)
       this.mobxNode.setOutput('value', value)
       updateLabel()
-      console.log(`🎚️ MobX SliderNode ${this.mobxNode.id} value changed to: ${value}`)
       // Note: Reactive system handles propagation automatically via MobX reactions
     })
 
@@ -362,8 +361,6 @@ export class BaseCustomNode implements CustomNode {
   }
 
   protected notifyConnections(outputName: string, value: any): void {
-    console.log(`🔄 ${this.type} ${this.id} notifyConnections(${outputName}, ${value})`)
-
     // Update the output value in the custom node
     this.outputs.set(outputName, value)
 
@@ -371,19 +368,13 @@ export class BaseCustomNode implements CustomNode {
     this.connections
       .filter(conn => conn.outputName === outputName)
       .forEach(conn => {
-        console.log(
-          `  → Notifying ${conn.target.type} ${conn.target.id}.receiveInput(${conn.inputName}, ${value})`
-        )
         if (conn.target.receiveInput) {
           conn.target.receiveInput(conn.inputName, value)
         }
       })
 
-    // Notify the store about output changes for bridge updates
+    // Notify the bridge callback for Web Audio connections
     if (this.onOutputChangeCallback && typeof value === 'number') {
-      console.log(
-        `  → Calling bridge update callback for ${this.id} output ${outputName}: ${value}`
-      )
       this.onOutputChangeCallback(this.id, outputName, value)
     }
   }
@@ -497,8 +488,7 @@ export class SliderNode extends BaseCustomNode {
       this.properties.set('value', value)
       this.outputs.set('value', value)
       this.updateLabel()
-      console.log(`🎚️ SliderNode ${this.id} value changed to: ${value}, notifying connections`)
-      this.notifyConnections('value', value)
+      // Note: Reactive system handles propagation automatically via MobX reactions
     })
 
     // Prevent drag events from bubbling up to React Flow

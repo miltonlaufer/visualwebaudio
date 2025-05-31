@@ -31,7 +31,7 @@ export const NodeMetadataModel = types.model('NodeMetadata', {
     'control',
     'logic',
     'input',
-    'utility',
+    'misc',
   ]),
   inputs: types.array(NodeInput),
   outputs: types.array(NodeOutput),
