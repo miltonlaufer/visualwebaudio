@@ -1,25 +1,22 @@
 {
   "ButtonNode": {
     "name": "Button",
-    "description": "A clickable button that outputs a trigger/bang when pressed. Similar to Max/MSP button object.",
-    "category": "control",
+    "description": "A button that triggers an action",
+    "category": "misc",
     "inputs": [],
     "outputs": [
       {
         "name": "trigger",
-        "type": "control"
+        "type": "control",
+        "description": "Triggers when button is clicked"
       }
     ],
     "properties": [
       {
         "name": "label",
         "type": "string",
-        "defaultValue": "Button"
-      },
-      {
-        "name": "outputValue",
-        "type": "number",
-        "defaultValue": 1
+        "defaultValue": "Click Me",
+        "description": "Button label text"
       }
     ],
     "methods": [],
@@ -27,46 +24,59 @@
   },
   "SliderNode": {
     "name": "Slider",
-    "description": "A horizontal slider control with customizable range and step. Outputs the current value.",
-    "category": "control",
-    "inputs": [],
+    "description": "A slider control for adjusting values",
+    "category": "misc",
+    "inputs": [
+      {
+        "name": "min",
+        "type": "control",
+        "description": "Minimum value"
+      },
+      {
+        "name": "max",
+        "type": "control",
+        "description": "Maximum value"
+      },
+      {
+        "name": "step",
+        "type": "control",
+        "description": "Step size"
+      }
+    ],
     "outputs": [
       {
         "name": "value",
-        "type": "control"
+        "type": "control",
+        "description": "Current slider value"
       }
     ],
     "properties": [
       {
+        "name": "value",
+        "type": "number",
+        "defaultValue": 0,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "description": "Current value of the slider"
+      },
+      {
         "name": "min",
         "type": "number",
         "defaultValue": 0,
-        "min": -1000,
-        "max": 1000
+        "description": "Minimum value"
       },
       {
         "name": "max",
         "type": "number",
         "defaultValue": 100,
-        "min": -1000,
-        "max": 1000
+        "description": "Maximum value"
       },
       {
         "name": "step",
         "type": "number",
         "defaultValue": 1,
-        "min": 0.001,
-        "max": 100
-      },
-      {
-        "name": "value",
-        "type": "number",
-        "defaultValue": 50
-      },
-      {
-        "name": "label",
-        "type": "string",
-        "defaultValue": "Slider"
+        "description": "Step size"
       }
     ],
     "methods": [],
@@ -218,34 +228,37 @@
   },
   "MidiToFreqNode": {
     "name": "MIDI to Frequency",
-    "description": "Converts MIDI note numbers to frequency values. 69 = 440Hz (A4).",
-    "category": "utility",
+    "description": "Converts MIDI note numbers to frequency values",
+    "category": "misc",
     "inputs": [
       {
         "name": "midiNote",
-        "type": "control"
+        "type": "control",
+        "description": "MIDI note number (0-127)"
       }
     ],
     "outputs": [
       {
         "name": "frequency",
-        "type": "control"
+        "type": "control",
+        "description": "Frequency in Hz corresponding to the MIDI note"
       }
     ],
     "properties": [
       {
-        "name": "baseFreq",
+        "name": "midiNote",
         "type": "number",
-        "defaultValue": 440,
-        "min": 1,
-        "max": 20000
+        "defaultValue": 60,
+        "min": 0,
+        "max": 127,
+        "step": 1,
+        "description": "MIDI note number (60 = middle C)"
       },
       {
-        "name": "baseMidi",
+        "name": "frequency",
         "type": "number",
-        "defaultValue": 69,
-        "min": 0,
-        "max": 127
+        "defaultValue": 261.63,
+        "description": "Corresponding frequency in Hz"
       }
     ],
     "methods": [],
@@ -253,91 +266,63 @@
   },
   "SoundFileNode": {
     "name": "Sound File",
-    "description": "Loads and stores audio files as buffers. Can be triggered to play back the loaded sound.",
-    "category": "source",
+    "description": "Loads and plays audio files",
+    "category": "misc",
     "inputs": [
       {
         "name": "trigger",
-        "type": "control"
+        "type": "control",
+        "description": "Triggers playback of the loaded audio file"
       }
     ],
     "outputs": [
       {
         "name": "output",
-        "type": "audio"
-      },
-      {
-        "name": "loaded",
-        "type": "control"
+        "type": "audio",
+        "description": "Audio output from the loaded file"
       }
     ],
     "properties": [
       {
         "name": "fileName",
         "type": "string",
-        "defaultValue": "No file loaded"
+        "defaultValue": "",
+        "description": "Name of the loaded audio file"
       },
       {
-        "name": "audioBufferData",
-        "type": "string",
-        "defaultValue": null
-      },
-      {
-        "name": "loop",
-        "type": "boolean",
-        "defaultValue": false
-      },
-      {
-        "name": "gain",
+        "name": "duration",
         "type": "number",
-        "defaultValue": 1,
-        "min": 0,
-        "max": 2
-      },
-      {
-        "name": "playbackRate",
-        "type": "number",
-        "defaultValue": 1,
-        "min": 0.1,
-        "max": 4
+        "defaultValue": 0,
+        "description": "Duration of the loaded audio file in seconds"
       }
     ],
-    "methods": ["loadFile", "play", "stop"],
+    "methods": [],
     "events": []
   },
   "DisplayNode": {
     "name": "Display",
-    "description": "Displays the current value flowing through it. Useful for debugging signal flow and monitoring values.",
-    "category": "utility",
+    "description": "Displays numeric values and waveforms",
+    "category": "misc",
     "inputs": [
       {
         "name": "input",
-        "type": "control"
+        "type": "control",
+        "description": "Value to display"
       }
     ],
     "outputs": [
       {
         "name": "output",
-        "type": "control"
+        "type": "control",
+        "description": "Pass-through of input value"
       }
     ],
     "properties": [
       {
-        "name": "currentValue",
+        "name": "value",
         "type": "number",
-        "defaultValue": 0
-      },
-      {
-        "name": "precision",
-        "type": "number",
-        "defaultValue": 2,
-        "min": 0,
-        "max": 6
-      },
-      {
-        "name": "label",
-        "type": "string",
-        "defaultValue": "Display"
+        "defaultValue": 0,
+        "description": "Current displayed value"
       }
     ],
     "methods": [],
@@ -345,46 +330,37 @@
   },
   "RandomNode": {
     "name": "Random",
-    "description": "Generates random values at configurable intervals. Perfect for creating random modulation, noise effects, or generative content.",
-    "category": "utility",
-    "inputs": [],
+    "description": "Generates random values at a specified rate",
+    "category": "misc",
+    "inputs": [
+      {
+        "name": "rate",
+        "type": "control",
+        "description": "Rate of random value generation in Hz"
+      }
+    ],
     "outputs": [
       {
         "name": "value",
-        "type": "control"
+        "type": "control",
+        "description": "Random value between 0 and 1"
       }
     ],
     "properties": [
-      {
-        "name": "min",
-        "type": "number",
-        "defaultValue": 0,
-        "min": -1000,
-        "max": 1000
-      },
-      {
-        "name": "max",
-        "type": "number",
-        "defaultValue": 100,
-        "min": -1000,
-        "max": 1000
-      },
       {
         "name": "rate",
         "type": "number",
         "defaultValue": 1,
         "min": 0.1,
-        "max": 20
+        "max": 10,
+        "step": 0.1,
+        "description": "Rate of random value generation in Hz"
       },
       {
-        "name": "currentValue",
+        "name": "value",
         "type": "number",
-        "defaultValue": 50
-      },
-      {
-        "name": "label",
-        "type": "string",
-        "defaultValue": "Random"
+        "defaultValue": 0,
+        "description": "Current random value"
       }
     ],
     "methods": [],

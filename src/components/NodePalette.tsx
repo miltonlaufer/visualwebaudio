@@ -123,7 +123,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         return 'bg-indigo-50 border-indigo-200 text-indigo-800'
       case 'input':
         return 'bg-teal-50 border-teal-200 text-teal-800'
-      case 'utility':
+      case 'misc':
         return 'bg-orange-50 border-orange-200 text-orange-800'
       default:
         return 'bg-white border-gray-200 text-gray-800'
@@ -132,8 +132,16 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
 
   // Custom node types
   const customNodeTypes = [
-    'ButtonNode', 'SliderNode', 'GreaterThanNode', 'EqualsNode', 
-    'SelectNode', 'MidiInputNode', 'MidiToFreqNode', 'DisplayNode', 'SoundFileNode', 'RandomNode'
+    'ButtonNode',
+    'SliderNode',
+    'GreaterThanNode',
+    'EqualsNode',
+    'SelectNode',
+    'MidiInputNode',
+    'MidiToFreqNode',
+    'DisplayNode',
+    'SoundFileNode',
+    'RandomNode',
   ]
 
   // Group nodes by category, separating Web Audio and Custom nodes
@@ -224,7 +232,9 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           </h2>
           {Object.entries(webAudioCategories).map(([category, nodes]) => (
             <div key={category} className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">{category} Nodes</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">
+                {category} Nodes
+              </h3>
               <div className="space-y-2">
                 {nodes.map(({ nodeType, metadata }) => (
                   <div
@@ -269,15 +279,17 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           ))}
         </div>
 
-        {/* Utility Nodes */}
+        {/* Misc Nodes */}
         {Object.keys(customNodeCategories).length > 0 && (
           <div className="mb-8">
             <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-              🎛️ Utility Nodes
+              🎛️ Misc Nodes
             </h2>
             {Object.entries(customNodeCategories).map(([category, nodes]) => (
               <div key={category} className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">{category} Nodes</h3>
+                <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">
+                  {category} Nodes
+                </h3>
                 <div className="space-y-2">
                   {nodes.map(({ nodeType, metadata }) => (
                     <div
@@ -324,11 +336,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         )}
 
         {/* Node Categories - Legacy fallback */}
-        {Object.keys(webAudioCategories).length === 0 && Object.keys(customNodeCategories).length === 0 && (
-          <div className="text-center text-gray-500 py-8">
-            <p>No nodes available. Check store configuration.</p>
-          </div>
-        )}
+        {Object.keys(webAudioCategories).length === 0 &&
+          Object.keys(customNodeCategories).length === 0 && (
+            <div className="text-center text-gray-500 py-8">
+              <p>No nodes available. Check store configuration.</p>
+            </div>
+          )}
       </div>
 
       {/* Floating scroll indicator */}
