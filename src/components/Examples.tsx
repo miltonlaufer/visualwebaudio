@@ -454,53 +454,6 @@ export const useExamples = () => {
               },
             },
             {
-              id: 'GainNode-1748685958858-19',
-              type: 'audioNode',
-              position: {
-                x: 99.99999999999993,
-                y: -300,
-              },
-              data: {
-                nodeType: 'GainNode',
-                metadata: {
-                  name: 'GainNode',
-                  description:
-                    'A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)',
-                  category: 'effect',
-                  inputs: [
-                    {
-                      name: 'input',
-                      type: 'audio',
-                    },
-                    {
-                      name: 'gain',
-                      type: 'control',
-                    },
-                  ],
-                  outputs: [
-                    {
-                      name: 'output',
-                      type: 'audio',
-                    },
-                  ],
-                  properties: [
-                    {
-                      name: 'gain',
-                      type: 'AudioParam',
-                      defaultValue: 1,
-                      min: 0,
-                      max: 1,
-                    },
-                  ],
-                  methods: [],
-                  events: [],
-                },
-                properties: {
-                  gain: 1,
-                },
-              },
-            },
-            {
               id: 'GainNode-1748686091720-23',
               type: 'audioNode',
               position: {
