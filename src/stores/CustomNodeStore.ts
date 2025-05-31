@@ -190,23 +190,35 @@ const CustomNodeState = types
           const arrayBuffer = await file.arrayBuffer()
           const arrayBufferCopy = arrayBuffer.slice(0)
 
-          self.audioBuffer = await self.audioContext.decodeAudioData(arrayBufferCopy)
+          const audioBuffer = await self.audioContext.decodeAudioData(arrayBufferCopy)
 
-          const audioBufferData = this.arrayBufferToBase64(arrayBuffer)
-          this.setProperty('audioData', audioBufferData)
-          this.setProperty('fileName', file.name)
-          this.setProperty('fileSize', file.size)
-
-          this.setOutput('loaded', 1)
+          // Update state in a synchronous action
+          this.updateAudioFileState(audioBuffer, arrayBuffer, file.name, file.size)
 
           console.log(`🎵 MST SoundFileNode: Successfully loaded ${file.name}`)
-          console.log(`   - Duration: ${self.audioBuffer.duration.toFixed(2)}s`)
-          console.log(`   - Sample rate: ${self.audioBuffer.sampleRate}Hz`)
-          console.log(`   - Channels: ${self.audioBuffer.numberOfChannels}`)
+          console.log(`   - Duration: ${audioBuffer.duration.toFixed(2)}s`)
+          console.log(`   - Sample rate: ${audioBuffer.sampleRate}Hz`)
+          console.log(`   - Channels: ${audioBuffer.numberOfChannels}`)
         } catch (error) {
           console.error('🚨 MST SoundFileNode: Error loading audio file:', error)
           this.setOutput('loaded', 0)
         }
+      },
+
+      updateAudioFileState(
+        audioBuffer: AudioBuffer,
+        arrayBuffer: ArrayBuffer,
+        fileName: string,
+        fileSize: number
+      ): void {
+        if (self.nodeType !== 'SoundFileNode') return
+
+        self.audioBuffer = audioBuffer
+        const audioBufferData = this.arrayBufferToBase64(arrayBuffer)
+        this.setProperty('audioData', audioBufferData)
+        this.setProperty('fileName', fileName)
+        this.setProperty('fileSize', fileSize)
+        this.setOutput('loaded', 1)
       },
 
       // SoundFileNode specific methods
@@ -235,8 +247,10 @@ const CustomNodeState = types
             }
 
             const arrayBuffer = this.base64ToArrayBuffer(audioBufferData)
-            self.audioBuffer = await self.audioContext.decodeAudioData(arrayBuffer)
-            this.setOutput('loaded', 1)
+            const audioBuffer = await self.audioContext.decodeAudioData(arrayBuffer)
+
+            // Update state in a synchronous action
+            this.restoreAudioBufferState(audioBuffer)
 
             console.log(`✅ MST SoundFileNode: Successfully restored audio buffer for ${fileName}`)
           } catch (error) {
@@ -247,6 +261,13 @@ const CustomNodeState = types
           console.log(`⚠️ MST SoundFileNode: No stored audio data found`)
           this.setOutput('loaded', 0)
         }
+      },
+
+      restoreAudioBufferState(audioBuffer: AudioBuffer): void {
+        if (self.nodeType !== 'SoundFileNode') return
+
+        self.audioBuffer = audioBuffer
+        this.setOutput('loaded', 1)
       },
 
       arrayBufferToBase64(buffer: ArrayBuffer): string {

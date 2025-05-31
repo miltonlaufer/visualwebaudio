@@ -66,7 +66,7 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
 
   const handlePlay = () => {
     console.log(`▶️ SoundFileNode ${nodeId}: Playing`)
-    node.trigger()
+    node.performSoundFileTrigger()
   }
 
   return (
