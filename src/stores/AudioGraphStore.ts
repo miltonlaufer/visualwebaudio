@@ -337,15 +337,6 @@ export const AudioGraphStore = types
           try {
             const customNode = self.customNodeFactory.createNode(nodeId, nodeType, metadata)
 
-            // Apply properties after creation
-            Object.entries(properties).forEach(([key, value]) => {
-              if (customNode.setValue && key === 'value') {
-                customNode.setValue(value)
-              } else {
-                customNode.properties.set(key, value)
-              }
-            })
-
             // Set up callback for output changes to update bridges
             if (
               'setOutputChangeCallback' in customNode &&
@@ -380,21 +371,26 @@ export const AudioGraphStore = types
 
             // Apply properties to the MobX node that was already created by the factory
             const mobxNode = customNodeStore.getNode(nodeId)
-            if (mobxNode) {
-              Object.entries(properties).forEach(([key, value]) => {
-                mobxNode.setProperty(key, value)
-                // Also set outputs for properties that correspond to outputs
-                const hasCorrespondingOutput = metadata.outputs?.some(
-                  (output: any) => output.name === key
-                )
-                if (hasCorrespondingOutput) {
-                  mobxNode.setOutput(key, value)
-                }
-                // Handle special case for 'value' property (most common output)
-                if (key === 'value') {
-                  mobxNode.setOutput('value', value)
-                }
-              })
+            if (mobxNode && Object.keys(properties).length > 0) {
+              // Use MST action to safely modify the node properties
+              try {
+                Object.entries(properties).forEach(([key, value]) => {
+                  mobxNode.setProperty(key, value)
+                  // Also set outputs for properties that correspond to outputs
+                  const hasCorrespondingOutput = metadata.outputs?.some(
+                    (output: any) => output.name === key
+                  )
+                  if (hasCorrespondingOutput) {
+                    mobxNode.setOutput(key, value)
+                  }
+                  // Handle special case for 'value' property (most common output)
+                  if (key === 'value') {
+                    mobxNode.setOutput('value', value)
+                  }
+                })
+              } catch (error) {
+                console.error(`Error applying properties to MobX node ${nodeId}:`, error)
+              }
             }
 
             console.log(`Successfully created custom node: ${nodeType}`)
