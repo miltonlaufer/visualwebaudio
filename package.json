@@ -13,6 +13,7 @@
     "preview": "vite preview",
     "test": "vitest --run",
     "test:ui": "vitest --ui",
+    "full-tests": "npm run test && npx lint-staged && npm run type-check",
     "extract-types": "node scripts/extract-web-audio-types.js",
     "type-check": "tsc --noEmit",
     "prepare": "husky",
@@ -28,6 +29,8 @@
     ]
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.4",
+    "@heroicons/react": "^2.2.0",
     "@types/web": "^0.0.235",
     "@xyflow/react": "^12.6.4",
     "dexie": "^4.0.11",
