@@ -1190,6 +1190,62 @@ export const useExamples = () => {
       }),
     },
     {
+      id: 'auto-file-player',
+      name: 'Auto File Player',
+      description: 'Timer-triggered automatic sound file playback with sample audio',
+      create: createExample(async () => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        const soundFileId = store.addNode('SoundFileNode', { x: 629, y: 117 })
+        const timerId = store.addNode('TimerNode', { x: 350, y: 100 })
+        const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
+
+        console.log('Auto File Player: Setting up timer...')
+        store.updateNodeProperty(timerId, 'mode', 'loop')
+        store.updateNodeProperty(timerId, 'delay', 1000) // 1 second initial delay
+        store.updateNodeProperty(timerId, 'interval', 3000) // Play every 3 seconds
+        store.updateNodeProperty(timerId, 'startMode', 'auto')
+        store.updateNodeProperty(timerId, 'enabled', 'true')
+
+        console.log('Auto File Player: Setting up sound file node...')
+        store.updateNodeProperty(soundFileId, 'gain', 1)
+        store.updateNodeProperty(soundFileId, 'loop', false)
+        store.updateNodeProperty(soundFileId, 'playbackRate', 1)
+        // Set the filename property early so it shows in the UI
+        store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
+
+        // Connect the nodes
+        console.log('Auto File Player: Connecting timer to sound file...')
+        store.addEdge(timerId, soundFileId, 'trigger', 'trigger')
+
+        console.log('Auto File Player: Connecting sound file to destination...')
+        store.addEdge(soundFileId, destId, 'output', 'input')
+
+        // Load the sample audio file
+        try {
+          console.log('Auto File Player: Loading sample audio...')
+          const response = await fetch('./samples/test-sound.wav')
+          if (!response.ok) {
+            throw new Error(`Failed to load sample: ${response.statusText}`)
+          }
+
+          const blob = await response.blob()
+          const file = new File([blob], 'test-sound.wav', { type: 'audio/wav' })
+
+          // Get the custom node and load the file
+          const customNode = store.customNodes.get(soundFileId)
+          if (customNode && customNode.loadAudioFile) {
+            await customNode.loadAudioFile(file)
+            console.log('✅ Auto File Player: Sample audio loaded successfully')
+          }
+        } catch (error) {
+          console.error('Auto File Player: Failed to load sample audio:', error)
+          console.log('💡 You can still upload your own audio file using the file input')
+        }
+      }),
+    },
+    {
       id: 'delay-effect',
       name: 'Delay Effect',
       description: 'Oscillator with delay and feedback',

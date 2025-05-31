@@ -304,6 +304,7 @@ describe('Examples Structure Tests', () => {
         'basic-oscillator',
         'microphone-input',
         'sound-file-player',
+        'auto-file-player',
         'delay-effect',
         'filter-sweep',
         'stereo-panner',
