@@ -24,6 +24,10 @@ describe('Examples Structure Tests', () => {
       updateNodeProperty: vi.fn(),
       addEdge: vi.fn(),
       setCreatingExample: vi.fn(),
+      setLoadingProject: vi.fn(),
+      recreateAudioGraph: vi.fn().mockResolvedValue(undefined),
+      initializeAudioContext: vi.fn(),
+      loadMetadata: vi.fn(),
     }
 
     vi.mocked(useAudioGraphStore).mockReturnValue(mockStore)
@@ -296,6 +300,7 @@ describe('Examples Structure Tests', () => {
     it('should have all expected examples', () => {
       const expectedExamples = [
         'midi-to-frequency',
+        'midi-delay-effect',
         'basic-oscillator',
         'microphone-input',
         'sound-file-player',
@@ -458,6 +463,8 @@ describe('Examples UI Integration Tests', () => {
       isValidConnection: vi.fn().mockReturnValue(true),
       customNodes: new Map(),
       customNodeBridges: new Map(),
+      graphChangeCounter: 0,
+      propertyChangeCounter: 0,
     }
 
     // Mock the hook to return our test store

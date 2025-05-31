@@ -79,6 +79,818 @@ export const useExamples = () => {
       }),
     },
     {
+      id: 'midi-delay-effect',
+      name: 'MIDI Delay Effect',
+      description: 'Complex delay effect with MIDI-controlled oscillator and feedback loops',
+      create: createExample(async () => {
+        // Clear existing nodes first
+        store.clearAllNodes()
+
+        // Load the complete project data
+        const projectData = {
+          version: '1.0.0',
+          timestamp: '2025-05-31T11:32:52.451Z',
+          visualNodes: [
+            {
+              id: 'SliderNode-1748685942561-12',
+              type: 'audioNode',
+              position: {
+                x: 213.37993395350037,
+                y: 481.0759235039577,
+              },
+              data: {
+                nodeType: 'SliderNode',
+                metadata: {
+                  name: 'Slider',
+                  description:
+                    'A horizontal slider control with customizable range and step. Outputs the current value.',
+                  category: 'control',
+                  inputs: [],
+                  outputs: [
+                    {
+                      name: 'value',
+                      type: 'control',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'min',
+                      type: 'number',
+                      defaultValue: 0,
+                      min: -1000,
+                      max: 1000,
+                    },
+                    {
+                      name: 'max',
+                      type: 'number',
+                      defaultValue: 100,
+                      min: -1000,
+                      max: 1000,
+                    },
+                    {
+                      name: 'step',
+                      type: 'number',
+                      defaultValue: 1,
+                      min: 0.001,
+                      max: 100,
+                    },
+                    {
+                      name: 'value',
+                      type: 'number',
+                      defaultValue: 50,
+                    },
+                    {
+                      name: 'label',
+                      type: 'string',
+                      defaultValue: 'Slider',
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  min: 48,
+                  max: 84,
+                  step: 1,
+                  value: 56,
+                  label: 'MIDI Note',
+                },
+              },
+            },
+            {
+              id: 'DisplayNode-1748685942566-13',
+              type: 'audioNode',
+              position: {
+                x: 71.31611136501074,
+                y: 232.5119899292198,
+              },
+              data: {
+                nodeType: 'DisplayNode',
+                metadata: {
+                  name: 'Display',
+                  description:
+                    'Displays the current value flowing through it. Useful for debugging signal flow and monitoring values.',
+                  category: 'misc',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'control',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'currentValue',
+                      type: 'number',
+                      defaultValue: 0,
+                    },
+                    {
+                      name: 'precision',
+                      type: 'number',
+                      defaultValue: 2,
+                      min: 0,
+                      max: 6,
+                    },
+                    {
+                      name: 'label',
+                      type: 'string',
+                      defaultValue: 'Display',
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  currentValue: 0,
+                  precision: 2,
+                  label: 'Display',
+                },
+              },
+            },
+            {
+              id: 'MidiToFreqNode-1748685942567-14',
+              type: 'audioNode',
+              position: {
+                x: 269.03647005056547,
+                y: 19.111448796764165,
+              },
+              data: {
+                nodeType: 'MidiToFreqNode',
+                metadata: {
+                  name: 'MIDI to Frequency',
+                  description: 'Converts MIDI note numbers to frequency values. 69 = 440Hz (A4).',
+                  category: 'misc',
+                  inputs: [
+                    {
+                      name: 'midiNote',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'frequency',
+                      type: 'control',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'baseFreq',
+                      type: 'number',
+                      defaultValue: 440,
+                      min: 1,
+                      max: 20000,
+                    },
+                    {
+                      name: 'baseMidi',
+                      type: 'number',
+                      defaultValue: 69,
+                      min: 0,
+                      max: 127,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  baseFreq: 440,
+                  baseMidi: 69,
+                },
+              },
+            },
+            {
+              id: 'DisplayNode-1748685942567-15',
+              type: 'audioNode',
+              position: {
+                x: 349.60216452982104,
+                y: 209.40628596561203,
+              },
+              data: {
+                nodeType: 'DisplayNode',
+                metadata: {
+                  name: 'Display',
+                  description:
+                    'Displays the current value flowing through it. Useful for debugging signal flow and monitoring values.',
+                  category: 'misc',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'control',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'currentValue',
+                      type: 'number',
+                      defaultValue: 0,
+                    },
+                    {
+                      name: 'precision',
+                      type: 'number',
+                      defaultValue: 2,
+                      min: 0,
+                      max: 6,
+                    },
+                    {
+                      name: 'label',
+                      type: 'string',
+                      defaultValue: 'Display',
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  currentValue: 0,
+                  precision: 2,
+                  label: 'Display',
+                },
+              },
+            },
+            {
+              id: 'OscillatorNode-1748685942568-16',
+              type: 'audioNode',
+              position: {
+                x: 543.047959716879,
+                y: -28.436677674416615,
+              },
+              data: {
+                nodeType: 'OscillatorNode',
+                metadata: {
+                  name: 'OscillatorNode',
+                  description:
+                    'The OscillatorNode interface represents a periodic waveform, such as a sine wave. It is an AudioScheduledSourceNode audio-processing module that causes a specified frequency of a given wave to be created—in effect, a constant tone.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/OscillatorNode)',
+                  category: 'source',
+                  inputs: [
+                    {
+                      name: 'frequency',
+                      type: 'control',
+                    },
+                    {
+                      name: 'detune',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'detune',
+                      type: 'AudioParam',
+                      defaultValue: null,
+                      min: -1200,
+                      max: 1200,
+                    },
+                    {
+                      name: 'frequency',
+                      type: 'AudioParam',
+                      defaultValue: 440,
+                      min: 0,
+                      max: 20000,
+                    },
+                    {
+                      name: 'type',
+                      type: 'OscillatorType',
+                      defaultValue: 'sine',
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  detune: null,
+                  frequency: 440,
+                  type: 'sine',
+                },
+              },
+            },
+            {
+              id: 'AudioDestinationNode-1748685942570-17',
+              type: 'audioNode',
+              position: {
+                x: 1025.3458360566071,
+                y: 54.84633631951323,
+              },
+              data: {
+                nodeType: 'AudioDestinationNode',
+                metadata: {
+                  name: 'AudioDestinationNode',
+                  description:
+                    'AudioDestinationNode has no output (as it is the output, no more AudioNode can be linked after it in the audio graph) and one input. The number of channels in the input must be between 0 and the maxChannelCount value or an exception is raised.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/AudioDestinationNode)',
+                  category: 'destination',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                  ],
+                  outputs: [],
+                  properties: [],
+                  methods: [],
+                  events: [],
+                },
+                properties: {},
+              },
+            },
+            {
+              id: 'DelayNode-1748685958111-18',
+              type: 'audioNode',
+              position: {
+                x: 639.6256465911865,
+                y: 334.00000000000006,
+              },
+              data: {
+                nodeType: 'DelayNode',
+                metadata: {
+                  name: 'DelayNode',
+                  description:
+                    'A delay-line; an AudioNode audio-processing module that causes a delay between the arrival of an input data and its propagation to the output.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/DelayNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'delayTime',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'delayTime',
+                      type: 'AudioParam',
+                      defaultValue: null,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  delayTime: 0.6,
+                },
+              },
+            },
+            {
+              id: 'GainNode-1748685958858-19',
+              type: 'audioNode',
+              position: {
+                x: 99.99999999999993,
+                y: -300,
+              },
+              data: {
+                nodeType: 'GainNode',
+                metadata: {
+                  name: 'GainNode',
+                  description:
+                    'A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'gain',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'gain',
+                      type: 'AudioParam',
+                      defaultValue: 1,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  gain: 1,
+                },
+              },
+            },
+            {
+              id: 'GainNode-1748686091720-23',
+              type: 'audioNode',
+              position: {
+                x: 785.0000000000002,
+                y: -20.90365219116211,
+              },
+              data: {
+                nodeType: 'GainNode',
+                metadata: {
+                  name: 'GainNode',
+                  description:
+                    'A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'gain',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'gain',
+                      type: 'AudioParam',
+                      defaultValue: 1,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  gain: 0.61,
+                },
+              },
+            },
+            {
+              id: 'GainNode-1748686196223-24',
+              type: 'audioNode',
+              position: {
+                x: 907.0017242431641,
+                y: 319.4513854980469,
+              },
+              data: {
+                nodeType: 'GainNode',
+                metadata: {
+                  name: 'GainNode',
+                  description:
+                    'A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'gain',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'gain',
+                      type: 'AudioParam',
+                      defaultValue: 1,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  gain: 0.3,
+                },
+              },
+            },
+            {
+              id: 'DelayNode-1748686239866-25',
+              type: 'audioNode',
+              position: {
+                x: 474.00172424316406,
+                y: 535.4513854980469,
+              },
+              data: {
+                nodeType: 'DelayNode',
+                metadata: {
+                  name: 'DelayNode',
+                  description:
+                    'A delay-line; an AudioNode audio-processing module that causes a delay between the arrival of an input data and its propagation to the output.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/DelayNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'delayTime',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'delayTime',
+                      type: 'AudioParam',
+                      defaultValue: null,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  delayTime: 0.4,
+                },
+              },
+            },
+            {
+              id: 'GainNode-1748686283731-26',
+              type: 'audioNode',
+              position: {
+                x: 744.0017242431641,
+                y: 540.4513854980469,
+              },
+              data: {
+                nodeType: 'GainNode',
+                metadata: {
+                  name: 'GainNode',
+                  description:
+                    'A change in volume. It is an AudioNode audio-processing module that causes a given gain to be applied to the input data before its propagation to the output. A GainNode always has exactly one input and one output, both with the same number of channels.\n\n[MDN Reference](https://developer.mozilla.org/docs/Web/API/GainNode)',
+                  category: 'effect',
+                  inputs: [
+                    {
+                      name: 'input',
+                      type: 'audio',
+                    },
+                    {
+                      name: 'gain',
+                      type: 'control',
+                    },
+                  ],
+                  outputs: [
+                    {
+                      name: 'output',
+                      type: 'audio',
+                    },
+                  ],
+                  properties: [
+                    {
+                      name: 'gain',
+                      type: 'AudioParam',
+                      defaultValue: 1,
+                      min: 0,
+                      max: 1,
+                    },
+                  ],
+                  methods: [],
+                  events: [],
+                },
+                properties: {
+                  gain: 0.5,
+                },
+              },
+            },
+          ],
+          visualEdges: [
+            {
+              id: 'SliderNode-1748685942561-12-DisplayNode-1748685942566-13-value-input',
+              source: 'SliderNode-1748685942561-12',
+              target: 'DisplayNode-1748685942566-13',
+              sourceHandle: 'value',
+              targetHandle: 'input',
+            },
+            {
+              id: 'DisplayNode-1748685942566-13-MidiToFreqNode-1748685942567-14-output-midiNote',
+              source: 'DisplayNode-1748685942566-13',
+              target: 'MidiToFreqNode-1748685942567-14',
+              sourceHandle: 'output',
+              targetHandle: 'midiNote',
+            },
+            {
+              id: 'MidiToFreqNode-1748685942567-14-DisplayNode-1748685942567-15-frequency-input',
+              source: 'MidiToFreqNode-1748685942567-14',
+              target: 'DisplayNode-1748685942567-15',
+              sourceHandle: 'frequency',
+              targetHandle: 'input',
+            },
+            {
+              id: 'DisplayNode-1748685942567-15-OscillatorNode-1748685942568-16-output-frequency',
+              source: 'DisplayNode-1748685942567-15',
+              target: 'OscillatorNode-1748685942568-16',
+              sourceHandle: 'output',
+              targetHandle: 'frequency',
+            },
+            {
+              id: 'OscillatorNode-1748685942568-16-DelayNode-1748685958111-18-output-input',
+              source: 'OscillatorNode-1748685942568-16',
+              target: 'DelayNode-1748685958111-18',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'OscillatorNode-1748685942568-16-GainNode-1748686091720-23-output-input',
+              source: 'OscillatorNode-1748685942568-16',
+              target: 'GainNode-1748686091720-23',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'GainNode-1748686091720-23-AudioDestinationNode-1748685942570-17-output-input',
+              source: 'GainNode-1748686091720-23',
+              target: 'AudioDestinationNode-1748685942570-17',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'GainNode-1748686196223-24-AudioDestinationNode-1748685942570-17-output-input',
+              source: 'GainNode-1748686196223-24',
+              target: 'AudioDestinationNode-1748685942570-17',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'DelayNode-1748685958111-18-GainNode-1748686196223-24-output-input',
+              source: 'DelayNode-1748685958111-18',
+              target: 'GainNode-1748686196223-24',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'DelayNode-1748685958111-18-DelayNode-1748686239866-25-output-input',
+              source: 'DelayNode-1748685958111-18',
+              target: 'DelayNode-1748686239866-25',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'DelayNode-1748686239866-25-GainNode-1748686283731-26-output-input',
+              source: 'DelayNode-1748686239866-25',
+              target: 'GainNode-1748686283731-26',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+            {
+              id: 'GainNode-1748686283731-26-DelayNode-1748685958111-18-output-input',
+              source: 'GainNode-1748686283731-26',
+              target: 'DelayNode-1748685958111-18',
+              sourceHandle: 'output',
+              targetHandle: 'input',
+            },
+          ],
+          audioConnections: [
+            {
+              sourceNodeId: 'SliderNode-1748685942561-12',
+              targetNodeId: 'DisplayNode-1748685942566-13',
+              sourceOutput: 'value',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'DisplayNode-1748685942566-13',
+              targetNodeId: 'MidiToFreqNode-1748685942567-14',
+              sourceOutput: 'output',
+              targetInput: 'midiNote',
+            },
+            {
+              sourceNodeId: 'MidiToFreqNode-1748685942567-14',
+              targetNodeId: 'DisplayNode-1748685942567-15',
+              sourceOutput: 'frequency',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'DisplayNode-1748685942567-15',
+              targetNodeId: 'OscillatorNode-1748685942568-16',
+              sourceOutput: 'output',
+              targetInput: 'frequency',
+            },
+            {
+              sourceNodeId: 'OscillatorNode-1748685942568-16',
+              targetNodeId: 'DelayNode-1748685958111-18',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'OscillatorNode-1748685942568-16',
+              targetNodeId: 'GainNode-1748686091720-23',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'GainNode-1748686091720-23',
+              targetNodeId: 'AudioDestinationNode-1748685942570-17',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'GainNode-1748686196223-24',
+              targetNodeId: 'AudioDestinationNode-1748685942570-17',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'DelayNode-1748685958111-18',
+              targetNodeId: 'GainNode-1748686196223-24',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'DelayNode-1748685958111-18',
+              targetNodeId: 'DelayNode-1748686239866-25',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'DelayNode-1748686239866-25',
+              targetNodeId: 'GainNode-1748686283731-26',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+            {
+              sourceNodeId: 'GainNode-1748686283731-26',
+              targetNodeId: 'DelayNode-1748685958111-18',
+              sourceOutput: 'output',
+              targetInput: 'input',
+            },
+          ],
+        }
+
+        // Apply the project snapshot to load all nodes and connections
+        store.setLoadingProject(true)
+        try {
+          // Apply the snapshot using MST's applySnapshot
+          const { applySnapshot } = await import('mobx-state-tree')
+          applySnapshot(store, projectData)
+
+          // Recreate the audio graph to ensure everything is connected properly
+          await store.recreateAudioGraph()
+        } catch (error) {
+          console.warn('Failed to apply snapshot, falling back to manual creation:', error)
+          // Fallback: create a simpler version manually
+          const sliderId = store.addNode('SliderNode', { x: 213, y: 481 })
+          const displayId = store.addNode('DisplayNode', { x: 71, y: 232 })
+          const midiToFreqId = store.addNode('MidiToFreqNode', { x: 269, y: 19 })
+          const freqDisplayId = store.addNode('DisplayNode', { x: 349, y: 209 })
+          const oscId = store.addNode('OscillatorNode', { x: 543, y: -28 })
+          const gainId = store.addNode('GainNode', { x: 785, y: -20 })
+          const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
+
+          // Configure nodes
+          store.updateNodeProperty(sliderId, 'min', 48)
+          store.updateNodeProperty(sliderId, 'max', 84)
+          store.updateNodeProperty(sliderId, 'value', 56)
+          store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
+          store.updateNodeProperty(gainId, 'gain', 0.61)
+
+          // Create connections
+          store.addEdge(sliderId, displayId, 'value', 'input')
+          store.addEdge(displayId, midiToFreqId, 'output', 'midiNote')
+          store.addEdge(midiToFreqId, freqDisplayId, 'frequency', 'input')
+          store.addEdge(freqDisplayId, oscId, 'output', 'frequency')
+          store.addEdge(oscId, gainId, 'output', 'input')
+          store.addEdge(gainId, destId, 'output', 'input')
+        } finally {
+          store.setLoadingProject(false)
+        }
+      }),
+    },
+    {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
