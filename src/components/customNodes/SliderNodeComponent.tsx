@@ -9,8 +9,6 @@ interface SliderNodeComponentProps {
 
 const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
-
-  // ALL HOOKS MUST BE CALLED BEFORE ANY EARLY RETURNS
   const store = useAudioGraphStore()
   const sliderRef = useRef<HTMLInputElement>(null)
 
@@ -35,45 +33,51 @@ const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ node
     }
   }, [])
 
-  // NOW we can safely do early returns - hooks are already called
-  if (!node || node.nodeType !== 'SliderNode') {
-    return <div className="text-red-500 text-xs">SliderNode not found</div>
-  }
-
-  const currentValue = node.properties.get('value') || 50
-  const min = node.properties.get('min') || 0
-  const max = node.properties.get('max') || 100
-  const step = node.properties.get('step') || 1
-  const label = node.properties.get('label') || 'Slider'
+  // All hooks called first, now prepare data for rendering
+  const isValidNode = node && node.nodeType === 'SliderNode'
+  const nodeCurrentValue = isValidNode ? node.properties.get('value') || 50 : 50
+  const min = isValidNode ? node.properties.get('min') || 0 : 0
+  const max = isValidNode ? node.properties.get('max') || 100 : 100
+  const step = isValidNode ? node.properties.get('step') || 1 : 1
+  const label = isValidNode ? node.properties.get('label') || 'Slider' : 'Slider'
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = parseFloat(e.target.value)
-    console.log(`🎚️ SliderNode ${nodeId}: Value changed to ${newValue}`)
+    if (isValidNode) {
+      const newValue = parseFloat(e.target.value)
+      console.log(`🎚️ SliderNode ${nodeId}: Value changed to ${newValue}`)
 
-    // Update both stores to keep them in sync
-    // 1. Update the CustomNodeStore (for reactive connections)
-    node.setProperty('value', newValue)
+      // Update both stores to keep them in sync
+      // 1. Update the CustomNodeStore (for reactive connections)
+      node.setProperty('value', newValue)
 
-    // 2. Update the AudioGraphStore (for the visual properties panel)
-    store.updateNodeProperty(nodeId, 'value', newValue)
+      // 2. Update the AudioGraphStore (for the visual properties panel)
+      store.updateNodeProperty(nodeId, 'value', newValue)
+    }
   }
 
+  // Single return with conditional rendering - NO early returns
   return (
     <div className="p-2 space-y-2">
-      <div className="text-xs font-medium text-gray-700">{label}</div>
-      <div className="space-y-1">
-        <input
-          ref={sliderRef}
-          type="range"
-          min={min}
-          max={max}
-          step={step}
-          value={currentValue}
-          onChange={handleSliderChange}
-          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-        />
-        <div className="text-xs text-gray-500 text-center">{currentValue}</div>
-      </div>
+      {!isValidNode ? (
+        <div className="text-red-500 text-xs">SliderNode not found</div>
+      ) : (
+        <>
+          <div className="text-xs font-medium text-gray-700">{label}</div>
+          <div className="space-y-1">
+            <input
+              ref={sliderRef}
+              type="range"
+              min={min}
+              max={max}
+              step={step}
+              value={nodeCurrentValue}
+              onChange={handleSliderChange}
+              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+            />
+            <div className="text-xs text-gray-500 text-center">{nodeCurrentValue}</div>
+          </div>
+        </>
+      )}
     </div>
   )
 })

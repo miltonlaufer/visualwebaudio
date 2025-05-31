@@ -17,16 +17,13 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   const isStoppedRef = useRef(false) // Flag to prevent any further triggers
   const countRef = useRef(0) // Keep track of count to avoid stale closure issues
 
-  // Early return check BEFORE any other hooks
-  if (!node || node.nodeType !== 'TimerNode') {
-    return <div className="text-red-500 text-xs">TimerNode not found</div>
-  }
-
-  const mode = node.properties.get('mode') || 'loop'
-  const delay = node.properties.get('delay') || 1000
-  const interval = node.properties.get('interval') || 1000
-  const startMode = node.properties.get('startMode') || 'auto'
-  const enabled = (node.properties.get('enabled') || 'true') === 'true'
+  // All hooks called first, now prepare data for rendering
+  const isValidNode = node && node.nodeType === 'TimerNode'
+  const mode = isValidNode ? node.properties.get('mode') || 'loop' : 'loop'
+  const delay = isValidNode ? node.properties.get('delay') || 1000 : 1000
+  const interval = isValidNode ? node.properties.get('interval') || 1000 : 1000
+  const startMode = isValidNode ? node.properties.get('startMode') || 'auto' : 'auto'
+  const enabled = isValidNode ? (node.properties.get('enabled') || 'true') === 'true' : true
 
   // Function to check if audio context is active (called dynamically)
   const getIsAudioContextActive = useCallback(() => {
@@ -38,9 +35,9 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   }, [audioStore.audioContext])
 
   const fireTrigger = useCallback(() => {
-    // Check if timer has been stopped
-    if (isStoppedRef.current) {
-      console.log(`TimerNode ${nodeId}: Trigger blocked - timer is stopped`)
+    // Check if timer has been stopped or node is invalid
+    if (isStoppedRef.current || !node) {
+      console.log(`TimerNode ${nodeId}: Trigger blocked - timer is stopped or node invalid`)
       return
     }
 
@@ -167,7 +164,9 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
     countRef.current = 0
     setTriggerCount(0)
     // Use MST action to reset timer count
-    node.resetTimerCount()
+    if (node) {
+      node.resetTimerCount()
+    }
   }, [stopTimer, node])
 
   // Monitor audio context state and stop timer when audio is paused
@@ -215,8 +214,15 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
     } else if (enabled && !isRunning && startMode === 'auto' && getIsAudioContextActive()) {
       startTimer()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, audioStore.audioContext]) // Watch enabled property and audio context
+  }, [
+    enabled,
+    audioStore.audioContext,
+    stopTimer,
+    startTimer,
+    isRunning,
+    startMode,
+    getIsAudioContextActive,
+  ]) // Watch enabled property and audio context
 
   // Handle audio context state changes for auto-restart
   useEffect(() => {
@@ -228,56 +234,72 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
       // Audio context became active, auto-start if configured
       startTimer()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioStore.audioContext, audioStore.audioContext?.state]) // Watch audio context and its state changes
+  }, [
+    audioStore.audioContext,
+    audioStore.audioContext?.state,
+    enabled,
+    isRunning,
+    startMode,
+    startTimer,
+  ]) // Watch audio context and its state changes
 
   const isAudioContextActive = getIsAudioContextActive()
 
+  // Single return with conditional rendering - NO early returns
   return (
     <div className="p-2 space-y-2 min-w-[200px]">
-      {/* Status display */}
-      <div className="text-xs">
-        <span className="font-medium">Status: </span>
-        <span className={`${isRunning ? 'text-green-600' : 'text-red-600'}`}>
-          {isRunning ? 'Running' : 'Stopped'}
-        </span>
-        {!isAudioContextActive && <span className="text-orange-600 ml-2">(Audio Paused)</span>}
-      </div>
+      {!isValidNode ? (
+        <div className="text-red-500 text-xs">TimerNode not found</div>
+      ) : (
+        <>
+          {/* Status display */}
+          <div className="text-xs">
+            <span className="font-medium">Status: </span>
+            <span className={`${isRunning ? 'text-green-600' : 'text-red-600'}`}>
+              {isRunning ? 'Running' : 'Stopped'}
+            </span>
+            {!isAudioContextActive && <span className="text-orange-600 ml-2">(Audio Paused)</span>}
+          </div>
 
-      {/* Count display */}
-      <div className="text-xs">
-        <span className="font-medium">Count: </span>
-        <span className="text-blue-600 font-bold">{triggerCount}</span>
-      </div>
+          {/* Count display */}
+          <div className="text-xs">
+            <span className="font-medium">Count: </span>
+            <span className="text-blue-600 font-bold">{triggerCount}</span>
+          </div>
 
-      {/* Settings display */}
-      <div className="text-xs text-gray-600 space-y-1">
-        <div>Mode: {mode}</div>
-        <div>Delay: {delay}ms</div>
-        {mode === 'loop' && <div>Interval: {interval}ms</div>}
-        <div>Start: {startMode}</div>
-      </div>
+          {/* Settings display */}
+          <div className="text-xs text-gray-600 space-y-1">
+            <div>Mode: {mode}</div>
+            <div>Delay: {delay}ms</div>
+            {mode === 'loop' && <div>Interval: {interval}ms</div>}
+            <div>Start: {startMode}</div>
+          </div>
 
-      {/* Control buttons */}
-      <div className="flex gap-1">
-        <button
-          onClick={startTimer}
-          disabled={isRunning || !isAudioContextActive}
-          className="px-2 py-1 text-xs bg-green-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          Start
-        </button>
-        <button
-          onClick={stopTimer}
-          disabled={!isRunning}
-          className="px-2 py-1 text-xs bg-red-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
-        >
-          Stop
-        </button>
-        <button onClick={resetTimer} className="px-2 py-1 text-xs bg-gray-500 text-white rounded">
-          Reset
-        </button>
-      </div>
+          {/* Control buttons */}
+          <div className="flex gap-1">
+            <button
+              onClick={startTimer}
+              disabled={isRunning || !isAudioContextActive}
+              className="px-2 py-1 text-xs bg-green-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Start
+            </button>
+            <button
+              onClick={stopTimer}
+              disabled={!isRunning}
+              className="px-2 py-1 text-xs bg-red-500 text-white rounded disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Stop
+            </button>
+            <button
+              onClick={resetTimer}
+              className="px-2 py-1 text-xs bg-gray-500 text-white rounded"
+            >
+              Reset
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 })

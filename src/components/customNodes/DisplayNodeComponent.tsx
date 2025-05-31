@@ -9,14 +9,11 @@ interface DisplayNodeComponentProps {
 const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ nodeId }) => {
   const node = customNodeStore.getNode(nodeId)
 
-  // Early return check BEFORE any other hooks
-  if (!node || node.nodeType !== 'DisplayNode') {
-    return <div className="text-red-500 text-xs">DisplayNode not found</div>
-  }
-
-  const currentValue = node.properties.get('currentValue')
-  const label = node.properties.get('label') || 'Display'
-  const precision = node.properties.get('precision') || 2
+  // All hooks called first, now prepare data for rendering
+  const isValidNode = node && node.nodeType === 'DisplayNode'
+  const currentValue = isValidNode ? node.properties.get('currentValue') : 0
+  const label = isValidNode ? node.properties.get('label') || 'Display' : ''
+  const precision = isValidNode ? node.properties.get('precision') || 2 : 2
 
   // Ensure we show a meaningful value - use 0 if currentValue is undefined, null, or NaN
   const rawValue =
@@ -30,16 +27,25 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
     formattedValue = Number(rawValue).toFixed(precision)
   }
 
-  console.log(
-    `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, formattedValue=${formattedValue}, precision=${precision}`
-  )
+  if (isValidNode) {
+    console.log(
+      `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, formattedValue=${formattedValue}, precision=${precision}`
+    )
+  }
 
+  // Single return with conditional rendering - NO early returns
   return (
     <div className="p-2 space-y-1">
-      <div className="text-xs font-medium text-gray-700">{label}</div>
-      <div className="text-lg font-mono bg-gray-50 px-2 py-1 rounded border text-center">
-        {formattedValue}
-      </div>
+      {!isValidNode ? (
+        <div className="text-red-500 text-xs">DisplayNode not found</div>
+      ) : (
+        <>
+          <div className="text-xs font-medium text-gray-700">{label}</div>
+          <div className="text-lg font-mono bg-gray-50 px-2 py-1 rounded border text-center">
+            {formattedValue}
+          </div>
+        </>
+      )}
     </div>
   )
 })
