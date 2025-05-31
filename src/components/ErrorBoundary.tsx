@@ -36,6 +36,10 @@ class ErrorBoundary extends Component<Props, State> {
     this.setState({ hasError: false, error: undefined, errorInfo: undefined })
   }
 
+  handleReload = () => {
+    window.location.reload()
+  }
+
   render() {
     if (this.state.hasError) {
       return (
@@ -97,7 +101,7 @@ class ErrorBoundary extends Component<Props, State> {
                 Try Again
               </button>
               <button
-                onClick={() => window.location.reload()}
+                onClick={this.handleReload}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
               >
                 Reload Page

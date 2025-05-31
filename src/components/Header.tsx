@@ -28,19 +28,101 @@ const Header: React.FC<HeaderProps> = observer(
     const [isExamplesOpen, setIsExamplesOpen] = useState(false)
     const mobileMenuRef = useRef<HTMLDivElement>(null)
 
-    useOnClickOutside(mobileMenuRef as React.RefObject<HTMLElement>, () => {
+    const handleClickOutside = useCallback(() => {
       setIsMobileMenuOpen(false)
       setIsExamplesOpen(false)
-    })
+    }, [])
 
-    const handleMenuAction = (action: () => void) => {
+    useOnClickOutside(mobileMenuRef as React.RefObject<HTMLElement>, handleClickOutside)
+
+    const handleMenuAction = useCallback((action: () => void) => {
       action()
       setIsMobileMenuOpen(false)
-    }
+    }, [])
 
     const handleCloseProjectModal = useCallback(() => {
       setIsProjectModalOpen(false)
     }, [])
+
+    const handleTogglePlayback = () => {
+      store.togglePlayback()
+    }
+
+    const handleOpenProjectModal = () => {
+      setIsProjectModalOpen(true)
+    }
+
+    const handleClearAllNodes = () => {
+      store.clearAllNodes()
+    }
+
+    const handleUndo = () => {
+      store.undo()
+    }
+
+    const handleRedo = () => {
+      store.redo()
+    }
+
+    const handleToggleMobileMenu = () => {
+      setIsMobileMenuOpen(!isMobileMenuOpen)
+    }
+
+    const handleToggleExamples = () => {
+      setIsExamplesOpen(!isExamplesOpen)
+    }
+
+    const handleCloseMobileMenu = () => {
+      setIsMobileMenuOpen(false)
+    }
+
+    const handleMenuActionOpenProject = () => {
+      handleMenuAction(() => setIsProjectModalOpen(true))
+    }
+
+    const handleMenuActionClearAll = () => {
+      handleMenuAction(() => store.clearAllNodes())
+    }
+
+    const handleMenuActionUndo = () => {
+      handleMenuAction(() => store.undo())
+    }
+
+    const handleMenuActionRedo = () => {
+      handleMenuAction(() => store.redo())
+    }
+
+    const handleGitHubClick = async () => {
+      // Check if there are unsaved changes
+      if (store.visualNodes.length > 0 && store.isProjectModified) {
+        if (!confirm('You will lose your changes. Are you sure you want to leave?')) {
+          return
+        }
+      }
+      window.open('https://github.com/miltonlaufer/visualwebaudio', '_blank')
+    }
+
+    const handleExampleSelect = useCallback(
+      async (example: any) => {
+        // Check if there are unsaved changes
+        if (store.visualNodes.length > 0 && store.isProjectModified) {
+          if (!confirm('You will lose your changes. Are you sure you want to load this example?')) {
+            return
+          }
+        }
+
+        await example.create()
+        // Mark project as unmodified after loading example (examples are a fresh starting point)
+        store.setProjectModified(false)
+        setIsMobileMenuOpen(false)
+        setIsExamplesOpen(false)
+      },
+      [store]
+    )
+
+    const handleMobileExampleSelect = (example: any) => () => {
+      handleExampleSelect(example)
+    }
 
     return (
       <>
@@ -84,7 +166,7 @@ const Header: React.FC<HeaderProps> = observer(
           {/* Center - Play Button */}
           <div className="flex items-center">
             <button
-              onClick={() => store.togglePlayback()}
+              onClick={handleTogglePlayback}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 store.isPlaying
                   ? 'bg-red-500 text-white hover:bg-red-600'
@@ -113,7 +195,7 @@ const Header: React.FC<HeaderProps> = observer(
 
               {/* Project */}
               <button
-                onClick={() => setIsProjectModalOpen(true)}
+                onClick={handleOpenProjectModal}
                 className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,7 +214,7 @@ const Header: React.FC<HeaderProps> = observer(
 
               {/* Clear All */}
               <button
-                onClick={() => store.clearAllNodes()}
+                onClick={handleClearAllNodes}
                 className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -149,7 +231,7 @@ const Header: React.FC<HeaderProps> = observer(
               {/* Undo/Redo */}
               <div className="flex items-center space-x-1">
                 <button
-                  onClick={() => store.undo()}
+                  onClick={handleUndo}
                   disabled={!store.canUndo}
                   className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Undo (⌘Z)"
@@ -164,7 +246,7 @@ const Header: React.FC<HeaderProps> = observer(
                   </svg>
                 </button>
                 <button
-                  onClick={() => store.redo()}
+                  onClick={handleRedo}
                   disabled={!store.canRedo}
                   className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Redo (⌘Y)"
@@ -181,23 +263,21 @@ const Header: React.FC<HeaderProps> = observer(
               </div>
 
               {/* GitHub Link */}
-              <a
-                href="https://github.com/miltonlaufer/visualwebaudio"
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={handleGitHubClick}
                 className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
                 title="View on GitHub"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
                 </svg>
-              </a>
+              </button>
             </div>
 
             {/* Mobile Menu Button - Controls other features */}
             <div className="md:hidden relative" ref={mobileMenuRef}>
               <button
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                onClick={handleToggleMobileMenu}
                 className={`p-2 rounded-lg transition-colors ${
                   isMobileMenuOpen
                     ? 'bg-blue-500 text-white'
@@ -222,7 +302,7 @@ const Header: React.FC<HeaderProps> = observer(
                     {/* Examples Section */}
                     <div className="mb-2">
                       <button
-                        onClick={() => setIsExamplesOpen(!isExamplesOpen)}
+                        onClick={handleToggleExamples}
                         className="w-full flex items-center justify-between px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <span className="font-medium">Quick Examples</span>
@@ -248,24 +328,7 @@ const Header: React.FC<HeaderProps> = observer(
                           {examples.map(example => (
                             <button
                               key={example.id}
-                              onClick={async () => {
-                                // Check if there are unsaved changes
-                                if (store.visualNodes.length > 0 && store.isProjectModified) {
-                                  if (
-                                    !confirm(
-                                      'You will lose your changes. Are you sure you want to load this example?'
-                                    )
-                                  ) {
-                                    return
-                                  }
-                                }
-
-                                await example.create()
-                                // Mark project as unmodified after loading example (examples are a fresh starting point)
-                                store.setProjectModified(false)
-                                setIsMobileMenuOpen(false)
-                                setIsExamplesOpen(false)
-                              }}
+                              onClick={handleMobileExampleSelect(example)}
                               className="w-full text-left px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded transition-colors"
                             >
                               {example.name}
@@ -282,7 +345,7 @@ const Header: React.FC<HeaderProps> = observer(
                     <div className="space-y-1">
                       {/* Project */}
                       <button
-                        onClick={() => handleMenuAction(() => setIsProjectModalOpen(true))}
+                        onClick={handleMenuActionOpenProject}
                         className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <svg
@@ -308,7 +371,7 @@ const Header: React.FC<HeaderProps> = observer(
 
                       {/* Clear All */}
                       <button
-                        onClick={() => handleMenuAction(() => store.clearAllNodes())}
+                        onClick={handleMenuActionClearAll}
                         className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <svg
@@ -329,7 +392,7 @@ const Header: React.FC<HeaderProps> = observer(
 
                       {/* Undo */}
                       <button
-                        onClick={() => handleMenuAction(() => store.undo())}
+                        onClick={handleMenuActionUndo}
                         disabled={!store.canUndo}
                         className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -351,7 +414,7 @@ const Header: React.FC<HeaderProps> = observer(
 
                       {/* Redo */}
                       <button
-                        onClick={() => handleMenuAction(() => store.redo())}
+                        onClick={handleMenuActionRedo}
                         disabled={!store.canRedo}
                         className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
@@ -381,7 +444,7 @@ const Header: React.FC<HeaderProps> = observer(
                       target="_blank"
                       rel="noopener noreferrer"
                       className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                      onClick={() => setIsMobileMenuOpen(false)}
+                      onClick={handleCloseMobileMenu}
                     >
                       <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />

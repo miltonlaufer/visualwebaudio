@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import FrequencyAnalyzer from './FrequencyAnalyzer'
@@ -27,12 +27,48 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     return undefined
   }
 
-  const handlePropertyChange = (propertyName: string, value: string | number) => {
-    if (!selectedNode) return
+  const handlePropertyChange = useCallback(
+    (propertyName: string, value: string | number) => {
+      if (!selectedNode) return
 
-    console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
-    store.updateNodeProperty(selectedNode.id, propertyName, value)
+      console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
+      store.updateNodeProperty(selectedNode.id, propertyName, value)
+    },
+    [selectedNode, store]
+  )
+
+  const handleToggleDescription = () => {
+    setIsDescriptionExpanded(!isDescriptionExpanded)
   }
+
+  const handleMethodCall = (method: string) => {
+    if (!selectedNode) return
+    // Handle method calls - this would need to be implemented
+    console.log(`Calling ${method} on ${selectedNode.id}`)
+  }
+
+  const handleRemoveNode = () => {
+    if (!selectedNode) return
+    store.removeNode(selectedNode.id)
+  }
+
+  const handleNumberPropertyChange = useCallback(
+    (propertyName: string) => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        handlePropertyChange(propertyName, parseFloat(e.target.value))
+      }
+    },
+    [handlePropertyChange]
+  )
+
+  const handleStringPropertyChange = useCallback(
+    (propertyName: string) => {
+      return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        handlePropertyChange(propertyName, e.target.value)
+      }
+    },
+    [handlePropertyChange]
+  )
 
   const renderDescription = (description: string) => {
     const lines = description.split('\n').filter(line => line.trim())
@@ -53,7 +89,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
       <div>
         <div className="text-xs text-blue-700 leading-relaxed">{displayText}</div>
         <button
-          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+          onClick={handleToggleDescription}
           className="mt-2 flex items-center text-xs text-blue-600 hover:text-blue-800 transition-colors"
         >
           <svg
@@ -90,7 +126,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
           <input
             type="number"
             value={numericValue}
-            onChange={e => handlePropertyChange(property.name, parseFloat(e.target.value))}
+            onChange={handleNumberPropertyChange(property.name)}
             step="0.01"
             min={property.min}
             max={property.max}
@@ -108,7 +144,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
         return (
           <select
             value={oscValue}
-            onChange={e => handlePropertyChange(property.name, e.target.value)}
+            onChange={handleStringPropertyChange(property.name)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="sine">Sine</option>
@@ -128,7 +164,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
         return (
           <select
             value={filterValue}
-            onChange={e => handlePropertyChange(property.name, e.target.value)}
+            onChange={handleStringPropertyChange(property.name)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="lowpass">Low Pass</option>
@@ -153,7 +189,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
           <input
             type="text"
             value={stringValue}
-            onChange={e => handlePropertyChange(property.name, e.target.value)}
+            onChange={handleStringPropertyChange(property.name)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         )
@@ -295,10 +331,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
                   {selectedNode.data.metadata.methods.map(method => (
                     <button
                       key={method}
-                      onClick={() => {
-                        // Handle method calls - this would need to be implemented
-                        console.log(`Calling ${method} on ${selectedNode.id}`)
-                      }}
+                      onClick={() => handleMethodCall(method)}
                       className="w-full px-3 py-2 text-sm bg-blue-50 text-blue-700 border border-blue-200 rounded-md hover:bg-blue-100 transition-colors"
                     >
                       {method}()
@@ -328,7 +361,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
             {/* Actions */}
             <div className="mt-8 pt-4 border-t border-gray-200">
               <button
-                onClick={() => store.removeNode(selectedNode.id)}
+                onClick={handleRemoveNode}
                 className="w-full px-4 py-2 bg-red-50 text-red-700 border border-red-200 rounded-md hover:bg-red-100 transition-colors"
               >
                 Delete Node
