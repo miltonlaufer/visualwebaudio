@@ -229,38 +229,35 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     [store, onClose]
   )
 
-  const handleDelete = useCallback(
-    async (project: SavedProject) => {
-      if (!project.id) {
-        setStorageError('Cannot delete project: Invalid project ID')
-        return
+  const handleDelete = async (project: SavedProject) => {
+    if (!project.id) {
+      setStorageError('Cannot delete project: Invalid project ID')
+      return
+    }
+
+    if (
+      !confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)
+    ) {
+      return
+    }
+
+    try {
+      setStorageError(null)
+      await projectOperations.deleteProject(project.id)
+
+      // If we deleted the currently loaded project, clear the current project info
+      if (currentProjectId === project.id) {
+        setCurrentProjectId(null)
+        setCurrentProjectName('')
       }
 
-      if (
-        !confirm(`Are you sure you want to delete "${project.name}"? This action cannot be undone.`)
-      ) {
-        return
-      }
-
-      try {
-        setStorageError(null)
-        await projectOperations.deleteProject(project.id)
-
-        // If we deleted the currently loaded project, clear the current project info
-        if (currentProjectId === project.id) {
-          setCurrentProjectId(null)
-          setCurrentProjectName('')
-        }
-
-        await loadSavedProjects()
-        setStorageSuccess(`Project "${project.name}" deleted successfully!`)
-        setTimeout(() => setStorageSuccess(null), 3000)
-      } catch (error) {
-        setStorageError('Failed to delete project: ' + (error as Error).message)
-      }
-    },
-    [currentProjectId]
-  )
+      await loadSavedProjects()
+      setStorageSuccess(`Project "${project.name}" deleted successfully!`)
+      setTimeout(() => setStorageSuccess(null), 3000)
+    } catch (error) {
+      setStorageError('Failed to delete project: ' + (error as Error).message)
+    }
+  }
 
   // Remove useCallback from simple HTML element handlers
   const handleSetActiveTabStorage = () => {
