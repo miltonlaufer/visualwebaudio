@@ -427,7 +427,6 @@ const AppContent: React.FC = observer(() => {
     [handleNodesChange]
   )
 
-  // Create a proper useCallback for the ReactFlow onEdgesChange prop
   const reactFlowOnEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       console.log('React Flow onEdgesChange called with:', changes)
@@ -436,7 +435,6 @@ const AppContent: React.FC = observer(() => {
     [handleEdgesChange]
   )
 
-  // Toggle functions using useCallback for better performance
   const handleToggleNodePalette = useCallback(() => {
     setIsNodePaletteOpen(!isNodePaletteOpen)
   }, [isNodePaletteOpen])
@@ -456,6 +454,18 @@ const AppContent: React.FC = observer(() => {
   const handleClosePanels = useCallback(() => {
     setIsNodePaletteOpen(false)
     setIsPropertyPanelOpen(false)
+  }, [])
+
+  const canvasDefaultEdgeOptions = useMemo(() => {
+    return {
+      type: 'default',
+      animated: true,
+    }
+  }, [])
+
+  const canvasOnInit = useCallback((reactFlowInstance: ReactFlowInstance) => {
+    console.log('React Flow initialized:', reactFlowInstance)
+    console.log('React Flow viewport:', reactFlowInstance.getViewport())
   }, [])
 
   return (
@@ -508,15 +518,9 @@ const AppContent: React.FC = observer(() => {
               nodeTypes={nodeTypes}
               connectionMode={ConnectionMode.Loose}
               connectOnClick={false}
-              defaultEdgeOptions={{
-                type: 'default',
-                animated: true,
-              }}
+              defaultEdgeOptions={canvasDefaultEdgeOptions}
               className="bg-gray-50 w-full h-full"
-              onInit={reactFlowInstance => {
-                console.log('React Flow initialized:', reactFlowInstance)
-                console.log('React Flow viewport:', reactFlowInstance.getViewport())
-              }}
+              onInit={canvasOnInit}
             >
               <Background />
               <Controls />
