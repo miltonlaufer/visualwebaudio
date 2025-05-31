@@ -77,6 +77,12 @@
         "type": "number",
         "defaultValue": 1,
         "description": "Step size"
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Slider",
+        "description": "Label text displayed above the slider"
       }
     ],
     "methods": [],
@@ -323,6 +329,20 @@
         "type": "number",
         "defaultValue": 0,
         "description": "Current displayed value"
+      },
+      {
+        "name": "precision",
+        "type": "number",
+        "defaultValue": 2,
+        "min": 0,
+        "max": 6,
+        "description": "Number of decimal places to display"
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Display",
+        "description": "Label text displayed above the value"
       }
     ],
     "methods": [],
@@ -361,6 +381,84 @@
         "type": "number",
         "defaultValue": 0,
         "description": "Current random value"
+      }
+    ],
+    "methods": [],
+    "events": []
+  },
+  "TimerNode": {
+    "name": "Timer",
+    "description": "Triggers events automatically at specified intervals. Can operate in one-shot or loop mode with configurable timing.",
+    "category": "control",
+    "inputs": [
+      {
+        "name": "trigger",
+        "type": "control",
+        "description": "Manual trigger input - starts the timer when start mode is 'manual'"
+      },
+      {
+        "name": "reset",
+        "type": "control",
+        "description": "Resets the timer and stops any running intervals"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "trigger",
+        "type": "control",
+        "description": "Outputs a trigger pulse when timer fires"
+      },
+      {
+        "name": "count",
+        "type": "control",
+        "description": "Number of times the timer has triggered"
+      }
+    ],
+    "properties": [
+      {
+        "name": "mode",
+        "type": "string",
+        "defaultValue": "loop",
+        "options": ["oneshot", "loop"],
+        "description": "Timer mode: 'oneshot' fires once, 'loop' fires repeatedly"
+      },
+      {
+        "name": "delay",
+        "type": "number",
+        "defaultValue": 1000,
+        "min": 10,
+        "max": 60000,
+        "step": 10,
+        "description": "Initial delay before first trigger (milliseconds)"
+      },
+      {
+        "name": "interval",
+        "type": "number",
+        "defaultValue": 1000,
+        "min": 10,
+        "max": 60000,
+        "step": 10,
+        "description": "Interval between triggers in loop mode (milliseconds)"
+      },
+      {
+        "name": "startMode",
+        "type": "string",
+        "defaultValue": "auto",
+        "options": ["auto", "manual"],
+        "description": "Start mode: 'auto' starts when audio context starts, 'manual' waits for trigger input"
+      },
+      {
+        "name": "enabled",
+        "type": "boolean",
+        "defaultValue": true,
+        "options": [true, false],
+        "description": "Whether the timer is enabled"
+      },
+      {
+        "name": "count",
+        "type": "number",
+        "defaultValue": 0,
+        "description": "Number of times the timer has triggered"
       }
     ],
     "methods": [],

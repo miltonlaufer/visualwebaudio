@@ -44,6 +44,7 @@ const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ node
   const min = node.properties.get('min') || 0
   const max = node.properties.get('max') || 100
   const step = node.properties.get('step') || 1
+  const label = node.properties.get('label') || 'Slider'
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = parseFloat(e.target.value)
@@ -59,7 +60,7 @@ const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ node
 
   return (
     <div className="p-2 space-y-2">
-      <div className="text-xs font-medium text-gray-700">Slider</div>
+      <div className="text-xs font-medium text-gray-700">{label}</div>
       <div className="space-y-1">
         <input
           ref={sliderRef}

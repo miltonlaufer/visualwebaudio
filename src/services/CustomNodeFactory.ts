@@ -385,6 +385,10 @@ export class BaseCustomNode implements CustomNode {
     void value
   }
 
+  setProperty(name: string, value: any): void {
+    this.properties.set(name, value)
+  }
+
   cleanup(): void {
     this.disconnect()
   }
@@ -1274,6 +1278,302 @@ export class SoundFileNode extends BaseCustomNode {
   }
 }
 
+export class TimerNode extends BaseCustomNode {
+  private timeoutId?: number
+  private intervalId?: number
+  private isRunning = false
+  private triggerCount = 0
+  private displayElement?: HTMLDivElement
+  private countElement?: HTMLSpanElement
+  private statusElement?: HTMLSpanElement
+  private startButton?: HTMLButtonElement
+  private stopButton?: HTMLButtonElement
+  private resetButton?: HTMLButtonElement
+
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+    super(id, type, audioContext, metadata)
+
+    // Set default properties
+    this.properties.set('mode', 'loop')
+    this.properties.set('delay', 1000)
+    this.properties.set('interval', 1000)
+    this.properties.set('startMode', 'auto')
+    this.properties.set('enabled', true)
+    this.properties.set('count', 0)
+
+    // Auto-start if enabled
+    if (this.properties.get('startMode') === 'auto' && this.properties.get('enabled')) {
+      this.startTimer()
+    }
+  }
+
+  createUIElement(container: HTMLElement): void {
+    this.displayElement = document.createElement('div')
+    this.displayElement.className = 'timer-node-ui'
+    this.displayElement.style.cssText = `
+      padding: 8px;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      min-width: 200px;
+    `
+
+    // Status display
+    const statusContainer = document.createElement('div')
+    statusContainer.style.cssText = 'margin-bottom: 8px;'
+
+    const statusLabel = document.createElement('span')
+    statusLabel.textContent = 'Status: '
+    statusLabel.style.fontWeight = 'bold'
+
+    this.statusElement = document.createElement('span')
+    this.statusElement.style.cssText = 'color: #666;'
+
+    statusContainer.appendChild(statusLabel)
+    statusContainer.appendChild(this.statusElement)
+
+    // Count display
+    const countContainer = document.createElement('div')
+    countContainer.style.cssText = 'margin-bottom: 8px;'
+
+    const countLabel = document.createElement('span')
+    countLabel.textContent = 'Count: '
+    countLabel.style.fontWeight = 'bold'
+
+    this.countElement = document.createElement('span')
+    this.countElement.style.cssText = 'color: #007bff; font-weight: bold;'
+
+    countContainer.appendChild(countLabel)
+    countContainer.appendChild(this.countElement)
+
+    // Control buttons
+    const buttonContainer = document.createElement('div')
+    buttonContainer.style.cssText = 'display: flex; gap: 4px; margin-top: 8px;'
+
+    this.startButton = document.createElement('button')
+    this.startButton.textContent = 'Start'
+    this.startButton.style.cssText = `
+      padding: 4px 8px;
+      background: #28a745;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    `
+    this.startButton.onclick = () => this.startTimer()
+
+    this.stopButton = document.createElement('button')
+    this.stopButton.textContent = 'Stop'
+    this.stopButton.style.cssText = `
+      padding: 4px 8px;
+      background: #dc3545;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    `
+    this.stopButton.onclick = () => this.stopTimer()
+
+    this.resetButton = document.createElement('button')
+    this.resetButton.textContent = 'Reset'
+    this.resetButton.style.cssText = `
+      padding: 4px 8px;
+      background: #6c757d;
+      color: white;
+      border: none;
+      border-radius: 3px;
+      cursor: pointer;
+      font-size: 11px;
+    `
+    this.resetButton.onclick = () => this.resetTimer()
+
+    buttonContainer.appendChild(this.startButton)
+    buttonContainer.appendChild(this.stopButton)
+    buttonContainer.appendChild(this.resetButton)
+
+    // Settings display
+    const settingsContainer = document.createElement('div')
+    settingsContainer.style.cssText = 'margin-top: 8px; font-size: 10px; color: #666;'
+
+    const mode = this.properties.get('mode')
+    const delay = this.properties.get('delay')
+    const interval = this.properties.get('interval')
+    const startMode = this.properties.get('startMode')
+
+    settingsContainer.innerHTML = `
+      Mode: ${mode}<br>
+      Delay: ${delay}ms<br>
+      ${mode === 'loop' ? `Interval: ${interval}ms<br>` : ''}
+      Start: ${startMode}
+    `
+
+    this.displayElement.appendChild(statusContainer)
+    this.displayElement.appendChild(countContainer)
+    this.displayElement.appendChild(settingsContainer)
+    this.displayElement.appendChild(buttonContainer)
+
+    container.appendChild(this.displayElement)
+    this.updateDisplay()
+  }
+
+  private updateDisplay(): void {
+    if (this.statusElement) {
+      this.statusElement.textContent = this.isRunning ? 'Running' : 'Stopped'
+      this.statusElement.style.color = this.isRunning ? '#28a745' : '#dc3545'
+    }
+
+    if (this.countElement) {
+      this.countElement.textContent = this.triggerCount.toString()
+    }
+
+    if (this.startButton) {
+      this.startButton.disabled = this.isRunning
+    }
+
+    if (this.stopButton) {
+      this.stopButton.disabled = !this.isRunning
+    }
+  }
+
+  private startTimer(): void {
+    if (this.isRunning || !this.properties.get('enabled')) {
+      return
+    }
+
+    this.isRunning = true
+    const delay = this.properties.get('delay') || 1000
+    const mode = this.properties.get('mode')
+
+    console.log(`TimerNode ${this.id}: Starting timer with ${delay}ms delay, mode: ${mode}`)
+
+    // Start with initial delay
+    this.timeoutId = window.setTimeout(() => {
+      this.fireTrigger()
+
+      // If loop mode, start interval
+      if (mode === 'loop') {
+        const interval = this.properties.get('interval') || 1000
+        this.intervalId = window.setInterval(() => {
+          this.fireTrigger()
+        }, interval)
+      } else {
+        // One-shot mode, stop after first trigger
+        this.isRunning = false
+        this.updateDisplay()
+      }
+    }, delay)
+
+    this.updateDisplay()
+  }
+
+  private stopTimer(): void {
+    if (!this.isRunning) {
+      return
+    }
+
+    console.log(`TimerNode ${this.id}: Stopping timer`)
+
+    if (this.timeoutId) {
+      clearTimeout(this.timeoutId)
+      this.timeoutId = undefined
+    }
+
+    if (this.intervalId) {
+      clearInterval(this.intervalId)
+      this.intervalId = undefined
+    }
+
+    this.isRunning = false
+    this.updateDisplay()
+  }
+
+  private resetTimer(): void {
+    this.stopTimer()
+    this.triggerCount = 0
+    this.properties.set('count', 0)
+    this.outputs.set('count', 0)
+
+    console.log(`TimerNode ${this.id}: Timer reset`)
+
+    this.updateDisplay()
+
+    // Notify connections of count reset
+    this.notifyConnections('count', 0)
+  }
+
+  private fireTrigger(): void {
+    this.triggerCount++
+    this.properties.set('count', this.triggerCount)
+    this.outputs.set('trigger', 1)
+    this.outputs.set('count', this.triggerCount)
+
+    console.log(`TimerNode ${this.id}: Trigger fired (count: ${this.triggerCount})`)
+
+    // Notify connections
+    this.notifyConnections('trigger', 1)
+    this.notifyConnections('count', this.triggerCount)
+
+    this.updateDisplay()
+
+    // Reset trigger output after a brief moment
+    setTimeout(() => {
+      this.outputs.set('trigger', 0)
+      this.notifyConnections('trigger', 0)
+    }, 10)
+  }
+
+  receiveInput(inputName: string, value: any): void {
+    console.log(`TimerNode ${this.id}: Received input ${inputName} = ${value}`)
+
+    if (inputName === 'trigger' && value > 0) {
+      if (this.properties.get('startMode') === 'manual') {
+        this.startTimer()
+      }
+    } else if (inputName === 'reset' && value > 0) {
+      this.resetTimer()
+    }
+  }
+
+  setProperty(name: string, value: any): void {
+    super.setProperty(name, value)
+
+    // If timer is running and timing properties change, restart
+    if ((name === 'delay' || name === 'interval' || name === 'mode') && this.isRunning) {
+      this.stopTimer()
+      this.startTimer()
+    }
+
+    // If enabled state changes
+    if (name === 'enabled') {
+      if (!value && this.isRunning) {
+        this.stopTimer()
+      } else if (value && !this.isRunning && this.properties.get('startMode') === 'auto') {
+        this.startTimer()
+      }
+    }
+
+    this.updateDisplay()
+  }
+
+  cleanup(): void {
+    this.stopTimer()
+    super.cleanup()
+  }
+
+  // Override to handle audio context updates
+  updateAudioContext(newAudioContext: AudioContext): void {
+    console.log(
+      `🔄 TimerNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
+    )
+    super.updateAudioContext(newAudioContext)
+    console.log(`✅ TimerNode: Audio context updated`)
+  }
+}
+
 // Updated CustomNodeFactory to use MobX store
 export class CustomNodeFactory {
   private audioContext: AudioContext
@@ -1315,6 +1615,7 @@ export class CustomNodeFactory {
       'DisplayNode',
       'RandomNode',
       'SoundFileNode',
+      'TimerNode',
     ]
     return customNodeTypes.includes(nodeType)
   }
@@ -1332,6 +1633,7 @@ export class CustomNodeFactory {
       'DisplayNode',
       'RandomNode',
       'SoundFileNode',
+      'TimerNode',
     ]
   }
 

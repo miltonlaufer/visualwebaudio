@@ -25,6 +25,181 @@ export const useExamples = () => {
 
   const examples: Example[] = [
     {
+      id: 'vintage-analog-synth',
+      name: 'Vintage Analog Synth',
+      description:
+        'Classic analog synthesizer with multiple oscillators, resonant filter, delay, and automated sequences',
+      create: createExample(() => {
+        // Clear existing nodes first to avoid conflicts
+        store.clearAllNodes()
+
+        // Timer for automated triggering
+        const timerId = store.addNode('TimerNode', { x: 50, y: 50 })
+
+        // Note control using MIDI to Frequency conversion
+        const noteSlider = store.addNode('SliderNode', { x: 50, y: 200 })
+        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 300, y: 200 })
+
+        // Envelope gain node controlled by timer
+        const envelopeGainId = store.addNode('GainNode', { x: 800, y: 50 })
+
+        // Multiple oscillators for rich vintage sound
+        const osc1Id = store.addNode('OscillatorNode', { x: 550, y: 100 })
+        const osc2Id = store.addNode('OscillatorNode', { x: 550, y: 200 })
+        const osc3Id = store.addNode('OscillatorNode', { x: 550, y: 300 })
+
+        // Individual gain controls for oscillators (sound generator rule)
+        const osc1GainId = store.addNode('GainNode', { x: 800, y: 100 })
+        const osc2GainId = store.addNode('GainNode', { x: 800, y: 200 })
+        const osc3GainId = store.addNode('GainNode', { x: 800, y: 300 })
+
+        // Mixer for combining oscillators
+        const mixerId = store.addNode('GainNode', { x: 1050, y: 200 })
+
+        // Resonant filter (the heart of vintage analog sound!)
+        const filterId = store.addNode('BiquadFilterNode', { x: 1300, y: 200 })
+
+        // LFO for filter modulation
+        const lfoId = store.addNode('OscillatorNode', { x: 1050, y: 400 })
+        const lfoGainId = store.addNode('GainNode', { x: 1300, y: 400 })
+
+        // Delay for vintage echo
+        const delayId = store.addNode('DelayNode', { x: 1550, y: 200 })
+        const feedbackId = store.addNode('GainNode', { x: 1550, y: 400 })
+
+        // Final output gain
+        const outputGainId = store.addNode('GainNode', { x: 1800, y: 200 })
+        const destId = store.addNode('AudioDestinationNode', { x: 2050, y: 200 })
+
+        // User controls
+        const filterCutoffSliderId = store.addNode('SliderNode', { x: 50, y: 350 })
+        const filterResSliderId = store.addNode('SliderNode', { x: 50, y: 500 })
+
+        console.log('Vintage Analog Synth: Setting up timer...')
+        // Timer settings for automatic note triggering
+        store.updateNodeProperty(timerId, 'mode', 'loop')
+        store.updateNodeProperty(timerId, 'delay', 500)
+        store.updateNodeProperty(timerId, 'interval', 2000)
+        store.updateNodeProperty(timerId, 'startMode', 'auto')
+
+        console.log('Vintage Analog Synth: Setting up note control...')
+        // Note slider (MIDI note range)
+        store.updateNodeProperty(noteSlider, 'min', 36) // C2
+        store.updateNodeProperty(noteSlider, 'max', 84) // C6
+        store.updateNodeProperty(noteSlider, 'value', 45) // A2
+        store.updateNodeProperty(noteSlider, 'step', 1)
+        store.updateNodeProperty(noteSlider, 'label', 'Note (MIDI)')
+
+        // MIDI to Frequency converter
+        store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
+        store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        console.log('Vintage Analog Synth: Setting up envelope...')
+        // Envelope gain - this will be modulated by timer but needs a base level for sound
+        store.updateNodeProperty(envelopeGainId, 'gain', 0.8)
+
+        console.log('Vintage Analog Synth: Setting up oscillators...')
+        // Oscillator 1: Fundamental frequency (sawtooth for vintage character)
+        store.updateNodeProperty(osc1Id, 'frequency', 110) // Will be controlled by note slider
+        store.updateNodeProperty(osc1Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc1GainId, 'gain', 0.3)
+
+        // Oscillator 2: Slightly detuned for richness
+        store.updateNodeProperty(osc2Id, 'frequency', 110.5) // Will be controlled by note slider + detune
+        store.updateNodeProperty(osc2Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc2GainId, 'gain', 0.2)
+
+        // Oscillator 3: Octave up for brightness
+        store.updateNodeProperty(osc3Id, 'frequency', 220) // Will be controlled by note slider * 2
+        store.updateNodeProperty(osc3Id, 'type', 'square')
+        store.updateNodeProperty(osc3GainId, 'gain', 0.15)
+
+        // Mixer
+        store.updateNodeProperty(mixerId, 'gain', 1)
+
+        console.log('Vintage Analog Synth: Setting up resonant filter...')
+        // Resonant lowpass filter (classic analog sound!)
+        store.updateNodeProperty(filterId, 'type', 'lowpass')
+        store.updateNodeProperty(filterId, 'frequency', 800)
+        store.updateNodeProperty(filterId, 'Q', 15) // High resonance for vintage character
+
+        console.log('Vintage Analog Synth: Setting up LFO modulation...')
+        // LFO for filter sweep
+        store.updateNodeProperty(lfoId, 'frequency', 0.3) // Slow sweep
+        store.updateNodeProperty(lfoId, 'type', 'sine')
+        store.updateNodeProperty(lfoGainId, 'gain', 400) // Modulation depth
+
+        console.log('Vintage Analog Synth: Setting up delay effect...')
+        // Vintage delay
+        store.updateNodeProperty(delayId, 'delayTime', 0.25) // 250ms
+        store.updateNodeProperty(feedbackId, 'gain', 0.4) // Moderate feedback
+
+        // Output gain
+        store.updateNodeProperty(outputGainId, 'gain', 0.6)
+
+        console.log('Vintage Analog Synth: Setting up user controls...')
+        // User control sliders with proper labels
+        store.updateNodeProperty(filterCutoffSliderId, 'min', 200)
+        store.updateNodeProperty(filterCutoffSliderId, 'max', 4000)
+        store.updateNodeProperty(filterCutoffSliderId, 'value', 800)
+        store.updateNodeProperty(filterCutoffSliderId, 'label', 'Filter Cutoff')
+
+        store.updateNodeProperty(filterResSliderId, 'min', 1)
+        store.updateNodeProperty(filterResSliderId, 'max', 30)
+        store.updateNodeProperty(filterResSliderId, 'value', 15)
+        store.updateNodeProperty(filterResSliderId, 'label', 'Resonance')
+
+        console.log('Vintage Analog Synth: Connecting note control...')
+        // Connect note control chain
+        store.addEdge(noteSlider, midiToFreqId, 'value', 'midiNote')
+        store.addEdge(midiToFreqId, osc1Id, 'frequency', 'frequency')
+        store.addEdge(midiToFreqId, osc2Id, 'frequency', 'frequency') // Will add slight detune
+        store.addEdge(midiToFreqId, osc3Id, 'frequency', 'frequency') // Will be doubled for octave
+
+        console.log('Vintage Analog Synth: Connecting timer automation...')
+        // Connect timer to create rhythmic filter sweeps - timer triggers will add to the LFO modulation
+        store.addEdge(timerId, filterId, 'trigger', 'frequency')
+
+        console.log('Vintage Analog Synth: Connecting audio chain...')
+        // Connect oscillators to their gain nodes
+        store.addEdge(osc1Id, osc1GainId, 'output', 'input')
+        store.addEdge(osc2Id, osc2GainId, 'output', 'input')
+        store.addEdge(osc3Id, osc3GainId, 'output', 'input')
+
+        // Mix oscillators
+        store.addEdge(osc1GainId, mixerId, 'output', 'input')
+        store.addEdge(osc2GainId, mixerId, 'output', 'input')
+        store.addEdge(osc3GainId, mixerId, 'output', 'input')
+
+        // Through envelope (controlled by timer)
+        store.addEdge(mixerId, envelopeGainId, 'output', 'input')
+
+        // Through filter
+        store.addEdge(envelopeGainId, filterId, 'output', 'input')
+
+        // LFO modulation of filter
+        store.addEdge(lfoId, lfoGainId, 'output', 'input')
+        store.addEdge(lfoGainId, filterId, 'output', 'frequency')
+
+        // User control of filter
+        store.addEdge(filterCutoffSliderId, filterId, 'value', 'frequency')
+        store.addEdge(filterResSliderId, filterId, 'value', 'Q')
+
+        // Through delay
+        store.addEdge(filterId, delayId, 'output', 'input')
+        store.addEdge(delayId, feedbackId, 'output', 'input')
+        store.addEdge(feedbackId, delayId, 'output', 'input') // Feedback loop
+
+        // To output
+        store.addEdge(delayId, outputGainId, 'output', 'input')
+        store.addEdge(outputGainId, destId, 'output', 'input')
+
+        console.log(
+          'Vintage Analog Synth: Setup complete! Use the Note slider to change pitch, and other controls for filter tweaking!'
+        )
+      }),
+    },
+    {
       id: 'midi-to-frequency',
       name: 'MIDI to Frequency',
       description: 'Control oscillator frequency with a slider via MIDI note conversion',
@@ -64,6 +239,10 @@ export const useExamples = () => {
 
         store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
         store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        // Add labels to display nodes for better UX
+        store.updateNodeProperty(displayNode1Id, 'label', 'MIDI Value')
+        store.updateNodeProperty(displayNode2Id, 'label', 'Frequency (Hz)')
 
         // Don't set frequency here - it will be controlled by the MIDI input
         store.updateNodeProperty(oscId, 'type', 'sine')
@@ -208,7 +387,7 @@ export const useExamples = () => {
                 properties: {
                   currentValue: 0,
                   precision: 2,
-                  label: 'Display',
+                  label: 'MIDI Value',
                 },
               },
             },
@@ -313,7 +492,7 @@ export const useExamples = () => {
                 properties: {
                   currentValue: 0,
                   precision: 2,
-                  label: 'Display',
+                  label: 'Frequency (Hz)',
                 },
               },
             },
@@ -823,7 +1002,7 @@ export const useExamples = () => {
               properties: {
                 currentValue: 58,
                 precision: 2,
-                label: 'Display',
+                label: 'MIDI Value',
               },
               outputs: {
                 output: 58,
@@ -846,7 +1025,7 @@ export const useExamples = () => {
               properties: {
                 currentValue: 233.08188075904496,
                 precision: 2,
-                label: 'Display',
+                label: 'Frequency (Hz)',
               },
               outputs: {
                 output: 233.08188075904496,
@@ -875,11 +1054,13 @@ export const useExamples = () => {
           const gainId = store.addNode('GainNode', { x: 785, y: -20 })
           const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
 
-          // Configure nodes
+          // Configure nodes with labels
           store.updateNodeProperty(sliderId, 'min', 48)
           store.updateNodeProperty(sliderId, 'max', 84)
           store.updateNodeProperty(sliderId, 'value', 58)
           store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
+          store.updateNodeProperty(displayId, 'label', 'MIDI Value')
+          store.updateNodeProperty(freqDisplayId, 'label', 'Frequency (Hz)')
           store.updateNodeProperty(oscId, 'type', 'sawtooth')
           store.updateNodeProperty(gainId, 'gain', 0.61)
 
@@ -1737,13 +1918,13 @@ export const useExamples = () => {
 
           // Set up oscillators with harmonic frequencies
           store.updateNodeProperty(osc1Id, 'frequency', 110) // A2
-          store.updateNodeProperty(osc1Id, 'type', 'sawtooth')
+          store.updateNodeProperty(osc1Id, 'type', 'sine')
 
           store.updateNodeProperty(osc2Id, 'frequency', 220) // A3
-          store.updateNodeProperty(osc2Id, 'type', 'sawtooth')
+          store.updateNodeProperty(osc2Id, 'type', 'sine')
 
           store.updateNodeProperty(osc3Id, 'frequency', 440) // A4
-          store.updateNodeProperty(osc3Id, 'type', 'sawtooth')
+          store.updateNodeProperty(osc3Id, 'type', 'sine')
 
           // Set oscillator gains to 0.5 (sound generator rule)
           store.updateNodeProperty(osc1GainId, 'gain', 0.5)

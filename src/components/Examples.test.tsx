@@ -323,6 +323,7 @@ describe('Examples Structure Tests', () => {
         'vocoder-voice',
         'voice-harmonizer',
         'voice-pitch-shifter',
+        'vintage-analog-synth',
       ]
 
       const actualExampleIds = examples.map(e => e.id)
