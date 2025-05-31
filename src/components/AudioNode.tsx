@@ -98,7 +98,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
         return 'bg-indigo-100 border-indigo-300'
       case 'input':
         return 'bg-teal-100 border-teal-300'
-      case 'utility':
+      case 'misc':
         return 'bg-orange-100 border-orange-300'
       default:
         return 'bg-white border-gray-300'

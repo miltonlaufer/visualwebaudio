@@ -279,11 +279,11 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           ))}
         </div>
 
-        {/* Misc Nodes */}
+        {/* Utility Nodes */}
         {Object.keys(customNodeCategories).length > 0 && (
           <div className="mb-8">
             <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
-              🎛️ Misc Nodes
+              🎛️ Utility Nodes
             </h2>
             {Object.entries(customNodeCategories).map(([category, nodes]) => (
               <div key={category} className="mb-6">
