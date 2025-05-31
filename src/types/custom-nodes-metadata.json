@@ -2,7 +2,7 @@
   "ButtonNode": {
     "name": "Button",
     "description": "A button that triggers an action",
-    "category": "misc",
+    "category": "control",
     "inputs": [],
     "outputs": [
       {
@@ -25,7 +25,7 @@
   "SliderNode": {
     "name": "Slider",
     "description": "A slider control for adjusting values",
-    "category": "misc",
+    "category": "control",
     "inputs": [
       {
         "name": "min",
@@ -267,7 +267,7 @@
   "SoundFileNode": {
     "name": "Sound File",
     "description": "Loads and plays audio files",
-    "category": "misc",
+    "category": "control",
     "inputs": [
       {
         "name": "trigger",
