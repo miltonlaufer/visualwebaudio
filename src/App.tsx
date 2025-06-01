@@ -121,7 +121,7 @@ const AppContent: React.FC = observer(() => {
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100">
+    <div className="h-screen flex flex-col bg-gray-100 select-none">
       {/* Full-width Header */}
       <Header
         isNodePaletteOpen={isNodePaletteOpen}

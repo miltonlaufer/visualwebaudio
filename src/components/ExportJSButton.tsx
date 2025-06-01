@@ -280,7 +280,7 @@ createAudioGraph().catch(console.error);`
                 {copied ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <div className="overflow-x-auto max-h-[60vh]">
+            <div className="overflow-x-auto max-h-[60vh] select-text">
               <SyntaxHighlighter language="javascript" style={oneDark} wrapLongLines>
                 {code}
               </SyntaxHighlighter>
