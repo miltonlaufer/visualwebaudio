@@ -20,7 +20,9 @@
 - [Development](#development)
 - [Contributing](#contributing)
 
-![Visual Web Audio Preview](public/preview.png)
+
+
+https://github.com/user-attachments/assets/919c4a86-6ff8-468a-a6d2-2eaa60518154
 
 ## Live Demo
 
