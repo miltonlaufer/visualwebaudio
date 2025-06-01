@@ -623,18 +623,13 @@ export class MidiInputNode extends BaseCustomNode {
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
-    this.initializeMidi()
+    // Don't automatically request MIDI access - let the UI component handle this
   }
 
-  private async initializeMidi(): Promise<void> {
-    try {
-      if (navigator.requestMIDIAccess) {
-        this.midiAccess = await navigator.requestMIDIAccess()
-        this.setupMidiListeners()
-      }
-    } catch (error) {
-      console.warn('MIDI access not available:', error)
-    }
+  // Method to be called by the UI component when MIDI access is granted
+  setMidiAccess(midiAccess: MIDIAccess): void {
+    this.midiAccess = midiAccess
+    this.setupMidiListeners()
   }
 
   private setupMidiListeners(): void {

@@ -38,6 +38,9 @@ const CustomNodeState = types
     gainNode: undefined as GainNode | undefined,
     audioBuffer: undefined as AudioBuffer | undefined,
     bufferSource: undefined as AudioBufferSourceNode | undefined,
+    // MIDI functionality for MidiInputNode (non-serializable, stored in volatile state)
+    midiAccess: undefined as MIDIAccess | undefined,
+    selectedMidiDevice: undefined as string | undefined,
   }))
   .actions(self => {
     return {
@@ -350,6 +353,88 @@ const CustomNodeState = types
         this.setOutput('count', 0)
         this.setProperty('count', 0)
         console.log(`MST TimerNode ${self.id}: Timer reset`)
+      },
+
+      // MIDI Input Node functionality
+      setMidiAccess(midiAccess: MIDIAccess): void {
+        if (self.nodeType !== 'MidiInputNode') return
+
+        console.log(`🎹 MidiInputNode ${self.id}: Setting MIDI access`)
+        self.midiAccess = midiAccess
+        this.setupMidiListeners()
+      },
+
+      setSelectedMidiDevice(deviceId: string): void {
+        if (self.nodeType !== 'MidiInputNode') return
+
+        console.log(`🎹 MidiInputNode ${self.id}: Setting selected device to ${deviceId}`)
+        self.selectedMidiDevice = deviceId
+        this.setProperty('selectedDeviceId', deviceId)
+
+        // Re-setup listeners with new device selection
+        if (self.midiAccess) {
+          this.setupMidiListeners()
+        }
+      },
+
+      setupMidiListeners(): void {
+        if (self.nodeType !== 'MidiInputNode' || !self.midiAccess) return
+
+        const channel = self.properties.get('channel') || 1
+        console.log(`🎹 MidiInputNode ${self.id}: Setting up MIDI listeners for channel ${channel}`)
+
+        self.midiAccess.inputs.forEach((input: MIDIInput) => {
+          // Only listen to selected device if one is specified
+          if (self.selectedMidiDevice && input.id !== self.selectedMidiDevice) {
+            input.onmidimessage = null
+            return
+          }
+
+          input.onmidimessage = (event: MIDIMessageEvent) => {
+            if (!event.data || event.data.length < 2) return
+
+            const status = event.data[0]
+            const data1 = event.data[1]
+            const data2 = event.data.length > 2 ? event.data[2] : 0
+            const messageChannel = (status & 0x0f) + 1
+
+            if (messageChannel === channel) {
+              const messageType = status & 0xf0
+
+              switch (messageType) {
+                case 0x90: // Note on
+                  this.setOutput('note', data1)
+                  this.setOutput('velocity', data2)
+                  break
+
+                case 0x80: // Note off
+                  this.setOutput('note', data1)
+                  this.setOutput('velocity', 0)
+                  break
+
+                case 0xb0: // Control change
+                  this.setOutput('cc', data2)
+                  break
+
+                case 0xe0: {
+                  // Pitch bend
+                  const pitchValue = (data2 << 7) | data1
+                  this.setOutput('pitch', pitchValue)
+                  break
+                }
+              }
+            }
+          }
+        })
+      },
+
+      clearMidiListeners(): void {
+        if (self.nodeType !== 'MidiInputNode' || !self.midiAccess) return
+
+        console.log(`🎹 MidiInputNode ${self.id}: Clearing MIDI listeners`)
+        self.midiAccess.inputs.forEach((input: MIDIInput) => {
+          input.onmidimessage = null
+        })
       },
     }
   })

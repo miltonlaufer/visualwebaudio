@@ -6,6 +6,7 @@ import DisplayNodeComponent from './DisplayNodeComponent'
 import SoundFileNodeComponent from './SoundFileNodeComponent'
 import RandomNodeComponent from './RandomNodeComponent'
 import TimerNodeComponent from './TimerNodeComponent'
+import MidiInputNodeComponent from './MidiInputNodeComponent'
 
 interface CustomNodeRendererProps {
   nodeId: string
@@ -33,13 +34,14 @@ const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = ({ nodeId, nodeTyp
       return <RandomNodeComponent nodeId={nodeId} />
     case 'TimerNode':
       return <TimerNodeComponent nodeId={nodeId} />
+    case 'MidiInputNode':
+      return <MidiInputNodeComponent nodeId={nodeId} />
     case 'MidiToFreqNode':
       // MidiToFreqNode doesn't need a UI component - it's a pure computation node
       return <div className="text-gray-600 text-xs p-2 text-center">MIDI → Freq</div>
     case 'GreaterThanNode':
     case 'EqualsNode':
     case 'SelectNode':
-    case 'MidiInputNode':
       // These nodes don't have UI components yet - just show their type
       return (
         <div className="text-gray-600 text-xs p-2 text-center">{nodeType.replace('Node', '')}</div>
@@ -58,4 +60,5 @@ export {
   DisplayNodeComponent,
   SoundFileNodeComponent,
   RandomNodeComponent,
+  MidiInputNodeComponent,
 }
