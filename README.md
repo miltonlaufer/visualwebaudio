@@ -5,6 +5,7 @@
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
 [![Tests](https://img.shields.io/badge/Tests-238%2F238%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Coverage](https://img.shields.io/badge/Coverage-60.4%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
@@ -17,7 +18,6 @@
 - [Getting Started](#getting-started)
 - [Architecture](#architecture)
 - [Examples](#examples)
-- [Development](#development)
 - [Contributing](#contributing)
 
 
@@ -79,9 +79,32 @@ npm run dev
 # Other useful commands
 npm run build        # Build for production
 npm run test         # Run tests
+npm run test:watch   # Run tests in watch mode
+npm run test:ui      # Run tests with UI
+npm run test:coverage # Run tests with coverage report
+npm run test:coverage:ui # Run tests with coverage and UI
 npm run type-check   # TypeScript type checking
 npm run lint         # ESLint code quality
 ```
+
+### Tech Stack
+
+- **React 19** with TypeScript
+- **Vite** for development and building
+- **MobX State Tree** for type-safe state management
+- **React Flow** for visual graph editing
+- **Tailwind CSS** for styling
+- **Vitest** for testing (60.4% coverage)
+
+
+### CI/CD
+GitHub Actions automatically runs type checking, tests, and linting on all PRs.
+
+### Type-Driven Benefits
+1. **Automatic API Updates**: Updating `@types/web` brings new Web Audio features automatically
+2. **Type Safety**: Full TypeScript coverage ensures runtime reliability
+3. **Reduced Maintenance**: No manual node definitions to maintain
+4. **Future-Proof**: Adapts to API changes without code modifications
 
 ## Architecture
 
@@ -101,14 +124,6 @@ TypeScript Web Audio API Definitions (@types/web)
          React Components (Visual Layer)
 ```
 
-### Key Components
-
-- **`AudioNodeFactory`**: Metadata-driven audio node creation and management
-- **`AudioGraphStore`**: MobX State Tree store managing visual and audio state
-- **`NodeModels`**: MST models for type-safe state management
-- **`ProjectModal`**: Export/import functionality with error handling
-- **`ErrorBoundary`**: Application-level error recovery
-
 ### Tech Stack
 
 - **React 19** with TypeScript
@@ -116,7 +131,7 @@ TypeScript Web Audio API Definitions (@types/web)
 - **MobX State Tree** for type-safe state management
 - **React Flow** for visual graph editing
 - **Tailwind CSS** for styling
-- **Vitest** for testing (51.95% coverage)
+- **Vitest** for testing (60.4% coverage)
 
 ## Examples
 
@@ -126,23 +141,7 @@ The application includes 21+ working audio examples:
 
 **Voice Effects** (NEW): **Robot Voice (Ring Mod)**, **Vocoder Voice**, **Voice Harmonizer**, **Voice Pitch Shifter** - Transform your voice with real-time microphone processing
 
-## Development
-
-### Testing & Quality
-```bash
-npm run test        # Run all tests
-npm run test:ui     # Run tests with UI
-npm run coverage    # Generate coverage report
-```
-
-### CI/CD
-GitHub Actions automatically runs type checking, tests, and linting on all PRs.
-
-### Type-Driven Benefits
-1. **Automatic API Updates**: Updating `@types/web` brings new Web Audio features automatically
-2. **Type Safety**: Full TypeScript coverage ensures runtime reliability
-3. **Reduced Maintenance**: No manual node definitions to maintain
-4. **Future-Proof**: Adapts to API changes without code modifications
+**Synthesizers**: **Vintage Analog Synth** - Classic analog synthesizer with oscillators, filters, and envelopes
 
 ## Contributing
 
@@ -155,4 +154,3 @@ GitHub Actions automatically runs type checking, tests, and linting on all PRs.
 ## License
 
 MIT License - see the LICENSE file for details.
-

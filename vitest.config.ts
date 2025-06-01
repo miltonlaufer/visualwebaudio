@@ -15,7 +15,8 @@ export default defineConfig({
     globals: true,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json', 'html'],
+      reporter: ['text', 'json', 'html', 'lcov'],
+      reportsDirectory: './coverage',
       exclude: [
         'node_modules/',
         'src/test-setup.ts',
@@ -23,7 +24,24 @@ export default defineConfig({
         '**/*.config.*',
         'dist/',
         'coverage/',
+        'public/',
+        'scripts/',
+        '**/*.test.{ts,tsx}',
+        '**/*.spec.{ts,tsx}',
+        'src/types/',
+        'src/vite-env.d.ts',
       ],
+      include: ['src/**/*.{ts,tsx}'],
+      thresholds: {
+        global: {
+          branches: 70,
+          functions: 70,
+          lines: 70,
+          statements: 70,
+        },
+      },
+      all: true,
+      skipFull: false,
     },
   },
 })
