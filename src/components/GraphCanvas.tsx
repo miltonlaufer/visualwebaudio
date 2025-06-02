@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import {
   ReactFlow,
   Background,
@@ -87,6 +87,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
+  const syncingRef = useRef(false)
+  const lastSyncedNodesLength = useRef(0)
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
@@ -100,19 +102,38 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
 
   // Sync store with React Flow state
   useEffect(() => {
-    console.log('=== SYNC EFFECT TRIGGERED ===')
-    console.log('Store visualNodes length:', store.visualNodes.length)
-    console.log('Current React Flow nodes length:', nodes.length)
-
-    if (store.visualNodes.length === 0) {
-      console.log('No nodes in store, clearing React Flow nodes')
-      if (nodes.length > 0) {
-        setNodes([])
-      }
+    // Prevent concurrent syncing
+    if (syncingRef.current) {
+      console.log('Sync already in progress, skipping...')
       return
     }
 
+    console.log('=== SYNC EFFECT TRIGGERED ===')
+    console.log('Store visualNodes length:', store.visualNodes.length)
+    console.log('Current React Flow nodes length:', nodes.length)
+    console.log('Last synced nodes length:', lastSyncedNodesLength.current)
+
+    // Skip if we've already synced this exact state
+    if (
+      store.visualNodes.length === lastSyncedNodesLength.current &&
+      nodes.length === store.visualNodes.length
+    ) {
+      console.log('No changes detected, skipping sync')
+      return
+    }
+
+    syncingRef.current = true
+
     try {
+      if (store.visualNodes.length === 0) {
+        console.log('No nodes in store, clearing React Flow nodes')
+        if (nodes.length > 0) {
+          setNodes([])
+        }
+        lastSyncedNodesLength.current = 0
+        return
+      }
+
       const storeNodes: Node[] = store.visualNodes.map((node, index) => {
         console.log(`=== Processing store node ${index} ===`)
         console.log('Node ID:', node.id)
@@ -154,10 +175,16 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
 
       // Force React Flow to update by always setting new array
       setNodes([...storeNodes])
+      lastSyncedNodesLength.current = storeNodes.length
       console.log('setNodes called with', storeNodes.length, 'nodes')
     } catch (error) {
       console.error('Error in sync effect:', error)
       console.error('Error stack:', (error as Error).stack)
+    } finally {
+      // Use setTimeout to reset the syncing flag to prevent race conditions
+      setTimeout(() => {
+        syncingRef.current = false
+      }, 0)
     }
   }, [
     store.visualNodes.length,
@@ -167,7 +194,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
     forceUpdate,
     setNodes,
     store.visualNodes,
-    nodes.length,
   ])
 
   useEffect(() => {

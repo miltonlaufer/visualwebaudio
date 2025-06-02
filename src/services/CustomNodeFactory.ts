@@ -1555,8 +1555,16 @@ export class TimerNode extends BaseCustomNode {
   }
 
   cleanup(): void {
-    this.stopTimer()
+    console.log(`⏱️ TimerNode ${this.id}: Starting cleanup...`)
+
+    // Only stop timer if we're actually being destroyed, not just recreated
+    if (this.timeoutId || this.intervalId) {
+      console.log(`⏱️ TimerNode ${this.id}: Stopping active timers during cleanup`)
+      this.stopTimer()
+    }
+
     super.cleanup()
+    console.log(`⏱️ TimerNode ${this.id}: Cleanup completed`)
   }
 
   // Override to handle audio context updates

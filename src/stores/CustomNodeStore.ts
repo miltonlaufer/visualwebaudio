@@ -611,8 +611,13 @@ const CustomNodeStore = types
       },
 
       removeNode(id: string): void {
+        console.log(`🗑️ MST CustomNodeStore: removeNode called for ${id}`)
+        console.trace('removeNode call stack')
+
         const node = self.nodes.get(id)
         if (node) {
+          console.log(`🗑️ MST CustomNodeStore: Found node ${id} of type ${node.nodeType}`)
+
           // Special cleanup for TimerNode
           if (node.nodeType === 'TimerNode') {
             console.log(`⏱️ MST TimerNode ${id}: Cleaning up timer`)
@@ -640,6 +645,8 @@ const CustomNodeStore = types
 
           self.nodes.delete(id)
           console.log(`🗑️ CustomNode ${id}: Removed from store`)
+        } else {
+          console.log(`🗑️ MST CustomNodeStore: Node ${id} not found in store`)
         }
       },
 
