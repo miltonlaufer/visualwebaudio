@@ -352,6 +352,88 @@ const CustomNodeState = types
 
         this.setOutput('count', 0)
         this.setProperty('count', 0)
+        this.setProperty('isRunning', 'false')
+        console.log(`MST TimerNode ${self.id}: Timer reset`)
+      },
+
+      startTimer(): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        const isRunning = (self.properties.get('isRunning') || 'false') === 'true'
+        const enabled = (self.properties.get('enabled') || 'true') === 'true'
+
+        if (isRunning || !enabled) {
+          return
+        }
+
+        const delay = self.properties.get('delay') || 1000
+        const mode = self.properties.get('mode') || 'loop'
+
+        this.setProperty('isRunning', 'true')
+        console.log(`MST TimerNode ${self.id}: Starting timer with ${delay}ms delay, mode: ${mode}`)
+
+        // Start with initial delay
+        const timeoutId = window.setTimeout(() => {
+          // Check if timer is still running (might have been stopped)
+          if ((self.properties.get('isRunning') || 'false') === 'true') {
+            const currentCount = (self.properties.get('count') || 0) + 1
+            this.fireTimerTrigger(currentCount)
+
+            // If loop mode, start interval
+            if (mode === 'loop' && (self.properties.get('isRunning') || 'false') === 'true') {
+              const interval = self.properties.get('interval') || 1000
+              const intervalId = window.setInterval(() => {
+                // Check if timer is still running
+                if ((self.properties.get('isRunning') || 'false') === 'true') {
+                  const currentCount = (self.properties.get('count') || 0) + 1
+                  this.fireTimerTrigger(currentCount)
+                } else {
+                  // Timer was stopped, clear interval
+                  clearInterval(intervalId)
+                }
+              }, interval)
+
+              // Store interval ID for cleanup
+              this.setProperty('_intervalId', intervalId)
+            } else {
+              // One-shot mode, stop after first trigger
+              this.setProperty('isRunning', 'false')
+            }
+          }
+        }, delay)
+
+        // Store timeout ID for cleanup
+        this.setProperty('_timeoutId', timeoutId)
+      },
+
+      stopTimer(): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        console.log(`MST TimerNode ${self.id}: Stopping timer`)
+
+        // Clear any running timers
+        const timeoutId = self.properties.get('_timeoutId')
+        const intervalId = self.properties.get('_intervalId')
+
+        if (timeoutId) {
+          clearTimeout(timeoutId)
+          this.setProperty('_timeoutId', undefined)
+        }
+
+        if (intervalId) {
+          clearInterval(intervalId)
+          this.setProperty('_intervalId', undefined)
+        }
+
+        this.setProperty('isRunning', 'false')
+      },
+
+      resetTimer(): void {
+        if (self.nodeType !== 'TimerNode') return
+
+        this.stopTimer()
+        this.setOutput('count', 0)
+        this.setProperty('count', 0)
         console.log(`MST TimerNode ${self.id}: Timer reset`)
       },
 
@@ -478,6 +560,27 @@ const CustomNodeStore = types
         } else if (nodeType === 'SoundFileNode') {
           console.log(`🎵 Creating MST SoundFileNode ${id}`)
           outputsObj['loaded'] = 0
+        } else if (nodeType === 'TimerNode') {
+          console.log(`⏱️ Creating MST TimerNode ${id}`)
+          // Initialize timer-specific properties
+          propertiesObj['isRunning'] = 'false'
+          propertiesObj['_timeoutId'] = undefined
+          propertiesObj['_intervalId'] = undefined
+
+          // Auto-start if startMode is not 'manual'
+          const startMode = propertiesObj['startMode'] || 'auto'
+          const enabled = (propertiesObj['enabled'] || 'true') === 'true'
+
+          if (startMode !== 'manual' && enabled) {
+            console.log(`⏱️ MST TimerNode ${id}: Auto-starting timer (startMode: ${startMode})`)
+            // Use setTimeout to auto-start after the node is fully created
+            setTimeout(() => {
+              const node = self.nodes.get(id)
+              if (node && node.nodeType === 'TimerNode') {
+                node.startTimer()
+              }
+            }, 0)
+          }
         }
 
         const node = CustomNodeState.create({
@@ -510,6 +613,12 @@ const CustomNodeStore = types
       removeNode(id: string): void {
         const node = self.nodes.get(id)
         if (node) {
+          // Special cleanup for TimerNode
+          if (node.nodeType === 'TimerNode') {
+            console.log(`⏱️ MST TimerNode ${id}: Cleaning up timer`)
+            node.stopTimer()
+          }
+
           // Clear all connections (this will dispose all reactions)
           node.clearInputConnections()
 

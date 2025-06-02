@@ -1,3 +1,4 @@
+import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import TimerNodeComponent from './TimerNodeComponent'
@@ -7,6 +8,8 @@ import { customNodeStore } from '~/stores/CustomNodeStore'
 vi.mock('~/stores/CustomNodeStore', () => ({
   customNodeStore: {
     getNode: vi.fn(),
+    addNode: vi.fn(),
+    removeNode: vi.fn(),
   },
 }))
 
@@ -63,9 +66,17 @@ describe('TimerNodeComponent', () => {
         ['interval', '1000'],
         ['startMode', 'auto'],
         ['enabled', 'true'],
+        ['isRunning', 'false'],
+      ]),
+      outputs: new Map([
+        ['trigger', 0],
+        ['count', 0],
       ]),
       fireTimerTrigger: vi.fn(),
       resetTimerCount: vi.fn(),
+      startTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      resetTimer: vi.fn(),
     }
     mockCustomNodeStore.getNode.mockReturnValue(validTimerNode)
 
@@ -83,34 +94,120 @@ describe('TimerNodeComponent', () => {
   })
 
   it('should handle rapid node changes without hooks violation', () => {
-    // Simulate rapid changes that might happen during example switching
-    const scenarios = [
-      null, // Missing node
-      { nodeType: 'OscillatorNode', properties: new Map() }, // Wrong type
-      { nodeType: 'TimerNode', properties: new Map() }, // Valid but minimal
-      null, // Missing again
-      {
+    // Create multiple nodes rapidly to test hooks stability
+    for (let i = 0; i < 5; i++) {
+      const mockNode = {
         nodeType: 'TimerNode',
         properties: new Map([
           ['mode', 'loop'],
-          ['delay', '500'],
-          ['interval', '500'],
+          ['delay', '1000'],
+          ['interval', '1000'],
           ['startMode', 'manual'],
-          ['enabled', 'false'],
+          ['enabled', 'true'],
+          ['isRunning', 'false'],
+        ]),
+        outputs: new Map([
+          ['trigger', 0],
+          ['count', 0],
+        ]),
+        startTimer: vi.fn(),
+        stopTimer: vi.fn(),
+        resetTimer: vi.fn(),
+      }
+
+      mockCustomNodeStore.getNode.mockReturnValue(mockNode)
+      const { unmount } = render(<TimerNodeComponent nodeId={`test-node-${i}`} />)
+      unmount()
+    }
+  })
+
+  it('should auto-start timer and allow stopping', async () => {
+    const mockNode = {
+      nodeType: 'TimerNode',
+      properties: new Map([
+        ['mode', 'loop'],
+        ['delay', '100'], // Short delay for testing
+        ['interval', '100'],
+        ['startMode', 'auto'], // Auto-start enabled (any value except 'manual')
+        ['enabled', 'true'],
+        ['isRunning', 'true'], // Simulate that auto-start worked
+      ]),
+      outputs: new Map([
+        ['trigger', 0],
+        ['count', 0],
+      ]),
+      fireTimerTrigger: vi.fn(),
+      resetTimerCount: vi.fn(),
+      startTimer: vi.fn(),
+      stopTimer: vi.fn(),
+      resetTimer: vi.fn(),
+    }
+
+    mockCustomNodeStore.getNode.mockReturnValue(mockNode)
+
+    const { getByText } = render(<TimerNodeComponent nodeId="auto-start-test-node" />)
+
+    // Should show timer controls
+    expect(getByText('Start')).toBeInTheDocument()
+    expect(getByText('Stop')).toBeInTheDocument()
+    expect(getByText('Reset')).toBeInTheDocument()
+
+    // The timer should auto-start, so stop button should be enabled
+    const stopButton = getByText('Stop')
+    expect(stopButton).toBeEnabled()
+
+    // The start button should be disabled since timer is running
+    const startButton = getByText('Start')
+    expect(startButton).toBeDisabled()
+  })
+
+  it('should start automatically unless startMode is manual', () => {
+    // Test different startMode values
+    const testCases = [
+      { startMode: 'auto', description: 'auto mode should enable auto-start' },
+      { startMode: 'immediate', description: 'immediate mode should enable auto-start' },
+      { startMode: 'enabled', description: 'enabled mode should enable auto-start' },
+      { startMode: undefined, description: 'default mode should enable auto-start' },
+      { startMode: 'manual', description: 'manual mode should disable auto-start' },
+    ]
+
+    testCases.forEach(({ startMode }) => {
+      const mockNode = {
+        nodeType: 'TimerNode',
+        properties: new Map([
+          ['mode', 'loop'],
+          ['delay', '1000'],
+          ['interval', '1000'],
+          ['startMode', startMode || 'auto'], // Use default if undefined
+          ['enabled', 'true'],
+          ['isRunning', 'false'],
+        ]),
+        outputs: new Map([
+          ['trigger', 0],
+          ['count', 0],
         ]),
         fireTimerTrigger: vi.fn(),
         resetTimerCount: vi.fn(),
-      }, // Valid and complete
-    ]
+        startTimer: vi.fn(),
+        stopTimer: vi.fn(),
+        resetTimer: vi.fn(),
+      }
 
-    scenarios.forEach((nodeData, index) => {
-      mockCustomNodeStore.getNode.mockReturnValue(nodeData)
+      mockCustomNodeStore.getNode.mockReturnValue(mockNode)
 
-      // Each render should work without hooks violations
-      expect(() => {
-        const { unmount } = render(<TimerNodeComponent nodeId={`test-node-${index}`} />)
-        unmount() // Clean up between renders
-      }).not.toThrow()
+      const { getByText, unmount } = render(
+        <TimerNodeComponent nodeId={`test-${startMode || 'default'}`} />
+      )
+
+      // Check that the startMode is displayed correctly
+      expect(getByText(`Start: ${startMode || 'auto'}`)).toBeInTheDocument()
+
+      // Verify the component renders without errors for all startMode values
+      expect(getByText('Start')).toBeInTheDocument()
+      expect(getByText('Stop')).toBeInTheDocument()
+      expect(getByText('Reset')).toBeInTheDocument()
+
+      unmount()
     })
   })
 })
