@@ -42,8 +42,114 @@ registerRoute(
   })
 )
 
+// Update checking functionality
+const UPDATE_CHECK_INTERVAL = 24 * 60 * 60 * 1000 // 24 hours in milliseconds
+const UPDATE_CHECK_CACHE = 'vwa-update-check-cache'
+
+async function checkForUpdates(): Promise<boolean> {
+  try {
+    // Fetch the current service worker file to check for changes
+    const response = await fetch('/sw.js', {
+      cache: 'no-cache',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+      },
+    })
+
+    if (!response.ok) {
+      console.log('SW: Could not fetch service worker for update check')
+      return false
+    }
+
+    const newSwContent = await response.text()
+
+    // Get the cached version
+    const cache = await caches.open('sw-version-cache')
+    const cachedResponse = await cache.match('/sw.js')
+
+    if (!cachedResponse) {
+      // First time, cache the current version
+      await cache.put('/sw.js', new Response(newSwContent))
+      console.log('SW: Cached initial service worker version')
+      return false
+    }
+
+    const cachedSwContent = await cachedResponse.text()
+
+    // Compare content to detect changes
+    if (newSwContent !== cachedSwContent) {
+      console.log('SW: New version detected!')
+      // Update the cached version
+      await cache.put('/sw.js', new Response(newSwContent))
+      return true
+    }
+
+    console.log('SW: No updates available')
+    return false
+  } catch (error) {
+    console.error('SW: Error checking for updates:', error)
+    return false
+  }
+}
+
+async function shouldCheckForUpdates(): Promise<boolean> {
+  try {
+    const cache = await caches.open(UPDATE_CHECK_CACHE)
+    const response = await cache.match('/last-update-check')
+
+    if (!response) {
+      return true
+    }
+
+    const lastCheckData = await response.json()
+    const lastCheckTime = lastCheckData.timestamp
+    const now = Date.now()
+
+    return now - lastCheckTime > UPDATE_CHECK_INTERVAL
+  } catch (error) {
+    console.error('SW: Error checking last update time:', error)
+    return true
+  }
+}
+
+async function updateLastCheckTime(): Promise<void> {
+  try {
+    const cache = await caches.open(UPDATE_CHECK_CACHE)
+    const data = { timestamp: Date.now() }
+    await cache.put('/last-update-check', new Response(JSON.stringify(data)))
+  } catch (error) {
+    console.error('SW: Error updating last check time:', error)
+  }
+}
+
+async function performUpdateCheck(): Promise<void> {
+  const shouldCheck = await shouldCheckForUpdates()
+  if (!shouldCheck) {
+    console.log('SW: Update check not needed yet')
+    return
+  }
+
+  console.log('SW: Performing update check...')
+  const hasUpdate = await checkForUpdates()
+  await updateLastCheckTime()
+
+  if (hasUpdate) {
+    // Notify all clients about the update
+    const clients = await self.clients.matchAll()
+    clients.forEach(client => {
+      client.postMessage({
+        type: 'UPDATE_AVAILABLE',
+        message: 'A new version of the app is available!',
+      })
+    })
+  }
+}
+
 // Handle offline fallback
 self.addEventListener('install', event => {
+  console.log('SW: Installing...')
   event.waitUntil(
     caches.open('offline-cache').then(cache => {
       return cache.addAll(['/', '/index.html', '/offline.html'])
@@ -51,23 +157,57 @@ self.addEventListener('install', event => {
   )
 })
 
+self.addEventListener('activate', event => {
+  console.log('SW: Activating...')
+  event.waitUntil(
+    (async () => {
+      // Take control of all clients immediately
+      await self.clients.claim()
+      // Check for updates when service worker activates
+      await performUpdateCheck()
+    })()
+  )
+})
+
 self.addEventListener('fetch', event => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).catch(() => {
-        return caches.match('/offline.html').then(response => {
+        // Instead of showing offline.html, serve the cached index.html
+        // This allows the app to work offline with cached resources
+        return caches.match('/index.html').then(response => {
           if (response) {
             return response
           }
-          // If offline.html is not in cache, return a basic offline response
-          return new Response(
-            '<html><body><h1>Offline</h1><p>Please check your internet connection.</p></body></html>',
-            {
-              headers: { 'Content-Type': 'text/html' },
+          // Fallback to offline.html only if index.html is not cached
+          return caches.match('/offline.html').then(offlineResponse => {
+            if (offlineResponse) {
+              return offlineResponse
             }
-          )
+            // Final fallback if nothing is cached
+            return new Response(
+              '<html><body><h1>Offline</h1><p>Please check your internet connection.</p></body></html>',
+              {
+                headers: { 'Content-Type': 'text/html' },
+              }
+            )
+          })
         })
       })
     )
   }
 })
+
+// Handle messages from the main thread
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'CHECK_FOR_UPDATES') {
+    event.waitUntil(performUpdateCheck())
+  } else if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting()
+  }
+})
+
+// Periodic update check (when the service worker is active)
+setInterval(() => {
+  performUpdateCheck()
+}, UPDATE_CHECK_INTERVAL)

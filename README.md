@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-240%2F240%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-252%2F252%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![Coverage](https://img.shields.io/badge/Coverage-60.4%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -58,6 +58,42 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 - **Real-time Audio Processing**: Web Audio API integration with memory leak prevention and lifecycle management
 - **Error Handling**: Comprehensive error boundaries and connection validation
 - **Progressive Web App**: Installable with offline support and caching
+
+## PWA Support
+
+Visual Web Audio is a Progressive Web App (PWA) that can be installed on your device for a native app-like experience. Features include:
+- **Offline Functionality**: Core app works offline - create graphs, use nodes, export projects
+- **Installable**: Add to home screen on mobile/desktop
+- **Automatic Updates**: Always get the latest version
+- **Fast Loading**: Cached resources for instant startup
+
+### Offline Capabilities
+
+The application works offline with most features available:
+
+**✅ Available Offline:**
+- Create and edit audio graphs
+- Use all Web Audio API nodes and custom nodes
+- Export/import projects as JSON
+- Generate JavaScript code
+- Local project storage (IndexedDB) - persists between sessions
+
+**❌ Requires Internet:**
+- Loading external audio files from URLs
+- Checking for app updates
+- Accessing online examples or documentation
+
+### Automatic Updates
+
+The application includes an intelligent update system that ensures users always have the latest version:
+
+- **Build Timestamps**: Each build includes a unique timestamp for version detection
+- **Smart Checking**: Automatically checks for updates when the app is accessed and every 24 hours
+- **User-Friendly Notifications**: Non-intrusive update notifications with "Update Now" or "Later" options
+- **Seamless Updates**: One-click updates with automatic page refresh
+- **Background Monitoring**: Service worker continuously monitors for new versions
+
+When an update is available, you'll see a blue notification in the top-right corner. Click "Update Now" to instantly get the latest features and improvements!
 
 ## Getting Started
 

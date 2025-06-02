@@ -37,14 +37,53 @@
             font-size: 48px;
             margin-bottom: 20px;
         }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #2980b9;
+        }
+        .features {
+            text-align: left;
+            margin: 20px 0;
+        }
+        .features li {
+            margin: 8px 0;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="icon">📶</div>
         <h1>You're Offline</h1>
-        <p>It seems you've lost your internet connection. Please check your connection and try again.</p>
-        <p>The Visual Web Audio app requires an internet connection to function properly.</p>
+        <p>No internet connection detected, but Visual Web Audio can still work offline!</p>
+        
+        <div class="features">
+            <p><strong>What works offline:</strong></p>
+            <ul>
+                <li>✅ Create and edit audio graphs</li>
+                <li>✅ Use all Web Audio API nodes</li>
+                <li>✅ Custom nodes (buttons, sliders, etc.)</li>
+                <li>✅ Export projects as JSON</li>
+                <li>✅ Generate JavaScript code</li>
+                <li>❌ Load external audio files</li>
+                <li>❌ Check for app updates</li>
+            </ul>
+        </div>
+        
+        <a href="/" class="button">Launch Offline App</a>
+        <a href="javascript:location.reload()" class="button">Retry Connection</a>
+        
+        <p style="margin-top: 30px; font-size: 14px; color: #666;">
+            Your projects are saved locally in your browser and will persist between sessions.
+        </p>
     </div>
 </body>
 </html> 

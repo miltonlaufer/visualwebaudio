@@ -11,6 +11,8 @@ import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
 import Header from '~/components/Header'
 import GraphCanvas from '~/components/GraphCanvas'
+import UpdateNotification from '~/components/UpdateNotification'
+import OfflineIndicator from '~/components/OfflineIndicator'
 
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
@@ -122,6 +124,12 @@ const AppContent: React.FC = observer(() => {
 
   return (
     <div className="h-screen flex flex-col bg-gray-100 select-none">
+      {/* Update Notification */}
+      <UpdateNotification />
+
+      {/* Offline Indicator */}
+      <OfflineIndicator />
+
       {/* Full-width Header */}
       <Header
         isNodePaletteOpen={isNodePaletteOpen}
