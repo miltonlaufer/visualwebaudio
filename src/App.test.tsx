@@ -1,10 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { ReactFlowProvider } from '@xyflow/react'
 import App from './App'
 
 describe('App', () => {
   it('renders the main title', () => {
-    render(<App />)
+    render(
+      <ReactFlowProvider>
+        <App />
+      </ReactFlowProvider>
+    )
 
     // Check for the mobile version (VWA)
     expect(screen.getByText('VWA')).toBeInTheDocument()
@@ -14,7 +19,11 @@ describe('App', () => {
   })
 
   it('renders the application layout', () => {
-    const { container } = render(<App />)
+    const { container } = render(
+      <ReactFlowProvider>
+        <App />
+      </ReactFlowProvider>
+    )
 
     // Check for main layout elements
     expect(container.querySelector('.h-screen.flex')).toBeTruthy()
@@ -23,7 +32,11 @@ describe('App', () => {
   })
 
   it('renders node palette with categories', () => {
-    const { container } = render(<App />)
+    const { container } = render(
+      <ReactFlowProvider>
+        <App />
+      </ReactFlowProvider>
+    )
 
     // Check for node palette content
     expect(container).toHaveTextContent('Node Palette')
@@ -33,7 +46,11 @@ describe('App', () => {
   })
 
   it('renders toolbar with controls', () => {
-    const { container } = render(<App />)
+    const { container } = render(
+      <ReactFlowProvider>
+        <App />
+      </ReactFlowProvider>
+    )
 
     // Check for toolbar elements
     expect(container).toHaveTextContent('Play')
