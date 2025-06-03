@@ -9,6 +9,7 @@ import {
   useReactFlow,
   ConnectionMode,
   ConnectionLineType,
+  OnSelectionChangeParams,
 } from '@xyflow/react'
 import type {
   Connection,
@@ -89,11 +90,90 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
   const [forceUpdate, setForceUpdate] = useState(0)
   const syncingRef = useRef(false)
   const lastSyncedNodesLength = useRef(0)
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
     onForceUpdate?.()
   }, [onForceUpdate])
+
+  // Keyboard shortcuts for copy/cut/paste
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when not in an input field
+      const target = event.target as HTMLElement
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
+      // Delete: Delete key
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        if (selectedNodeIds.length > 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          selectedNodeIds.forEach(nodeId => {
+            store.removeNode(nodeId)
+          })
+          console.log(`Deleted ${selectedNodeIds.length} nodes`)
+          handleForceUpdate()
+        }
+        return
+      }
+
+      // Copy: Ctrl/Cmd + C
+      if ((event.metaKey || event.ctrlKey) && event.key === 'c' && !event.shiftKey) {
+        if (selectedNodeIds.length > 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          store.copySelectedNodes(selectedNodeIds)
+          console.log(`Copied ${selectedNodeIds.length} nodes`)
+
+          // Check clipboard permission after copy attempt
+          setTimeout(() => {
+            store.checkClipboardPermission()
+          }, 100)
+        }
+        return
+      }
+
+      // Cut: Ctrl/Cmd + X
+      if ((event.metaKey || event.ctrlKey) && event.key === 'x' && !event.shiftKey) {
+        if (selectedNodeIds.length > 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          store.cutSelectedNodes(selectedNodeIds)
+          console.log(`Cut ${selectedNodeIds.length} nodes`)
+          handleForceUpdate()
+        }
+        return
+      }
+
+      // Paste: Ctrl/Cmd + V
+      if ((event.metaKey || event.ctrlKey) && event.key === 'v' && !event.shiftKey) {
+        if (store.canPaste) {
+          event.preventDefault()
+          event.stopPropagation()
+          store
+            .pasteNodes()
+            .then(newNodeIds => {
+              console.log(`Pasted ${newNodeIds.length} nodes`)
+              handleForceUpdate()
+            })
+            .catch(error => {
+              console.error('Error pasting nodes:', error)
+            })
+        }
+        return
+      }
+    }
+
+    // Use capture phase for keyboard shortcuts
+    document.addEventListener('keydown', handleKeyDown, true)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown, true)
+    }
+  }, [selectedNodeIds, store, handleForceUpdate])
 
   // Debug React Flow state
   useEffect(() => {
@@ -452,14 +532,66 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
     console.log('React Flow viewport:', reactFlowInstance.getViewport())
   }, [])
 
+  // Handle selection changes for multinode selection
+  const onSelectionChange = useCallback(
+    (params: OnSelectionChangeParams) => {
+      const nodeIds = params.nodes.map(node => node.id)
+      setSelectedNodeIds(nodeIds)
+
+      // Update store selection for single node (for property panel)
+      if (nodeIds.length === 1) {
+        store.selectNode(nodeIds[0])
+      } else {
+        store.selectNode(undefined)
+      }
+    },
+    [store]
+  )
+
   return (
     <div className="flex-1 relative h-full">
       <div className="absolute top-4 left-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-sm text-gray-600">
         <span className="md:hidden">Canvas Area - Use menu buttons to access tools</span>
         <span className="hidden md:inline">
-          Canvas Area - Click or drag nodes in the left panel to add them here
+          Canvas Area - Click or drag nodes in the left panel to add them here. Hold Shift to select
+          multiple nodes.
         </span>
       </div>
+
+      {/* Clipboard status indicator */}
+      {(selectedNodeIds.length > 0 || store.canPaste || store.clipboardErrorMessage) && (
+        <div className="absolute top-4 right-4 z-10 bg-white/90 backdrop-blur-sm px-3 py-2 rounded-lg shadow-md text-xs text-gray-600 max-w-xs">
+          <div className="space-y-1">
+            {selectedNodeIds.length > 0 && (
+              <div>
+                <span className="font-medium">{selectedNodeIds.length} selected</span>
+                <div className="text-gray-500">Ctrl+C: Copy • Ctrl+X: Cut • Del: Delete</div>
+              </div>
+            )}
+            {store.canPaste && (
+              <div className="text-blue-600">
+                <span className="font-medium">Clipboard ready</span>
+                <div className="text-gray-500">Ctrl+V: Paste</div>
+                {store.clipboardPermission === 'denied' && (
+                  <div className="text-xs text-amber-700 mt-1">
+                    Enable clipboard access to allow copy/paste to another tab.
+                  </div>
+                )}
+              </div>
+            )}
+            {store.clipboardErrorMessage && !store.canPaste && (
+              <div className="text-amber-600 border-t border-amber-200 pt-1 mt-1">
+                <div className="font-medium flex items-center gap-1">
+                  <span>⚠️</span>
+                  <span>Clipboard Access</span>
+                </div>
+                <div className="text-xs text-amber-700 mt-1">{store.clipboardErrorMessage}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -476,6 +608,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
         defaultEdgeOptions={canvasDefaultEdgeOptions}
         className="bg-gray-50 w-full h-full"
         onInit={canvasOnInit}
+        multiSelectionKeyCode="Shift"
+        deleteKeyCode="Delete"
+        onSelectionChange={onSelectionChange}
       >
         <AutoFitHandler />
         <Background />

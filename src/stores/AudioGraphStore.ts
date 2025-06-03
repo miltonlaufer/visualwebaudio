@@ -69,14 +69,20 @@ export const AudioGraphStore = types
     mediaStreams: new Map<string, MediaStream>(),
     // New field for custom node bridges
     customNodeBridges: null as Map<string, ConstantSourceNode> | null,
+    // Clipboard for copy/paste functionality
+    clipboardNodes: [] as any[],
+    clipboardEdges: [] as any[],
+    // Clipboard permission state
+    clipboardPermissionState: 'unknown' as 'granted' | 'denied' | 'prompt' | 'unknown',
+    clipboardError: null as string | null,
   }))
   .actions(self => {
     const actions = {
       loadMetadata() {
         try {
           self.webAudioMetadata = getAllNodesMetadata()
-        } catch (error) {
-          console.error('STORE: Error loading metadata:', error)
+        } catch {
+          console.error('STORE: Error loading metadata:')
         }
       },
 
@@ -145,6 +151,61 @@ export const AudioGraphStore = types
       // Action to mark project as modified (when changes are made)
       markProjectModified() {
         self.isProjectModified = true
+      },
+
+      // Check clipboard permissions
+      checkClipboardPermission: flow(function* () {
+        try {
+          const nav = navigator as any
+          if (!nav.clipboard) {
+            self.clipboardPermissionState = 'denied'
+            self.clipboardError = 'Clipboard API not supported in this browser'
+            return 'denied'
+          }
+
+          // Try to check permission if available
+          if ('permissions' in navigator) {
+            try {
+              const permission = yield nav.permissions.query({ name: 'clipboard-read' })
+              self.clipboardPermissionState = permission.state as 'granted' | 'denied' | 'prompt'
+              self.clipboardError = null
+              return permission.state
+            } catch {
+              // Fallback: try to read clipboard to test permission
+              try {
+                yield nav.clipboard.readText()
+                self.clipboardPermissionState = 'granted'
+                self.clipboardError = null
+                return 'granted'
+              } catch {
+                self.clipboardPermissionState = 'denied'
+                self.clipboardError = 'Clipboard access denied'
+                return 'denied'
+              }
+            }
+          } else {
+            // Fallback: try to read clipboard to test permission
+            try {
+              yield nav.clipboard.readText()
+              self.clipboardPermissionState = 'granted'
+              self.clipboardError = null
+              return 'granted'
+            } catch {
+              self.clipboardPermissionState = 'denied'
+              self.clipboardError = 'Clipboard access denied'
+              return 'denied'
+            }
+          }
+        } catch {
+          self.clipboardPermissionState = 'denied'
+          self.clipboardError = 'Failed to check clipboard permission'
+          return 'denied'
+        }
+      }),
+
+      // Clear clipboard error
+      clearClipboardError() {
+        self.clipboardError = null
       },
 
       applyUndo() {
@@ -1546,6 +1607,383 @@ export const AudioGraphStore = types
           throw error
         }
       }),
+
+      // Copy selected nodes to clipboard
+      copySelectedNodes: flow(function* (selectedNodeIds: string[]) {
+        console.log('=== COPYING NODES ===', selectedNodeIds)
+
+        // Clear any previous clipboard errors
+        self.clipboardError = null
+
+        // Get the selected nodes
+        const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
+
+        if (nodesToCopy.length === 0) {
+          console.log('No nodes to copy')
+          return
+        }
+
+        // Get edges between selected nodes
+        const edgesToCopy = self.visualEdges.filter(
+          edge => selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target)
+        )
+
+        // Create deep copies of nodes and edges for clipboard
+        const clipboardData = {
+          nodes: nodesToCopy.map(node => ({
+            id: node.id,
+            type: node.type,
+            position: { ...node.position },
+            data: {
+              nodeType: node.data.nodeType,
+              metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
+              properties: Object.fromEntries(node.data.properties.entries()),
+            },
+          })),
+          edges: edgesToCopy.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+          })),
+        }
+
+        // Store in internal clipboard (already deep copied)
+        self.clipboardNodes = clipboardData.nodes
+        self.clipboardEdges = clipboardData.edges
+
+        // Also store in browser clipboard for cross-tab functionality
+        const clipboardText = JSON.stringify({
+          type: 'visualwebaudio-nodes',
+          version: '1.0',
+          data: clipboardData,
+        })
+
+        // Try to write to system clipboard
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          try {
+            yield navigator.clipboard.writeText(clipboardText)
+            self.clipboardPermissionState = 'granted'
+            self.clipboardError = null
+            console.log('Successfully wrote to system clipboard')
+          } catch (error) {
+            console.warn('Failed to write to system clipboard:', error)
+            self.clipboardPermissionState = 'denied'
+            self.clipboardError =
+              'Clipboard access denied. Copy/paste will work within this tab only.'
+          }
+        } else {
+          self.clipboardPermissionState = 'denied'
+          self.clipboardError =
+            'Clipboard API not supported. Copy/paste will work within this tab only.'
+        }
+
+        console.log(
+          `Copied ${self.clipboardNodes.length} nodes and ${self.clipboardEdges.length} edges to clipboard`
+        )
+      }),
+
+      // Cut selected nodes (copy + delete)
+      cutSelectedNodes(selectedNodeIds: string[]) {
+        console.log('=== CUTTING NODES ===', selectedNodeIds)
+
+        // Get the selected nodes for copying
+        const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
+
+        if (nodesToCopy.length === 0) {
+          console.log('No nodes to cut')
+          return
+        }
+
+        // Get edges between selected nodes
+        const edgesToCopy = self.visualEdges.filter(
+          edge => selectedNodeIds.includes(edge.source) && selectedNodeIds.includes(edge.target)
+        )
+
+        // Create deep copies of nodes and edges for clipboard
+        const clipboardData = {
+          nodes: nodesToCopy.map(node => ({
+            id: node.id,
+            type: node.type,
+            position: { ...node.position },
+            data: {
+              nodeType: node.data.nodeType,
+              metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
+              properties: Object.fromEntries(node.data.properties.entries()),
+            },
+          })),
+          edges: edgesToCopy.map(edge => ({
+            id: edge.id,
+            source: edge.source,
+            target: edge.target,
+            sourceHandle: edge.sourceHandle,
+            targetHandle: edge.targetHandle,
+          })),
+        }
+
+        // Store in internal clipboard (already deep copied)
+        self.clipboardNodes = clipboardData.nodes
+        self.clipboardEdges = clipboardData.edges
+
+        // Try to write to system clipboard (async, but don't wait)
+        const clipboardText = JSON.stringify({
+          type: 'visualwebaudio-nodes',
+          version: '1.0',
+          data: clipboardData,
+        })
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard
+            .writeText(clipboardText)
+            .then(() => {
+              self.clipboardPermissionState = 'granted'
+              self.clipboardError = null
+              console.log('Successfully wrote to system clipboard')
+            })
+            .catch(error => {
+              console.warn('Failed to write to system clipboard:', error)
+              self.clipboardPermissionState = 'denied'
+              self.clipboardError =
+                'Clipboard access denied. Copy/paste will work within this tab only.'
+            })
+        } else {
+          self.clipboardPermissionState = 'denied'
+          self.clipboardError =
+            'Clipboard API not supported. Copy/paste will work within this tab only.'
+        }
+
+        // Delete the nodes
+        selectedNodeIds.forEach(nodeId => {
+          const nodeIndex = self.visualNodes.findIndex(node => node.id === nodeId)
+          if (nodeIndex !== -1) {
+            // Remove the node using the existing removeNode logic
+            const visualNode = self.visualNodes[nodeIndex]
+            const nodeType = visualNode.data.nodeType
+
+            // Clean up audio/custom nodes
+            const customNode = self.customNodes.get(nodeId)
+            if (customNode) {
+              try {
+                customNode.cleanup()
+                self.customNodes.delete(nodeId)
+              } catch (error) {
+                console.error('Error during custom node cleanup:', error)
+              }
+            }
+
+            const audioNode = self.audioNodes.get(nodeId)
+            if (audioNode) {
+              try {
+                audioNode.disconnect()
+                if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+                  try {
+                    ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+                  } catch (stopError) {
+                    console.log('Source node already stopped or stopping failed:', stopError)
+                  }
+                }
+              } catch (error) {
+                console.error('Error during audio node cleanup:', error)
+              }
+              self.audioNodes.delete(nodeId)
+            }
+
+            // Remove connected edges
+            const edgesToRemove = self.visualEdges.filter(
+              edge => edge.source === nodeId || edge.target === nodeId
+            )
+            edgesToRemove.forEach(edge => {
+              const edgeIndex = self.visualEdges.findIndex(e => e.id === edge.id)
+              if (edgeIndex !== -1) {
+                self.visualEdges.splice(edgeIndex, 1)
+              }
+            })
+
+            // Remove audio connections
+            const connectionsToRemove = self.audioConnections.filter(
+              conn => conn.sourceNodeId === nodeId || conn.targetNodeId === nodeId
+            )
+            connectionsToRemove.forEach(conn => {
+              const connIndex = self.audioConnections.findIndex(
+                c =>
+                  c.sourceNodeId === conn.sourceNodeId &&
+                  c.targetNodeId === conn.targetNodeId &&
+                  c.sourceOutput === conn.sourceOutput &&
+                  c.targetInput === conn.targetInput
+              )
+              if (connIndex !== -1) {
+                self.audioConnections.splice(connIndex, 1)
+              }
+            })
+
+            // Remove the visual node
+            self.visualNodes.splice(nodeIndex, 1)
+
+            // Clean up media stream if this is a microphone node
+            if (nodeType === 'MediaStreamAudioSourceNode') {
+              const mediaStream = self.mediaStreams.get(nodeId)
+              if (mediaStream) {
+                mediaStream.getTracks().forEach(track => {
+                  track.stop()
+                })
+                self.mediaStreams.delete(nodeId)
+              }
+            }
+          }
+        })
+
+        console.log(`Cut ${selectedNodeIds.length} nodes`)
+      },
+
+      // Paste nodes from clipboard
+      pasteNodes: flow(function* (pastePosition?: { x: number; y: number }) {
+        console.log('=== PASTING NODES ===')
+
+        // Clear any previous clipboard errors
+        self.clipboardError = null
+
+        let clipboardData = null
+
+        // First try to get data from system clipboard
+        if (navigator.clipboard && navigator.clipboard.readText) {
+          try {
+            const clipboardText = yield navigator.clipboard.readText()
+            const parsed = JSON.parse(clipboardText)
+
+            if (parsed.type === 'visualwebaudio-nodes' && parsed.data) {
+              clipboardData = parsed.data
+              self.clipboardPermissionState = 'granted'
+              console.log('Using data from system clipboard')
+            }
+          } catch (error) {
+            console.log('Could not read from system clipboard:', error)
+            if (error instanceof Error && error.name === 'NotAllowedError') {
+              self.clipboardPermissionState = 'denied'
+              self.clipboardError = 'Clipboard access denied. Using internal clipboard only.'
+            } else {
+              // Could be a JSON parse error or other issue, not necessarily a permission error
+              console.log('System clipboard does not contain valid Visual Web Audio data')
+            }
+          }
+        } else {
+          self.clipboardPermissionState = 'denied'
+          self.clipboardError = 'Clipboard API not supported. Using internal clipboard only.'
+        }
+
+        // Fall back to internal clipboard if system clipboard doesn't have our data
+        if (!clipboardData && self.clipboardNodes.length > 0) {
+          clipboardData = {
+            nodes: self.clipboardNodes.map(node => ({
+              ...node,
+              data: {
+                ...node.data,
+                metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
+                properties: { ...node.data.properties },
+              },
+            })),
+            edges: self.clipboardEdges.map(edge => ({ ...edge })),
+          }
+          console.log('Using data from internal clipboard')
+        }
+
+        if (!clipboardData || clipboardData.nodes.length === 0) {
+          console.log('No nodes in clipboard to paste')
+          if (!self.clipboardError) {
+            self.clipboardError = 'No nodes in clipboard to paste'
+          }
+          return []
+        }
+
+        // Calculate offset for pasting
+        const offset = pastePosition ? { x: 50, y: 50 } : { x: 50, y: 50 }
+
+        // Create mapping from old IDs to new IDs
+        const idMapping = new Map<string, string>()
+        const newNodeIds: string[] = []
+
+        // Create new nodes with new IDs
+        clipboardData.nodes.forEach((clipboardNode: any) => {
+          // Generate new unique ID
+          self.nodeIdCounter += 1
+          const newNodeId = `${clipboardNode.data.nodeType}-${Date.now()}-${self.nodeIdCounter}`
+          idMapping.set(clipboardNode.id, newNodeId)
+          newNodeIds.push(newNodeId)
+
+          // Calculate new position
+          const newPosition = {
+            x: clipboardNode.position.x + offset.x,
+            y: clipboardNode.position.y + offset.y,
+          }
+
+          // Create the visual node
+          const visualNode = {
+            id: newNodeId,
+            type: clipboardNode.type,
+            position: newPosition,
+            data: {
+              nodeType: clipboardNode.data.nodeType,
+              metadata: { ...clipboardNode.data.metadata },
+              properties: { ...clipboardNode.data.properties },
+            },
+          }
+
+          // Create the actual audio node FIRST
+          try {
+            actions.createAudioNode(newNodeId, clipboardNode.data.nodeType)
+          } catch (error) {
+            console.error('Error creating audio node during paste:', error)
+          }
+
+          // Add the visual node to the store
+          self.visualNodes.push(visualNode)
+        })
+
+        // Create new edges with updated IDs
+        clipboardData.edges.forEach((clipboardEdge: any) => {
+          const newSourceId = idMapping.get(clipboardEdge.source)
+          const newTargetId = idMapping.get(clipboardEdge.target)
+
+          if (newSourceId && newTargetId) {
+            // Generate new edge ID
+            const newEdgeId = `${newSourceId}-${newTargetId}-${clipboardEdge.sourceHandle || 'output'}-${clipboardEdge.targetHandle || 'input'}`
+
+            // Create the visual edge
+            const visualEdge = {
+              id: newEdgeId,
+              source: newSourceId,
+              target: newTargetId,
+              sourceHandle: clipboardEdge.sourceHandle,
+              targetHandle: clipboardEdge.targetHandle,
+            }
+
+            self.visualEdges.push(visualEdge)
+
+            // Create the audio connection
+            try {
+              actions.connectAudioNodes(
+                newSourceId,
+                newTargetId,
+                clipboardEdge.sourceHandle || 'output',
+                clipboardEdge.targetHandle || 'input'
+              )
+            } catch (error) {
+              console.error('Error creating audio connection during paste:', error)
+            }
+          }
+        })
+
+        console.log(
+          `Pasted ${newNodeIds.length} nodes with ${clipboardData.edges.length} connections`
+        )
+
+        // Clear clipboard state after successful paste to clean up UI
+        self.clipboardNodes = []
+        self.clipboardEdges = []
+        self.clipboardError = null
+
+        return newNodeIds
+      }),
     }
 
     return actions
@@ -1571,6 +2009,25 @@ export const AudioGraphStore = types
 
     get frequencyAnalyzer() {
       return self.globalAnalyzer
+    },
+
+    get canPaste() {
+      // Check if we have nodes in internal clipboard
+      // Note: We can't easily check system clipboard synchronously in a view,
+      // so we rely on the internal clipboard state
+      return self.clipboardNodes.length > 0
+    },
+
+    get clipboardPermission() {
+      return self.clipboardPermissionState
+    },
+
+    get clipboardErrorMessage() {
+      return self.clipboardError
+    },
+
+    get hasClipboardAccess() {
+      return self.clipboardPermissionState === 'granted'
     },
   }))
 
