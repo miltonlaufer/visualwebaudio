@@ -106,6 +106,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
         return
       }
 
+      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
+      const isInSelectableArea = target.closest('.select-text') !== null
+      if (isInSelectableArea) {
+        return
+      }
+
+      // Check if there's an active text selection (user is selecting text)
+      const selection = window.getSelection()
+      if (selection && selection.toString().length > 0) {
+        return
+      }
+
       // Delete: Delete key
       if (event.key === 'Delete' || event.key === 'Backspace') {
         if (selectedNodeIds.length > 0) {

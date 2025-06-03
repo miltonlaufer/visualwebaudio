@@ -13,6 +13,7 @@ import Header from '~/components/Header'
 import GraphCanvas from '~/components/GraphCanvas'
 import UpdateNotification from '~/components/UpdateNotification'
 import OfflineIndicator from '~/components/OfflineIndicator'
+import AIChat from '~/components/AIChat'
 
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
@@ -48,6 +49,18 @@ const AppContent: React.FC = observer(() => {
       // Only handle shortcuts when not in an input field
       const target = event.target as HTMLElement
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return
+      }
+
+      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
+      const isInSelectableArea = target.closest('.select-text') !== null
+      if (isInSelectableArea) {
+        return
+      }
+
+      // Check if there's an active text selection (user is selecting text)
+      const selection = window.getSelection()
+      if (selection && selection.toString().length > 0) {
         return
       }
 
@@ -185,6 +198,9 @@ const AppContent: React.FC = observer(() => {
           onClick={handleClosePanels}
         />
       </div>
+
+      {/* AI Chat Component */}
+      <AIChat />
     </div>
   )
 })
