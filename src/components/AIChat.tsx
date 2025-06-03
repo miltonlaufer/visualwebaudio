@@ -209,7 +209,7 @@ const AIChat: React.FC = observer(() => {
     <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col z-50 select-text">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-600 text-white rounded-t-lg">
-        <h3 className="font-semibold">AI Assistant</h3>
+        <h3 className="font-semibold">AI Assistant (beta)</h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsConfigOpen(true)}
@@ -498,7 +498,10 @@ const AIChat: React.FC = observer(() => {
                         : 'bg-gray-100 text-gray-900'
                     }`}
                   >
-                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                    <div
+                      className="text-sm whitespace-pre-wrap"
+                      dangerouslySetInnerHTML={{ __html: message.content }}
+                    />
                     {message.actions && message.actions.length > 0 && (
                       <div className="mt-2 text-xs opacity-75">
                         Executed {message.actions.length} action(s)

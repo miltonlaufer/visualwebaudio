@@ -109,12 +109,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
       // Check if we're in the AI chat area (has select-text class or is a descendant of it)
       const isInSelectableArea = target.closest('.select-text') !== null
       if (isInSelectableArea) {
+        // Always allow normal text operations in chat area
         return
       }
 
-      // Check if there's an active text selection (user is selecting text)
+      // Check if there's an active text selection anywhere
       const selection = window.getSelection()
       if (selection && selection.toString().length > 0) {
+        // If there's selected text anywhere, allow normal copy/paste behavior
         return
       }
 
