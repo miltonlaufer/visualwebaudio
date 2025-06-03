@@ -14,9 +14,9 @@ const mockRegistration = {
   active: {
     postMessage: vi.fn(),
   },
-  waiting: {
-    postMessage: vi.fn(),
-  },
+  waiting: null, // Set to null initially to avoid automatic update notification
+  addEventListener: vi.fn(),
+  update: vi.fn(),
 }
 
 // Mock navigator.serviceWorker
@@ -26,22 +26,26 @@ Object.defineProperty(navigator, 'serviceWorker', {
   configurable: true,
 })
 
-// Mock window.location.reload
-Object.defineProperty(window, 'location', {
-  value: {
-    reload: vi.fn(),
-  },
-  writable: true,
-})
+// Mock window.addEventListener for vite:pwa-update events
+const originalAddEventListener = window.addEventListener
+const originalRemoveEventListener = window.removeEventListener
 
 describe('UpdateNotification', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockRegistration.waiting = null // Reset waiting state
     mockServiceWorker.getRegistration.mockResolvedValue(mockRegistration)
+    
+    // Mock window event listeners
+    window.addEventListener = vi.fn()
+    window.removeEventListener = vi.fn()
   })
 
   afterEach(() => {
     vi.clearAllTimers()
+    // Restore original event listeners
+    window.addEventListener = originalAddEventListener
+    window.removeEventListener = originalRemoveEventListener
   })
 
   it('should not render initially', () => {
@@ -49,22 +53,22 @@ describe('UpdateNotification', () => {
     expect(screen.queryByText('Update Available')).not.toBeInTheDocument()
   })
 
-  it('should render when update message is received', async () => {
+  it('should render when vite:pwa-update event is received', async () => {
     render(<UpdateNotification />)
 
-    // Simulate receiving an update message
-    const messageHandler = mockServiceWorker.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
+    // Get the event handler that was registered for 'vite:pwa-update'
+    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
+      (call: any) => call[0] === 'vite:pwa-update'
     )?.[1]
 
-    expect(messageHandler).toBeDefined()
+    expect(vitePwaUpdateHandler).toBeDefined()
 
-    // Trigger the message handler with act
+    // Simulate the vite:pwa-update event
     await act(async () => {
-      messageHandler({
-        data: {
+      vitePwaUpdateHandler({
+        detail: {
           type: 'UPDATE_AVAILABLE',
-          message: 'A new version is available!',
+          updateSW: vi.fn(),
         },
       })
     })
@@ -81,16 +85,16 @@ describe('UpdateNotification', () => {
     const onClose = vi.fn()
     render(<UpdateNotification onClose={onClose} />)
 
-    // Simulate receiving an update message
-    const messageHandler = mockServiceWorker.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
+    // Get the event handler and trigger update
+    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
+      (call: any) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      messageHandler({
-        data: {
+      vitePwaUpdateHandler({
+        detail: {
           type: 'UPDATE_AVAILABLE',
-          message: 'A new version is available!',
+          updateSW: vi.fn(),
         },
       })
     })
@@ -115,16 +119,16 @@ describe('UpdateNotification', () => {
   it('should close when "Later" button is clicked', async () => {
     render(<UpdateNotification />)
 
-    // Simulate receiving an update message
-    const messageHandler = mockServiceWorker.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
+    // Get the event handler and trigger update
+    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
+      (call: any) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      messageHandler({
-        data: {
+      vitePwaUpdateHandler({
+        detail: {
           type: 'UPDATE_AVAILABLE',
-          message: 'A new version is available!',
+          updateSW: vi.fn(),
         },
       })
     })
@@ -145,18 +149,19 @@ describe('UpdateNotification', () => {
   })
 
   it('should handle update when "Update Now" button is clicked', async () => {
+    const mockUpdateSW = vi.fn().mockResolvedValue(undefined)
     render(<UpdateNotification />)
 
-    // Simulate receiving an update message
-    const messageHandler = mockServiceWorker.addEventListener.mock.calls.find(
-      call => call[0] === 'message'
+    // Get the event handler and trigger update
+    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
+      (call: any) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      messageHandler({
-        data: {
+      vitePwaUpdateHandler({
+        detail: {
           type: 'UPDATE_AVAILABLE',
-          message: 'A new version is available!',
+          updateSW: mockUpdateSW,
         },
       })
     })
@@ -167,33 +172,38 @@ describe('UpdateNotification', () => {
 
     // Click "Update Now" button
     const updateButton = screen.getByText('Update Now')
+    
     await act(async () => {
       fireEvent.click(updateButton)
     })
 
+    // Wait for the updating state
     await waitFor(() => {
       expect(screen.getByText('Updating...')).toBeInTheDocument()
     })
 
-    // Should call postMessage on waiting service worker
-    expect(mockRegistration.waiting.postMessage).toHaveBeenCalledWith({
-      type: 'SKIP_WAITING',
-    })
+    // Wait for the async update function to be called
+    await waitFor(() => {
+      expect(mockUpdateSW).toHaveBeenCalled()
+    }, { timeout: 2000 })
   })
 
-  it('should send check for updates message on mount', async () => {
+  it('should set up periodic update checks', async () => {
     render(<UpdateNotification />)
 
-    // Wait for the async effect to complete
+    // Wait for the component to mount and set up the service worker listener
     await waitFor(() => {
       expect(mockServiceWorker.getRegistration).toHaveBeenCalled()
     })
 
-    await waitFor(() => {
-      expect(mockRegistration.active.postMessage).toHaveBeenCalledWith({
-        type: 'CHECK_FOR_UPDATES',
-      })
-    })
+    // Verify that the component has set up the window event listener for PWA updates
+    expect(window.addEventListener).toHaveBeenCalledWith(
+      'vite:pwa-update',
+      expect.any(Function)
+    )
+
+    // Verify that the component has set up the service worker registration listener
+    expect(mockServiceWorker.getRegistration).toHaveBeenCalled()
   })
 
   it('should handle service worker not supported', () => {

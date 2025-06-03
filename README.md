@@ -52,7 +52,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 
 - **Visual Audio Graph Editor**: Drag-and-drop node creation with type validation and color-coded connections
 - **Copy/Paste Nodes**: Multi-node selection with copy/cut/paste support (Ctrl+C/X/V) that preserves connections and works across browser tabs
-- **Metadata-Driven Architecture**: 18+ Web Audio API nodes automatically discovered from TypeScript definitions
+- **Metadata-Driven Architecture**: 22+ Web Audio API nodes automatically discovered from TypeScript definitions
 - **Custom Nodes System**: 10+ interactive custom nodes including buttons, sliders, MIDI input, and sound file players with pause/resume persistence
 - **Voice Effects Processing**: Real-time microphone input with robot voice, vocoder, harmonizer, and transformer effects
 - **Project Management**: Export/Import projects as JSON with unsaved changes tracking and undo/redo system / IndexedDB storage
