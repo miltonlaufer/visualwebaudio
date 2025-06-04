@@ -130,4 +130,50 @@ describe('AIChat', () => {
       ).toBeInTheDocument()
     })
   })
+
+  it('should auto-focus input when chat opens and AI is initialized', async () => {
+    // Mock the service as initialized
+    const mockLangChainService = {
+      isInitialized: vi.fn().mockReturnValue(true),
+      initialize: vi.fn(),
+      processMessage: vi.fn(),
+      executeActions: vi.fn(),
+    }
+
+    // Mock the LangChainService constructor to return our mock
+    const { LangChainService } = await import('~/services/LangChainService')
+    vi.mocked(LangChainService).mockImplementation(() => mockLangChainService as any)
+
+    const { getByTitle, getByPlaceholderText } = render(
+      <TestWrapper>
+        <AIChat />
+      </TestWrapper>
+    )
+
+    // Initially chat is closed
+    const openButton = getByTitle('Open AI Assistant')
+    expect(openButton).toBeInTheDocument()
+
+    // Mock the focus method
+    const mockFocus = vi.fn()
+    HTMLInputElement.prototype.focus = mockFocus
+
+    // Open the chat
+    fireEvent.click(openButton)
+
+    // Wait for the input to be rendered and focused
+    await waitFor(() => {
+      const input = getByPlaceholderText('Ask me to create audio nodes...')
+      expect(input).toBeInTheDocument()
+      expect(input).not.toBeDisabled()
+    })
+
+    // Check that focus was called (with a small delay for the setTimeout)
+    await waitFor(
+      () => {
+        expect(mockFocus).toHaveBeenCalled()
+      },
+      { timeout: 300 }
+    )
+  })
 })

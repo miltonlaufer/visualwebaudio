@@ -22,6 +22,7 @@ const AIChat: React.FC = observer(() => {
   const [hasStoredKey, setHasStoredKey] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const store = useAudioGraphStore()
   const langChainService = useRef(new LangChainService())
 
@@ -192,6 +193,16 @@ const AIChat: React.FC = observer(() => {
       handleSendMessage()
     }
   }
+
+  useEffect(() => {
+    if (isOpen && !isConfigOpen && langChainService.current.isInitialized()) {
+      // Use a small delay to ensure the input is rendered
+      const timer = setTimeout(() => {
+        inputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [isOpen, isConfigOpen])
 
   if (!isOpen) {
     return (
@@ -544,6 +555,7 @@ const AIChat: React.FC = observer(() => {
                 }
                 disabled={!langChainService.current.isInitialized() || isLoading}
                 className="flex-1 p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
+                ref={inputRef}
               />
               <button
                 onClick={handleSendMessage}

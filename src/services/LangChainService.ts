@@ -156,6 +156,20 @@ CONNECTIONS:
 - Control: "value" → parameter name
 - MIDI: "value" → "midiNote", "frequency" → "frequency"
 
+SLIDER CONFIGURATION - MANDATORY FORMAT:
+When creating SliderNode, you MUST configure it with separate updateProperty actions:
+CORRECT:
+{"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1"},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "min", "propertyValue": 20},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "max", "propertyValue": 20000},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "value", "propertyValue": 440},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "step", "propertyValue": 1},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "label", "propertyValue": "Frequency (Hz)"}
+
+FORBIDDEN - NEVER USE:
+{"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1", "params": {...}}
+{"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1", "properties": {...}}
+
 ABSOLUTELY FORBIDDEN: 
 - AudioContext nodes
 - ANY explanatory text, descriptions, markdown, text before/after JSON
@@ -163,14 +177,28 @@ ABSOLUTELY FORBIDDEN:
 - Responding with anything other than pure JSON
 - Adding nodes without proper parameters
 - Creating unconnected nodes
+- Using "params" or "properties" in addNode actions
+- Any property other than: type, nodeType, nodeId, position for addNode
 
 RESPOND WITH PURE JSON ONLY - NO TEXT WHATSOEVER - NOT EVEN A SINGLE WORD
 
-FORMAT:
+VALID ACTION TYPES ONLY:
+- addNode: {"type": "addNode", "nodeType": "NodeType", "nodeId": "uniqueId"}
+- addConnection: {"type": "addConnection", "sourceId": "sourceId", "targetId": "targetId", "sourceHandle": "output", "targetHandle": "input"}
+- updateProperty: {"type": "updateProperty", "nodeId": "nodeId", "propertyName": "propertyName", "propertyValue": value}
+- removeNode: {"type": "removeNode", "nodeId": "nodeId"}
+- removeConnection: {"type": "removeConnection", "sourceId": "sourceId", "targetId": "targetId", "sourceHandle": "output", "targetHandle": "input"}
+
+EXAMPLE - Adding frequency control slider:
 {"actions": [
-  {"type": "addNode", "nodeType": "NodeType", "nodeId": "uniqueId"},
-  {"type": "addConnection", "sourceId": "sourceId", "targetId": "targetId", "sourceHandle": "output", "targetHandle": "input"},
-  {"type": "updateProperty", "nodeId": "nodeId", "propertyName": "propertyName", "propertyValue": value}
+  {"type": "addNode", "nodeType": "SliderNode", "nodeId": "freqSlider"},
+  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "min", "propertyValue": 20},
+  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "max", "propertyValue": 20000},
+  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "value", "propertyValue": 440},
+  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "step", "propertyValue": 1},
+  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "label", "propertyValue": "Frequency (Hz)"},
+  {"type": "updateProperty", "nodeId": "existingOsc", "propertyName": "frequency", "propertyValue": null},
+  {"type": "addConnection", "sourceId": "freqSlider", "targetId": "existingOsc", "sourceHandle": "value", "targetHandle": "frequency"}
 ]}
 
 Use "nodeId" not "id", "propertyValue" not "value". Complete all connections. Positions handled automatically.`
@@ -424,15 +452,54 @@ Request: ${message}`
               const sourceId = nodeIdMapping[action.sourceId] || action.sourceId
               const targetId = nodeIdMapping[action.targetId] || action.targetId
 
-              const edge = store.visualEdges.find(
-                e =>
-                  e.source === sourceId &&
-                  e.target === targetId &&
-                  e.sourceHandle === (action.sourceHandle || 'output') &&
-                  e.targetHandle === (action.targetHandle || 'input')
-              )
-              if (edge) {
-                store.removeEdge(edge.id)
+              // Try to find nodes using intelligent matching if direct ID lookup fails
+              let sourceNode = store.visualNodes.find(n => n.id === sourceId)
+              let targetNode = store.visualNodes.find(n => n.id === targetId)
+
+              if (!sourceNode) {
+                sourceNode = this.findNodeByIdOrType(store, action.sourceId)
+                console.log(
+                  `RemoveConnection: Found source node for "${action.sourceId}": ${sourceNode?.data.nodeType} (${sourceNode?.id})`
+                )
+              }
+              if (!targetNode) {
+                targetNode = this.findNodeByIdOrType(store, action.targetId)
+                console.log(
+                  `RemoveConnection: Found target node for "${action.targetId}": ${targetNode?.data.nodeType} (${targetNode?.id})`
+                )
+              }
+
+              if (sourceNode && targetNode) {
+                const actualSourceId = sourceNode.id
+                const actualTargetId = targetNode.id
+
+                const edge = store.visualEdges.find(
+                  e =>
+                    e.source === actualSourceId &&
+                    e.target === actualTargetId &&
+                    e.sourceHandle === (action.sourceHandle || 'output') &&
+                    e.targetHandle === (action.targetHandle || 'input')
+                )
+                if (edge) {
+                  console.log(
+                    `RemoveConnection: Removing edge ${edge.id} from ${sourceNode.data.nodeType} to ${targetNode.data.nodeType}`
+                  )
+                  store.removeEdge(edge.id)
+                } else {
+                  console.warn(
+                    `RemoveConnection: Could not find edge from ${sourceNode.data.nodeType}(${actualSourceId}) to ${targetNode.data.nodeType}(${actualTargetId})`
+                  )
+                  console.warn(
+                    'Available edges:',
+                    store.visualEdges.map(
+                      e => `${e.source} -> ${e.target} (${e.sourceHandle} -> ${e.targetHandle})`
+                    )
+                  )
+                }
+              } else {
+                console.warn(
+                  `RemoveConnection: Could not find nodes for connection: ${action.sourceId} -> ${action.targetId}`
+                )
               }
             }
             break
@@ -545,8 +612,10 @@ Request: ${message}`
         mixGain: 'GainNode',
       }
 
-      // Try to find by mapped node type
-      const expectedNodeType = identifierToNodeType[identifier.toLowerCase()]
+      // Try to find by mapped node type (handle numbered identifiers like "osc1", "midiToFreq1")
+      const baseIdentifier = identifier.toLowerCase().replace(/\d+$/, '') // Remove trailing numbers
+      const expectedNodeType =
+        identifierToNodeType[baseIdentifier] || identifierToNodeType[identifier.toLowerCase()]
       if (expectedNodeType) {
         // Find the most recently added node of this type that doesn't have the connections we expect
         const candidateNodes = store.visualNodes
@@ -603,11 +672,9 @@ Request: ${message}`
     }
 
     if (node) {
-      console.log(
-        `🎯 Found node for identifier "${identifier}": ${node.data.nodeType} (${node.id})`
-      )
+      console.log(`Found node for identifier "${identifier}": ${node.data.nodeType} (${node.id})`)
     } else {
-      console.warn(`❌ Could not find node for identifier "${identifier}"`)
+      console.warn(`Could not find node for identifier "${identifier}"`)
     }
 
     return node
@@ -1223,7 +1290,15 @@ Request: ${message}`
       const nodeType = node.data.nodeType
       const currentLabel = node.data.properties.get('label')
 
-      if (!currentLabel || currentLabel === '') {
+      // Check if the node needs a better label (empty, undefined, or generic default)
+      const needsLabel =
+        !currentLabel ||
+        currentLabel === '' ||
+        (nodeType === 'SliderNode' && currentLabel === 'Slider') ||
+        (nodeType === 'ButtonNode' && currentLabel === 'Click Me') ||
+        (nodeType === 'DisplayNode' && currentLabel === 'Display')
+
+      if (needsLabel) {
         let defaultLabel = ''
 
         if (nodeType === 'SliderNode') {
@@ -1312,9 +1387,7 @@ Request: ${message}`
             }
             store.updateNodePosition(controlNode.id, newPosition)
             positionedNodes.add(controlNode.id)
-            console.log(
-              `🎛️ Positioned ${controlNode.data.nodeType} above ${targetNode.data.nodeType}`
-            )
+            console.log(`Positioned ${controlNode.data.nodeType} above ${targetNode.data.nodeType}`)
           }
         }
       }
@@ -1329,7 +1402,7 @@ Request: ${message}`
       const newPosition = { x: gridX, y: gridY }
       store.updateNodePosition(node.id, newPosition)
       console.log(
-        `📋 Positioned remaining ${node.data.nodeType} in grid at (${newPosition.x}, ${newPosition.y})`
+        `Positioned remaining ${node.data.nodeType} in grid at (${newPosition.x}, ${newPosition.y})`
       )
     })
 

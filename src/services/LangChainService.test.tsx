@@ -378,6 +378,21 @@ describe('LangChainService', () => {
       const foundNode = (service as any).findNodeByIdOrType(store, 'oscillator')
       expect(foundNode).toBe(node)
     })
+
+    it('should find nodes by numbered identifiers (osc1, midiToFreq1)', () => {
+      // Create nodes
+      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addNode('MidiToFreqNode', { x: 200, y: 100 })
+
+      // Test numbered identifiers
+      const oscNode = service['findNodeByIdOrType'](store, 'osc1')
+      const midiNode = service['findNodeByIdOrType'](store, 'midiToFreq1')
+
+      expect(oscNode).toBeDefined()
+      expect(oscNode?.data.nodeType).toBe('OscillatorNode')
+      expect(midiNode).toBeDefined()
+      expect(midiNode?.data.nodeType).toBe('MidiToFreqNode')
+    })
   })
 
   describe('system prompt', () => {
@@ -408,6 +423,141 @@ describe('LangChainService', () => {
       expect(systemPrompt).toContain('ADDING CONTROLS TO EXISTING PROPERTIES:')
       expect(systemPrompt).toContain('RESPOND WITH PURE JSON ONLY - NO TEXT WHATSOEVER')
       expect(systemPrompt).toContain('Use "nodeId" not "id"')
+    })
+  })
+
+  describe('labelUtilityNodes', () => {
+    it('should replace generic default labels with descriptive ones', async () => {
+      // Create SliderNodes with default "Slider" labels
+      const actions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'SliderNode',
+          nodeId: 'slider1',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'SliderNode',
+          nodeId: 'slider2',
+          position: { x: 200, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'ButtonNode',
+          nodeId: 'button1',
+          position: { x: 300, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'DisplayNode',
+          nodeId: 'display1',
+          position: { x: 400, y: 100 },
+        },
+      ]
+
+      await service.executeActions(actions, store)
+
+      // Check that SliderNodes got "Control" labels instead of "Slider"
+      const sliders = store.visualNodes.filter((n: any) => n.data.nodeType === 'SliderNode')
+      expect(sliders.length).toBe(2)
+      sliders.forEach((slider: any) => {
+        expect(slider.data.properties.get('label')).toBe('Control')
+      })
+
+      // Check that ButtonNode got "Trigger" label instead of "Button"
+      const button = store.visualNodes.find((n: any) => n.data.nodeType === 'ButtonNode')
+      expect(button?.data.properties.get('label')).toBe('Trigger')
+
+      // Check that DisplayNode got "Monitor" label instead of "Display"
+      const display = store.visualNodes.find((n: any) => n.data.nodeType === 'DisplayNode')
+      expect(display?.data.properties.get('label')).toBe('Monitor')
+    })
+
+    it('should not override custom labels', async () => {
+      // Create SliderNode and set a custom label
+      const actions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'SliderNode',
+          nodeId: 'customSlider',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'updateProperty',
+          nodeId: 'customSlider',
+          propertyName: 'label',
+          propertyValue: 'Custom Filter Control',
+        },
+      ]
+
+      await service.executeActions(actions, store)
+
+      // Check that custom label is preserved
+      const slider = store.visualNodes.find((n: any) => n.data.nodeType === 'SliderNode')
+      expect(slider?.data.properties.get('label')).toBe('Custom Filter Control')
+    })
+  })
+
+  describe('removeConnection', () => {
+    it('should remove connections using intelligent node ID matching', async () => {
+      // First create nodes and connections
+      const createActions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'OscillatorNode',
+          nodeId: 'osc1',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'GainNode',
+          nodeId: 'gain1',
+          position: { x: 300, y: 100 },
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'osc1',
+          targetId: 'gain1',
+          sourceHandle: 'output',
+          targetHandle: 'input',
+        },
+      ]
+
+      await service.executeActions(createActions, store)
+
+      // Verify connection was created
+      expect(store.visualEdges.length).toBeGreaterThan(0)
+      const initialEdgeCount = store.visualEdges.length
+
+      // Now remove the connection using AI identifiers
+      const removeActions: AudioGraphAction[] = [
+        {
+          type: 'removeConnection',
+          sourceId: 'osc1',
+          targetId: 'gain1',
+          sourceHandle: 'output',
+          targetHandle: 'input',
+        },
+      ]
+
+      await service.executeActions(removeActions, store)
+
+      // Verify connection was removed
+      expect(store.visualEdges.length).toBeLessThan(initialEdgeCount)
+
+      // Verify the specific connection between oscillator and gain is gone
+      const oscToGainConnection = store.visualEdges.find((edge: any) => {
+        const source = store.visualNodes.find((n: any) => n.id === edge.source)
+        const target = store.visualNodes.find((n: any) => n.id === edge.target)
+        return (
+          source?.data.nodeType === 'OscillatorNode' &&
+          target?.data.nodeType === 'GainNode' &&
+          edge.sourceHandle === 'output' &&
+          edge.targetHandle === 'input'
+        )
+      })
+      expect(oscToGainConnection).toBeUndefined()
     })
   })
 })
