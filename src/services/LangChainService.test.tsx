@@ -38,45 +38,57 @@ describe('LangChainService', () => {
   })
 
   describe('executeActions', () => {
-    it('should automatically create AudioDestinationNode if none exists', async () => {
+    it('should create nodes as explicitly requested', async () => {
       // Add an oscillator node
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-
-      await service.executeActions([], store)
-
-      // Should have oscillator, MidiToFreqNode (auto-created), and destination
-      expect(store.visualNodes.length).toBe(3)
-
-      const hasOscillator = store.visualNodes.some(
-        (node: any) => node.data.nodeType === 'OscillatorNode'
-      )
-      const hasDestination = store.visualNodes.some(
-        (node: any) => node.data.nodeType === 'AudioDestinationNode'
-      )
-      const hasMidiToFreq = store.visualNodes.some(
-        (node: any) => node.data.nodeType === 'MidiToFreqNode'
-      )
-
-      expect(hasOscillator).toBe(true)
-      expect(hasDestination).toBe(true)
-      expect(hasMidiToFreq).toBe(true)
-    })
-
-    it('should connect unconnected source nodes to destination', async () => {
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
           nodeType: 'OscillatorNode',
           nodeId: 'oscillator1',
           position: { x: 100, y: 100 },
-          description: 'Create oscillator',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have MidiToFreq -> Oscillator and Oscillator -> Destination connections
-      expect(store.visualEdges.length).toBe(2)
+      // Should have only the explicitly requested oscillator node
+      expect(store.visualNodes.length).toBe(1)
+
+      const hasOscillator = store.visualNodes.some(
+        (node: any) => node.data.nodeType === 'OscillatorNode'
+      )
+
+      expect(hasOscillator).toBe(true)
+    })
+
+    it('should create explicit connections when requested', async () => {
+      const actions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'OscillatorNode',
+          nodeId: 'oscillator1',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'AudioDestinationNode',
+          nodeId: 'destination',
+          position: { x: 400, y: 100 },
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'oscillator1',
+          targetId: 'destination',
+          sourceHandle: 'output',
+          targetHandle: 'input',
+        },
+      ]
+
+      await service.executeActions(actions, store)
+
+      // Should have exactly the requested nodes and connections
+      expect(store.visualNodes.length).toBe(2)
+      expect(store.visualEdges.length).toBe(1)
 
       const oscillatorToDestination = store.visualEdges.find((edge: any) => {
         const source = store.visualNodes.find((n: any) => n.id === edge.source)
@@ -90,51 +102,37 @@ describe('LangChainService', () => {
       expect(oscillatorToDestination).toBeDefined()
     })
 
-    it('should create effect chains when both source and effect nodes exist', async () => {
+    it('should create multiple nodes with smart positioning', async () => {
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
           nodeType: 'OscillatorNode',
           nodeId: 'oscillator1',
           position: { x: 100, y: 100 },
-          description: 'Create oscillator',
         },
         {
           type: 'addNode',
           nodeType: 'GainNode',
           nodeId: 'gain1',
           position: { x: 300, y: 100 },
-          description: 'Create gain',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have oscillator, gain, MidiToFreq (auto-created), and destination
-      expect(store.visualNodes.length).toBe(4)
+      // Should have exactly the requested nodes
+      expect(store.visualNodes.length).toBe(2)
 
-      // Should have connections including the effect chain
-      expect(store.visualEdges.length).toBe(3)
+      const hasOscillator = store.visualNodes.some(
+        (node: any) => node.data.nodeType === 'OscillatorNode'
+      )
+      const hasGain = store.visualNodes.some((node: any) => node.data.nodeType === 'GainNode')
 
-      const oscillatorToGain = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return source?.data.nodeType === 'OscillatorNode' && target?.data.nodeType === 'GainNode'
-      })
-
-      const gainToDestination = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return (
-          source?.data.nodeType === 'GainNode' && target?.data.nodeType === 'AudioDestinationNode'
-        )
-      })
-
-      expect(oscillatorToGain).toBeDefined()
-      expect(gainToDestination).toBeDefined()
+      expect(hasOscillator).toBe(true)
+      expect(hasGain).toBe(true)
     })
 
-    it('should not create duplicate AudioDestinationNode if one already exists', async () => {
+    it('should not create duplicate nodes when they already exist', async () => {
       // First add a destination node manually
       store.addNode('AudioDestinationNode', { x: 500, y: 100 })
 
@@ -144,14 +142,13 @@ describe('LangChainService', () => {
           nodeType: 'OscillatorNode',
           nodeId: 'oscillator1',
           position: { x: 100, y: 100 },
-          description: 'Create oscillator',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have oscillator, MidiToFreq (auto-created), and existing destination (no duplicate)
-      expect(store.visualNodes.length).toBe(3)
+      // Should have oscillator and existing destination (no duplicate)
+      expect(store.visualNodes.length).toBe(2)
 
       const destinationNodes = store.visualNodes.filter(
         (node: any) => node.data.nodeType === 'AudioDestinationNode'
@@ -187,7 +184,7 @@ describe('LangChainService', () => {
 
       await service.executeActions(actions, store)
 
-      // Should have oscillator, destination, and MidiToFreq (auto-created)
+      // Should have oscillator and destination
       expect(store.visualNodes.length).toBe(2)
       expect(store.visualEdges.length).toBe(1)
 
@@ -197,40 +194,62 @@ describe('LangChainService', () => {
       expect(explicitConnection).toBeDefined()
     })
 
-    it('should create complete MIDI control chain with SliderNode and MidiToFreqNode', async () => {
+    it('should create complete MIDI control chain when explicitly requested', async () => {
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
           nodeType: 'SliderNode',
           nodeId: 'midiSlider',
           position: { x: 0, y: 100 },
-          description: 'Create MIDI note slider',
         },
         {
           type: 'addNode',
           nodeType: 'MidiToFreqNode',
           nodeId: 'midiToFreq',
           position: { x: 200, y: 100 },
-          description: 'Create MIDI to frequency converter',
         },
         {
           type: 'addNode',
           nodeType: 'OscillatorNode',
           nodeId: 'oscillator',
           position: { x: 400, y: 100 },
-          description: 'Create oscillator',
+        },
+        {
+          type: 'addNode',
+          nodeType: 'AudioDestinationNode',
+          nodeId: 'destination',
+          position: { x: 600, y: 100 },
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'midiSlider',
+          targetId: 'midiToFreq',
+          sourceHandle: 'value',
+          targetHandle: 'midiNote',
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'midiToFreq',
+          targetId: 'oscillator',
+          sourceHandle: 'frequency',
+          targetHandle: 'frequency',
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'oscillator',
+          targetId: 'destination',
+          sourceHandle: 'output',
+          targetHandle: 'input',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have slider, converter, oscillator, and destination
+      // Should have all requested nodes
       expect(store.visualNodes.length).toBe(4)
-
-      // Should have proper connections: slider -> midiToFreq -> oscillator -> destination
       expect(store.visualEdges.length).toBe(3)
 
-      // Check MIDI control chain
+      // Check MIDI control chain connections exist
       const sliderToMidi = store.visualEdges.find((edge: any) => {
         const source = store.visualNodes.find((n: any) => n.id === edge.source)
         const target = store.visualNodes.find((n: any) => n.id === edge.target)
@@ -248,50 +267,50 @@ describe('LangChainService', () => {
       expect(sliderToMidi).toBeDefined()
       expect(midiToOscillator).toBeDefined()
       expect(midiToOscillator?.targetHandle).toBe('frequency')
-
-      // Check that slider is configured for MIDI range
-      const slider = store.visualNodes.find((n: any) => n.data.nodeType === 'SliderNode')
-      expect(slider?.data.properties.get('min')).toBe(0)
-      expect(slider?.data.properties.get('max')).toBe(127)
-      expect(slider?.data.properties.get('value')).toBe(60)
-      expect(slider?.data.properties.get('label')).toBe('MIDI Note')
     })
 
-    it('should create volume control with SliderNode and GainNode', async () => {
+    it('should create audio effect chain when explicitly requested', async () => {
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
           nodeType: 'OscillatorNode',
           nodeId: 'oscillator',
-          position: { x: 400, y: 100 },
-          description: 'Create oscillator',
+          position: { x: 100, y: 100 },
         },
         {
           type: 'addNode',
           nodeType: 'GainNode',
           nodeId: 'gain',
-          position: { x: 600, y: 100 },
-          description: 'Create gain',
+          position: { x: 300, y: 100 },
         },
         {
           type: 'addNode',
-          nodeType: 'SliderNode',
-          nodeId: 'volumeSlider',
-          position: { x: 0, y: 200 },
-          description: 'Create volume slider',
+          nodeType: 'AudioDestinationNode',
+          nodeId: 'destination',
+          position: { x: 500, y: 100 },
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'oscillator',
+          targetId: 'gain',
+          sourceHandle: 'output',
+          targetHandle: 'input',
+        },
+        {
+          type: 'addConnection',
+          sourceId: 'gain',
+          targetId: 'destination',
+          sourceHandle: 'output',
+          targetHandle: 'input',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have oscillator, gain, slider, MidiToFreq (auto-created), and destination
-      expect(store.visualNodes.length).toBe(5)
+      // Should have all requested nodes and connections
+      expect(store.visualNodes.length).toBe(3)
+      expect(store.visualEdges.length).toBe(2)
 
-      // Should have connections including audio chain
-      expect(store.visualEdges.length).toBe(4)
-
-      // The system prioritizes MIDI control, so the first slider will be connected to MIDI
-      // But the gain node should still be inserted into the audio chain
       const oscillatorToGain = store.visualEdges.find((edge: any) => {
         const source = store.visualNodes.find((n: any) => n.id === edge.source)
         const target = store.visualNodes.find((n: any) => n.id === edge.target)
@@ -306,51 +325,129 @@ describe('LangChainService', () => {
         )
       })
 
-      // Verify the gain node is properly inserted into the audio chain
       expect(oscillatorToGain).toBeDefined()
       expect(gainToDestination).toBeDefined()
     })
 
-    it('should handle direct frequency control when no MidiToFreqNode is present', async () => {
+    it('should handle property updates', async () => {
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
           nodeType: 'SliderNode',
           nodeId: 'freqSlider',
           position: { x: 0, y: 100 },
-          description: 'Create frequency slider',
         },
         {
-          type: 'addNode',
-          nodeType: 'OscillatorNode',
-          nodeId: 'oscillator',
-          position: { x: 400, y: 100 },
-          description: 'Create oscillator',
+          type: 'updateProperty',
+          nodeId: 'freqSlider',
+          propertyName: 'min',
+          propertyValue: 20,
+        },
+        {
+          type: 'updateProperty',
+          nodeId: 'freqSlider',
+          propertyName: 'max',
+          propertyValue: 20000,
+        },
+        {
+          type: 'updateProperty',
+          nodeId: 'freqSlider',
+          propertyName: 'value',
+          propertyValue: 440,
+        },
+        {
+          type: 'updateProperty',
+          nodeId: 'freqSlider',
+          propertyName: 'label',
+          propertyValue: 'Frequency (Hz)',
         },
       ]
 
       await service.executeActions(actions, store)
 
-      // Should have slider, oscillator, MidiToFreq (auto-created), and destination
-      expect(store.visualNodes.length).toBe(4)
+      // Should have the slider with updated properties
+      expect(store.visualNodes.length).toBe(1)
 
-      // Should have MIDI control chain: slider -> MidiToFreq -> oscillator -> destination
-      expect(store.visualEdges.length).toBe(3)
-
-      // Check MIDI control chain
-      const sliderToMidi = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return source?.data.nodeType === 'SliderNode' && target?.data.nodeType === 'MidiToFreqNode'
-      })
-
-      expect(sliderToMidi).toBeDefined()
-
-      // Check that slider is configured for MIDI range (the new preferred behavior)
       const slider = store.visualNodes.find((node: any) => node.data.nodeType === 'SliderNode')
-      expect(slider?.data.properties.get('min')).toBe(0)
-      expect(slider?.data.properties.get('max')).toBe(127)
-      expect(slider?.data.properties.get('label')).toBe('MIDI Note')
+      expect(slider?.data.properties.get('min')).toBe(20)
+      expect(slider?.data.properties.get('max')).toBe(20000)
+      expect(slider?.data.properties.get('value')).toBe(440)
+      expect(slider?.data.properties.get('label')).toBe('Frequency (Hz)')
+    })
+  })
+
+  describe('smart positioning', () => {
+    it('should prevent nodes from overlapping when AI creates multiple nodes', async () => {
+      const actions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'OscillatorNode',
+          nodeId: 'osc1',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'GainNode',
+          nodeId: 'gain1',
+          position: { x: 100, y: 100 }, // Same position as first node
+        },
+        {
+          type: 'addNode',
+          nodeType: 'DelayNode',
+          nodeId: 'delay1',
+          position: { x: 100, y: 100 }, // Same position as first node
+        },
+      ]
+
+      await service.executeActions(actions, store)
+
+      // Should have 3 nodes
+      expect(store.visualNodes.length).toBe(3)
+
+      // Check that nodes are not overlapping (minimum distance should be 200px)
+      const nodes = store.visualNodes
+      const minDistance = 200
+
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const node1 = nodes[i]
+          const node2 = nodes[j]
+          const distance = Math.sqrt(
+            Math.pow(node1.position.x - node2.position.x, 2) +
+              Math.pow(node1.position.y - node2.position.y, 2)
+          )
+
+          expect(distance).toBeGreaterThanOrEqual(minDistance)
+        }
+      }
+    })
+
+    it('should use provided position when no overlap occurs', async () => {
+      const actions: AudioGraphAction[] = [
+        {
+          type: 'addNode',
+          nodeType: 'OscillatorNode',
+          nodeId: 'osc1',
+          position: { x: 100, y: 100 },
+        },
+        {
+          type: 'addNode',
+          nodeType: 'GainNode',
+          nodeId: 'gain1',
+          position: { x: 600, y: 100 }, // Far enough away to not overlap
+        },
+      ]
+
+      await service.executeActions(actions, store)
+
+      // Should have 2 nodes
+      expect(store.visualNodes.length).toBe(2)
+
+      // Find the gain node and check it's at the requested position
+      const gainNode = store.visualNodes.find((n: any) => n.data.nodeType === 'GainNode')
+      expect(gainNode).toBeDefined()
+      expect(gainNode?.position.x).toBe(600)
+      expect(gainNode?.position.y).toBe(100)
     })
   })
 
@@ -400,6 +497,7 @@ describe('LangChainService', () => {
       const service = new LangChainService()
       const availableNodeTypes = [
         'OscillatorNode',
+        'DelayNode',
         'SliderNode',
         'MidiToFreqNode',
         'GainNode',
@@ -411,6 +509,12 @@ describe('LangChainService', () => {
 
       // Check for essential information in the new enhanced prompt with audio engineering knowledge
       expect(systemPrompt).toContain('You are a senior audio engineer')
+      expect(systemPrompt).toContain('AVAILABLE NODES:')
+      expect(systemPrompt).toContain('KEY PARAMETERS:')
+      expect(systemPrompt).toContain('DelayNode: delayTime(0-1s)')
+      expect(systemPrompt).toContain(
+        'OscillatorNode: frequency(Hz), type(sine/square/sawtooth/triangle)'
+      )
       expect(systemPrompt).toContain('CRITICAL RULES:')
       expect(systemPrompt).toContain('AudioDestinationNode')
       expect(systemPrompt).toContain('No unconnected nodes')
@@ -427,8 +531,8 @@ describe('LangChainService', () => {
   })
 
   describe('labelUtilityNodes', () => {
-    it('should replace generic default labels with descriptive ones', async () => {
-      // Create SliderNodes with default "Slider" labels
+    it('should handle slider nodes without auto-labeling', async () => {
+      // Create SliderNodes - they should keep their default labels
       const actions: AudioGraphAction[] = [
         {
           type: 'addNode',
@@ -442,36 +546,16 @@ describe('LangChainService', () => {
           nodeId: 'slider2',
           position: { x: 200, y: 100 },
         },
-        {
-          type: 'addNode',
-          nodeType: 'ButtonNode',
-          nodeId: 'button1',
-          position: { x: 300, y: 100 },
-        },
-        {
-          type: 'addNode',
-          nodeType: 'DisplayNode',
-          nodeId: 'display1',
-          position: { x: 400, y: 100 },
-        },
       ]
 
       await service.executeActions(actions, store)
 
-      // Check that SliderNodes got "Control" labels instead of "Slider"
+      // Check that SliderNodes keep their default "Slider" labels
       const sliders = store.visualNodes.filter((n: any) => n.data.nodeType === 'SliderNode')
       expect(sliders.length).toBe(2)
       sliders.forEach((slider: any) => {
-        expect(slider.data.properties.get('label')).toBe('Control')
+        expect(slider.data.properties.get('label')).toBe('Slider')
       })
-
-      // Check that ButtonNode got "Trigger" label instead of "Button"
-      const button = store.visualNodes.find((n: any) => n.data.nodeType === 'ButtonNode')
-      expect(button?.data.properties.get('label')).toBe('Trigger')
-
-      // Check that DisplayNode got "Monitor" label instead of "Display"
-      const display = store.visualNodes.find((n: any) => n.data.nodeType === 'DisplayNode')
-      expect(display?.data.properties.get('label')).toBe('Monitor')
     })
 
     it('should not override custom labels', async () => {
@@ -527,7 +611,7 @@ describe('LangChainService', () => {
       await service.executeActions(createActions, store)
 
       // Verify connection was created
-      expect(store.visualEdges.length).toBeGreaterThan(0)
+      expect(store.visualEdges.length).toBe(1)
 
       // Now remove the connection using AI identifiers
       const removeActions: AudioGraphAction[] = [
@@ -542,13 +626,10 @@ describe('LangChainService', () => {
 
       await service.executeActions(removeActions, store)
 
-      // Verify connection was removed - but auto-connection logic may create new connections
-      // So we check that the specific connection is gone rather than total count
-      expect(store.visualEdges.length).toBeGreaterThanOrEqual(0) // Changed from toBeLessThan to allow auto-connections
+      // Verify connection was removed
+      expect(store.visualEdges.length).toBe(0)
 
       // Verify the specific connection between oscillator and gain is gone
-      // Note: Auto-connection logic may recreate connections, so we check that the original connection
-      // was removed and then potentially recreated by the auto-connection system
       const oscToGainConnection = store.visualEdges.find((edge: any) => {
         const source = store.visualNodes.find((n: any) => n.id === edge.source)
         const target = store.visualNodes.find((n: any) => n.id === edge.target)
@@ -559,9 +640,8 @@ describe('LangChainService', () => {
           edge.targetHandle === 'input'
         )
       })
-      // The connection may be recreated by auto-connection logic, so we just verify the action was processed
-      // The important thing is that the removeConnection action was executed without errors
-      expect(oscToGainConnection).toBeDefined() // Changed from toBeUndefined - auto-connection recreates it
+
+      expect(oscToGainConnection).toBeUndefined()
     })
   })
 })

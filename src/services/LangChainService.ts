@@ -86,14 +86,35 @@ export class LangChainService {
   }
 
   private getSystemPrompt(availableNodeTypes: string[]): string {
-    return `You are a senior audio engineer building Web Audio API graphs. Available: ${availableNodeTypes.join(', ')}
+    // Create concise parameter info - only essential parameters
+    const essentialParams: Record<string, string> = {
+      DelayNode: 'delayTime(0-1s)',
+      OscillatorNode: 'frequency(Hz), type(sine/square/sawtooth/triangle)',
+      BiquadFilterNode: 'frequency(Hz), Q(resonance), type(lowpass/highpass/etc)',
+      GainNode: 'gain(0-2)',
+      DynamicsCompressorNode: 'threshold(-100-0), ratio(1-20), attack(0-1), release(0-1)',
+      StereoPannerNode: 'pan(-1 to 1)',
+      SliderNode: 'min, max, value, step, label',
+      MidiToFreqNode: 'midiNote(0-127)',
+    }
+
+    const paramInfo = availableNodeTypes
+      .filter(type => essentialParams[type])
+      .map(type => `${type}: ${essentialParams[type]}`)
+      .join(', ')
+
+    return `You are a senior audio engineer building Web Audio API graphs.
+
+AVAILABLE NODES: ${availableNodeTypes.join(', ')}
+KEY PARAMETERS: ${paramInfo}
 
 CRITICAL RULES:
 1. Every graph needs AudioDestinationNode
-2. No unconnected nodes
+2. No unconnected nodes - every node must be part of the audio signal path
 3. Audio flow: sources → effects → AudioDestinationNode
 4. Check existing nodes - don't duplicate
 5. PROVIDE COMPLETE SETUPS IN ONE REQUEST - include all nodes, connections, and controls needed
+6. ALWAYS SET ESSENTIAL PARAMETERS - don't create nodes without configuring their key parameters
 
 WHEN TO CREATE NODES:
 - User asks to "create", "add", "make", "build" something new
@@ -106,12 +127,10 @@ WHEN NOT TO CREATE NODES (return {"actions": []}):
 - User requests already exist in current graph
 - User asks about existing functionality
 
-You are a senior audio engineer. Think about all the parameters of the nodes and their relations with the task requested.
-
 COMPLETE SETUPS:
 For requests like "vintage synth with delay" or "synth with user control", provide ALL necessary components:
-- Audio sources (OscillatorNode with proper waveform)
-- Effects chain (filters, delays, etc. with proper parameters)
+- Audio sources (OscillatorNode with proper waveform and frequency)
+- Effects chain (filters, delays, etc. with proper parameters configured)
 - User controls (SliderNode + MidiToFreqNode for musical control)
 - All connections between nodes
 - AudioDestinationNode for output
@@ -126,11 +145,12 @@ AUDIO ENGINEERING KNOWLEDGE:
 - Classic chains: Oscillator → Filter → Gain → Destination
 - Musical control: MIDI notes (0-127) via MidiToFreqNode for proper pitch
 - Effects order: Distortion → Filter → Delay → Reverb → Gain → Destination
+- Delay effects: delayTime 0.1-0.5s for slap-back, 0.25-0.5s for echo, feedback gain 0.3-0.7
 
 NODE BEHAVIOR:
 - OscillatorNode: needs frequency input OR direct property OR silent
 - MidiToFreqNode: needs midiNote input (0-127) OR outputs 0Hz
-- Audio effects: must be in signal path
+- Audio effects: must be in signal path with proper parameters
 - Control nodes: must connect to parameters
 
 FREQUENCY STRATEGY:
@@ -409,6 +429,53 @@ Request: ${message}`
     // Create a mapping from AI-provided nodeIds to actual generated nodeIds
     const nodeIdMapping: Record<string, string> = {}
 
+    // Smart positioning to avoid overlaps
+    const getSmartPosition = (requestedPosition?: { x: number; y: number }) => {
+      const basePosition = requestedPosition || { x: 100, y: 100 }
+      const nodeSpacing = 200 // Reduced from 400 to 200 for more compact layout
+      const existingNodes = store.visualNodes
+
+      // If no existing nodes, use the base position
+      if (existingNodes.length === 0) {
+        return basePosition
+      }
+
+      // Check if position is too close to existing nodes
+      let position = { ...basePosition }
+      let attempts = 0
+      const maxAttempts = 20
+
+      while (attempts < maxAttempts) {
+        let tooClose = false
+
+        for (const existingNode of existingNodes) {
+          const distance = Math.sqrt(
+            Math.pow(position.x - existingNode.position.x, 2) +
+              Math.pow(position.y - existingNode.position.y, 2)
+          )
+
+          if (distance < nodeSpacing) {
+            tooClose = true
+            break
+          }
+        }
+
+        if (!tooClose) break
+
+        // Adjust position in a spiral pattern
+        const angle = attempts * 0.5 * Math.PI
+        const radius = nodeSpacing + attempts * 50
+        position = {
+          x: basePosition.x + Math.cos(angle) * radius,
+          y: basePosition.y + Math.sin(angle) * radius,
+        }
+
+        attempts++
+      }
+
+      return position
+    }
+
     // First pass: Add all nodes (except forbidden ones) and build ID mapping
     for (const action of actions) {
       if (action.type === 'addNode' && action.nodeType) {
@@ -421,10 +488,10 @@ Request: ${message}`
         try {
           const nodeCountBefore = store.visualNodes.length
 
-          // Use provided position or default to (0, 0) - will be repositioned by smart layout
-          const position = action.position || { x: 0, y: 0 }
+          // Use smart positioning to avoid overlaps
+          const smartPosition = getSmartPosition(action.position)
 
-          store.addNode(action.nodeType, position)
+          store.addNode(action.nodeType, smartPosition)
 
           // Map AI's nodeId to the actual generated nodeId
           if (action.nodeId && store.visualNodes.length > nodeCountBefore) {
