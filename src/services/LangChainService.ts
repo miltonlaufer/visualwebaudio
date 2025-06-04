@@ -877,6 +877,22 @@ Request: ${message}`
         'MediaStreamAudioSourceNode',
         'MediaElementAudioSourceNode',
         'ConstantSourceNode',
+        'SoundFileNode', // SoundFileNode has audio output
+      ].includes(nodeType)
+
+      // IMPORTANT: Exclude control-only nodes like MidiToFreqNode
+      // MidiToFreqNode only has control outputs, not audio outputs
+      const isControlOnlyNode = [
+        'MidiToFreqNode',
+        'SliderNode',
+        'ButtonNode',
+        'DisplayNode',
+        'MidiInputNode',
+        'GreaterThanNode',
+        'EqualsNode',
+        'SelectNode',
+        'RandomNode',
+        'TimerNode',
       ].includes(nodeType)
 
       // Check if this node has any outgoing audio connections
@@ -884,7 +900,7 @@ Request: ${message}`
         edge => edge.source === node.id && edge.sourceHandle === 'output'
       )
 
-      return isAudioSource && !hasOutgoingAudioConnection
+      return isAudioSource && !isControlOnlyNode && !hasOutgoingAudioConnection
     })
 
     // Connect ALL unconnected source nodes to destination
@@ -928,6 +944,7 @@ Request: ${message}`
         'MediaStreamAudioSourceNode',
         'MediaElementAudioSourceNode',
         'ConstantSourceNode',
+        'SoundFileNode',
       ].includes(nodeType)
 
       const hasOutgoingConnection = store.visualEdges.some(
