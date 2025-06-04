@@ -276,93 +276,131 @@ Request: ${message}`
     try {
       // Clean the response - remove markdown code blocks if present
       let cleanResponse = response.trim()
-
-      // Remove markdown code blocks
       cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '')
-
-      // Check for truncated JSON (common signs)
-      if (cleanResponse.includes('"source') && !cleanResponse.includes('"}]')) {
-        console.warn('Detected truncated JSON response - attempting to fix')
-        // Try to close the JSON properly
-        if (cleanResponse.endsWith('"source')) {
-          cleanResponse += 'Handle": "output", "targetHandle": "input"}]}'
-        } else if (cleanResponse.endsWith('"sourceHandle": "output", "targetHandle": "input"')) {
-          cleanResponse += '}]}'
-        } else if (!cleanResponse.endsWith(']}')) {
-          cleanResponse += '}]}'
-        }
-      }
 
       // Try to find JSON in the response - look for both array and object formats
       let jsonMatch = cleanResponse.match(/\{[\s\S]*"actions"[\s\S]*\}/)
-
       if (!jsonMatch) {
-        // Try to find a direct array format
         jsonMatch = cleanResponse.match(/\[[\s\S]*\]/)
       }
-
       if (!jsonMatch) {
-        // Try to parse the entire response as JSON
         jsonMatch = [cleanResponse]
       }
 
       if (!jsonMatch) {
-        console.warn('No JSON found in response:', response)
+        console.warn('No JSON found in AI response')
         return []
       }
 
       const jsonStr = jsonMatch[0]
 
-      // Validate JSON before parsing
+      // Try to parse JSON with basic error recovery
       try {
-        JSON.parse(jsonStr)
+        const parsed = JSON.parse(jsonStr)
+
+        // Handle object with actions array
+        if (parsed.actions && Array.isArray(parsed.actions)) {
+          return parsed.actions.map((action: any) => ({
+            type: action.type,
+            nodeId: action.nodeId,
+            nodeType: action.nodeType,
+            position: action.position,
+            sourceId: action.sourceId,
+            targetId: action.targetId,
+            sourceHandle: action.sourceHandle || 'output',
+            targetHandle: action.targetHandle || 'input',
+            propertyName: action.propertyName,
+            propertyValue: action.propertyValue,
+            description: action.description,
+          }))
+        }
+
+        // Handle direct array format
+        if (Array.isArray(parsed)) {
+          return parsed.map((action: any) => ({
+            type: action.type,
+            nodeId: action.nodeId,
+            nodeType: action.nodeType,
+            position: action.position,
+            sourceId: action.sourceId,
+            targetId: action.targetId,
+            sourceHandle: action.sourceHandle || 'output',
+            targetHandle: action.targetHandle || 'input',
+            propertyName: action.propertyName,
+            propertyValue: action.propertyValue,
+            description: action.description,
+          }))
+        }
+
+        console.warn('Parsed JSON does not contain actions array or is not an array')
+        return []
       } catch (parseError) {
-        console.warn('Invalid JSON detected, attempting to fix:', parseError)
-        console.warn('JSON string was:', jsonStr)
+        // Basic JSON repair for common issues
+        let fixedJson = jsonStr
+
+        // Fix smart quotes and encoding issues
+        fixedJson = fixedJson.replace(/[""]/g, '"').replace(/['']/g, "'")
+
+        // Remove non-printable characters
+        fixedJson = fixedJson.replace(/[^\x20-\x7E\n\r\t]/g, '')
+
+        // Try to balance brackets and braces for truncated JSON
+        if (fixedJson.includes('"actions"') && fixedJson.includes('[')) {
+          const openBraces = (fixedJson.match(/\{/g) || []).length
+          const closeBraces = (fixedJson.match(/\}/g) || []).length
+          const openBrackets = (fixedJson.match(/\[/g) || []).length
+          const closeBrackets = (fixedJson.match(/\]/g) || []).length
+
+          for (let i = 0; i < openBrackets - closeBrackets; i++) {
+            fixedJson += ']'
+          }
+          for (let i = 0; i < openBraces - closeBraces; i++) {
+            fixedJson += '}'
+          }
+        }
+
+        try {
+          const parsed = JSON.parse(fixedJson)
+
+          if (parsed.actions && Array.isArray(parsed.actions)) {
+            return parsed.actions.map((action: any) => ({
+              type: action.type,
+              nodeId: action.nodeId,
+              nodeType: action.nodeType,
+              position: action.position,
+              sourceId: action.sourceId,
+              targetId: action.targetId,
+              sourceHandle: action.sourceHandle || 'output',
+              targetHandle: action.targetHandle || 'input',
+              propertyName: action.propertyName,
+              propertyValue: action.propertyValue,
+              description: action.description,
+            }))
+          }
+
+          if (Array.isArray(parsed)) {
+            return parsed.map((action: any) => ({
+              type: action.type,
+              nodeId: action.nodeId,
+              nodeType: action.nodeType,
+              position: action.position,
+              sourceId: action.sourceId,
+              targetId: action.targetId,
+              sourceHandle: action.sourceHandle || 'output',
+              targetHandle: action.targetHandle || 'input',
+              propertyName: action.propertyName,
+              propertyValue: action.propertyValue,
+              description: action.description,
+            }))
+          }
+        } catch {
+          console.warn('Failed to parse AI response JSON:', parseError)
+        }
+
         return []
       }
-
-      const parsed = JSON.parse(jsonStr)
-
-      // Handle object with actions array
-      if (parsed.actions && Array.isArray(parsed.actions)) {
-        return parsed.actions.map((action: any) => ({
-          type: action.type,
-          nodeId: action.nodeId,
-          nodeType: action.nodeType,
-          position: action.position,
-          sourceId: action.sourceId,
-          targetId: action.targetId,
-          sourceHandle: action.sourceHandle || 'output',
-          targetHandle: action.targetHandle || 'input',
-          propertyName: action.propertyName,
-          propertyValue: action.propertyValue,
-          description: action.description,
-        }))
-      }
-
-      // Handle direct array format
-      if (Array.isArray(parsed)) {
-        return parsed.map((action: any) => ({
-          type: action.type,
-          nodeId: action.nodeId,
-          nodeType: action.nodeType,
-          position: action.position,
-          sourceId: action.sourceId,
-          targetId: action.targetId,
-          sourceHandle: action.sourceHandle || 'output',
-          targetHandle: action.targetHandle || 'input',
-          propertyName: action.propertyName,
-          propertyValue: action.propertyValue,
-          description: action.description,
-        }))
-      }
-
-      console.warn('Parsed JSON does not contain actions array or is not an array:', parsed)
-      return []
     } catch (error) {
-      console.warn('Failed to parse actions from response:', error)
-      console.warn('Response was:', response)
+      console.warn('Failed to extract actions from AI response:', error)
       return []
     }
   }
@@ -382,15 +420,16 @@ Request: ${message}`
 
         try {
           const nodeCountBefore = store.visualNodes.length
+
           // Use provided position or default to (0, 0) - will be repositioned by smart layout
           const position = action.position || { x: 0, y: 0 }
+
           store.addNode(action.nodeType, position)
 
           // Map AI's nodeId to the actual generated nodeId
           if (action.nodeId && store.visualNodes.length > nodeCountBefore) {
             const newNode = store.visualNodes[store.visualNodes.length - 1]
             nodeIdMapping[action.nodeId] = newNode.id
-            console.log(`Mapped AI nodeId "${action.nodeId}" to actual nodeId "${newNode.id}"`)
           }
         } catch (error) {
           console.error('Failed to add node:', action, error)
@@ -433,9 +472,6 @@ Request: ${message}`
                   action.sourceHandle || 'output',
                   action.targetHandle || 'input'
                 )
-                console.log(
-                  `✅ Connected ${sourceNode.data.nodeType} → ${targetNode.data.nodeType}`
-                )
               } else {
                 console.warn(
                   'Could not find nodes for connection:',
@@ -452,53 +488,41 @@ Request: ${message}`
               const sourceId = nodeIdMapping[action.sourceId] || action.sourceId
               const targetId = nodeIdMapping[action.targetId] || action.targetId
 
-              // Try to find nodes using intelligent matching if direct ID lookup fails
               let sourceNode = store.visualNodes.find(n => n.id === sourceId)
               let targetNode = store.visualNodes.find(n => n.id === targetId)
 
               if (!sourceNode) {
                 sourceNode = this.findNodeByIdOrType(store, action.sourceId)
-                console.log(
-                  `RemoveConnection: Found source node for "${action.sourceId}": ${sourceNode?.data.nodeType} (${sourceNode?.id})`
-                )
               }
               if (!targetNode) {
                 targetNode = this.findNodeByIdOrType(store, action.targetId)
-                console.log(
-                  `RemoveConnection: Found target node for "${action.targetId}": ${targetNode?.data.nodeType} (${targetNode?.id})`
-                )
               }
 
               if (sourceNode && targetNode) {
-                const actualSourceId = sourceNode.id
-                const actualTargetId = targetNode.id
-
                 const edge = store.visualEdges.find(
                   e =>
-                    e.source === actualSourceId &&
-                    e.target === actualTargetId &&
+                    e.source === sourceNode.id &&
+                    e.target === targetNode.id &&
                     e.sourceHandle === (action.sourceHandle || 'output') &&
                     e.targetHandle === (action.targetHandle || 'input')
                 )
+
                 if (edge) {
-                  console.log(
-                    `RemoveConnection: Removing edge ${edge.id} from ${sourceNode.data.nodeType} to ${targetNode.data.nodeType}`
-                  )
                   store.removeEdge(edge.id)
                 } else {
                   console.warn(
-                    `RemoveConnection: Could not find edge from ${sourceNode.data.nodeType}(${actualSourceId}) to ${targetNode.data.nodeType}(${actualTargetId})`
-                  )
-                  console.warn(
-                    'Available edges:',
-                    store.visualEdges.map(
-                      e => `${e.source} -> ${e.target} (${e.sourceHandle} -> ${e.targetHandle})`
-                    )
+                    'Could not find edge for disconnection:',
+                    action.sourceId,
+                    '→',
+                    action.targetId
                   )
                 }
               } else {
                 console.warn(
-                  `RemoveConnection: Could not find nodes for connection: ${action.sourceId} -> ${action.targetId}`
+                  'Could not find nodes for disconnection:',
+                  action.sourceId,
+                  '→',
+                  action.targetId
                 )
               }
             }
@@ -516,6 +540,8 @@ Request: ${message}`
 
               if (node) {
                 store.updateNodeProperty(node.id, action.propertyName, action.propertyValue)
+              } else {
+                console.warn('Could not find node for property update:', action.nodeId)
               }
             }
             break
@@ -528,36 +554,6 @@ Request: ${message}`
       } catch (error) {
         console.error('Failed to execute action:', action, error)
       }
-    }
-
-    // Third pass: Only ensure proper audio chain if we added new nodes AND the AI didn't provide explicit connections
-    const hasAddNodeActions = actions.some(action => action.type === 'addNode')
-    const hasConnectionActions = actions.some(action => action.type === 'addConnection')
-
-    // If AI provided explicit connections, trust them and only do minimal auto-connection
-    if (hasAddNodeActions && !hasConnectionActions) {
-      console.log('AI provided no connections - running full auto-connection')
-      this.ensureProperAudioChain(store)
-    } else if (hasAddNodeActions && hasConnectionActions) {
-      console.log('AI provided explicit connections - only connecting truly unconnected nodes')
-      this.connectOnlyUnconnectedNodes(store)
-    }
-
-    // Always apply pro audio engineering (including labeling) when nodes are added
-    if (hasAddNodeActions) {
-      console.log('Applying pro audio engineering and labeling')
-      const availableSliders = store.visualNodes.filter(node => {
-        const isSlider = node.data.nodeType === 'SliderNode'
-        const isUnconnected = !store.visualEdges.some(edge => edge.source === node.id)
-        return isSlider && isUnconnected
-      })
-      this.applyProAudioEngineering(store, availableSliders)
-    }
-
-    // Fourth pass: Smart auto-layout to prevent overlapping nodes
-    if (hasAddNodeActions) {
-      console.log('Applying smart auto-layout to prevent overlapping')
-      this.applySmartLayout(store)
     }
   }
 
@@ -678,783 +674,6 @@ Request: ${message}`
     }
 
     return node
-  }
-
-  private connectOnlyUnconnectedNodes(store: AudioGraphStoreType): void {
-    // This is a more conservative version of ensureProperAudioChain
-    // It only connects nodes that are completely unconnected, without overriding AI's explicit connections
-
-    // Ensure we have an AudioDestinationNode
-    let destinationNode = store.visualNodes.find(
-      node => node.data.nodeType === 'AudioDestinationNode'
-    )
-
-    if (!destinationNode) {
-      const rightmostX = store.visualNodes.reduce((max, node) => Math.max(max, node.position.x), 0)
-      store.addNode('AudioDestinationNode', {
-        x: rightmostX + 400,
-        y: 100,
-      })
-      destinationNode = store.visualNodes[store.visualNodes.length - 1]
-    }
-
-    if (!destinationNode) return
-
-    // Only connect nodes that have NO connections at all (completely isolated)
-    const completelyUnconnectedNodes = store.visualNodes.filter(node => {
-      const hasAnyConnection = store.visualEdges.some(
-        edge => edge.source === node.id || edge.target === node.id
-      )
-      return !hasAnyConnection && node.data.nodeType !== 'AudioDestinationNode'
-    })
-
-    // Connect only audio source nodes that are completely unconnected
-    completelyUnconnectedNodes.forEach(node => {
-      const nodeType = node.data.nodeType
-      const isAudioSource = [
-        'OscillatorNode',
-        'AudioBufferSourceNode',
-        'MediaStreamAudioSourceNode',
-        'MediaElementAudioSourceNode',
-        'ConstantSourceNode',
-      ].includes(nodeType)
-
-      if (isAudioSource) {
-        try {
-          store.addEdge(node.id, destinationNode!.id, 'output', 'input')
-          console.log(`Connected isolated ${nodeType} to destination`)
-        } catch (error) {
-          console.error('Failed to connect isolated source to destination:', error)
-        }
-      }
-    })
-
-    console.log('Minimal auto-connection complete - preserved AI connections')
-  }
-
-  private ensureProperAudioChain(store: AudioGraphStoreType): void {
-    // Check if we have an AudioDestinationNode
-    let destinationNode = store.visualNodes.find(
-      node => node.data.nodeType === 'AudioDestinationNode'
-    )
-
-    // If no destination node, create one
-    if (!destinationNode) {
-      const rightmostX = store.visualNodes.reduce((max, node) => Math.max(max, node.position.x), 0)
-
-      store.addNode('AudioDestinationNode', {
-        x: rightmostX + 400, // Increased spacing from 300 to 400
-        y: 100,
-      })
-
-      destinationNode = store.visualNodes[store.visualNodes.length - 1]
-    }
-
-    if (!destinationNode) return
-
-    // CRITICAL: NO UNCONNECTED NODES ALLOWED
-    // Every node must either:
-    // 1. Be part of the audio signal chain (audio input/output connections)
-    // 2. Control parameters of other nodes (parameter connections)
-    // 3. Be connected to the destination if it's an audio source
-
-    // PRIORITY 1: Complete MIDI musical setups (PREFERRED FOR MUSICAL APPLICATIONS)
-    // Find components for complete musical chain
-    const unconnectedSliders = store.visualNodes.filter(node => {
-      const isSlider = node.data.nodeType === 'SliderNode'
-      const hasOutgoingConnection = store.visualEdges.some(edge => edge.source === node.id)
-      return isSlider && !hasOutgoingConnection
-    })
-
-    const unconnectedMidiToFreq = store.visualNodes.filter(node => {
-      const isMidiToFreq = node.data.nodeType === 'MidiToFreqNode'
-      const hasIncomingConnection = store.visualEdges.some(edge => edge.target === node.id)
-      return isMidiToFreq && !hasIncomingConnection
-    })
-
-    const oscillatorsNeedingFreqControl = store.visualNodes.filter(node => {
-      const isOscillator = node.data.nodeType === 'OscillatorNode'
-      const hasFreqConnection = store.visualEdges.some(
-        edge => edge.target === node.id && edge.targetHandle === 'frequency'
-      )
-      // Check if frequency property is already set
-      const hasFreqProperty =
-        node.data.properties.has('frequency') && node.data.properties.get('frequency') !== undefined
-      return isOscillator && !hasFreqConnection && !hasFreqProperty
-    })
-
-    // PRIORITY 1A: If we have oscillators that need frequency control AND no MidiToFreqNode, CREATE ONE for musical control
-    // BUT ONLY if the oscillators don't already have their frequency set
-    if (oscillatorsNeedingFreqControl.length > 0 && unconnectedMidiToFreq.length === 0) {
-      // Create MidiToFreqNode for musical control with better spacing
-      const rightmostX = store.visualNodes.reduce((max, node) => Math.max(max, node.position.x), 0)
-
-      store.addNode('MidiToFreqNode', {
-        x: rightmostX + 400, // Increased spacing from 200 to 400
-        y: oscillatorsNeedingFreqControl[0].position.y,
-      })
-
-      // Update the list to include the newly created MidiToFreqNode
-      const newMidiToFreq = store.visualNodes[store.visualNodes.length - 1]
-      if (newMidiToFreq && newMidiToFreq.data.nodeType === 'MidiToFreqNode') {
-        console.log('Created MidiToFreqNode for musical frequency control')
-      }
-    }
-
-    // Re-fetch after potential creation
-    const updatedUnconnectedMidiToFreq = store.visualNodes.filter(node => {
-      const isMidiToFreq = node.data.nodeType === 'MidiToFreqNode'
-      const hasIncomingConnection = store.visualEdges.some(edge => edge.target === node.id)
-      return isMidiToFreq && !hasIncomingConnection
-    })
-
-    // PRIORITY 1B: Create complete MIDI musical setup if components are available
-    if (
-      unconnectedSliders.length > 0 &&
-      updatedUnconnectedMidiToFreq.length > 0 &&
-      oscillatorsNeedingFreqControl.length > 0
-    ) {
-      const slider = unconnectedSliders[0]
-      const midiToFreq = updatedUnconnectedMidiToFreq[0]
-      const oscillator = oscillatorsNeedingFreqControl[0]
-
-      try {
-        // Create complete MIDI control chain: Slider → MidiToFreq → Oscillator.frequency
-        store.addEdge(slider.id, midiToFreq.id, 'value', 'midiNote')
-        store.addEdge(midiToFreq.id, oscillator.id, 'frequency', 'frequency')
-
-        // Set up slider for MIDI range (0-127)
-        store.updateNodeProperty(slider.id, 'min', 0)
-        store.updateNodeProperty(slider.id, 'max', 127)
-        store.updateNodeProperty(slider.id, 'value', 60) // Middle C
-        store.updateNodeProperty(slider.id, 'step', 1)
-        store.updateNodeProperty(slider.id, 'label', 'MIDI Note')
-
-        console.log('Created complete MIDI control chain')
-      } catch (error) {
-        console.error('Failed to create MIDI control chain:', error)
-      }
-    }
-    // If we have MidiToFreq and Oscillator but no slider, still connect them
-    else if (updatedUnconnectedMidiToFreq.length > 0 && oscillatorsNeedingFreqControl.length > 0) {
-      const midiToFreq = updatedUnconnectedMidiToFreq[0]
-      const oscillator = oscillatorsNeedingFreqControl[0]
-
-      try {
-        store.addEdge(midiToFreq.id, oscillator.id, 'frequency', 'frequency')
-        console.log('Connected MidiToFreq to Oscillator')
-      } catch (error) {
-        console.error('Failed to connect MidiToFreq to Oscillator:', error)
-      }
-    }
-    // If we have sliders and oscillators but no MidiToFreq, connect directly for frequency control
-    else if (unconnectedSliders.length > 0 && oscillatorsNeedingFreqControl.length > 0) {
-      const slider = unconnectedSliders[0]
-      const oscillator = oscillatorsNeedingFreqControl[0]
-
-      try {
-        store.addEdge(slider.id, oscillator.id, 'value', 'frequency')
-
-        // Set up slider for frequency range
-        store.updateNodeProperty(slider.id, 'min', 100)
-        store.updateNodeProperty(slider.id, 'max', 2000)
-        store.updateNodeProperty(slider.id, 'value', 440)
-        store.updateNodeProperty(slider.id, 'step', 10)
-        store.updateNodeProperty(slider.id, 'label', 'Frequency (Hz)')
-
-        console.log('Created direct frequency control')
-      } catch (error) {
-        console.error('Failed to create frequency control:', error)
-      }
-    }
-
-    // PRIORITY 2: Connect ALL unconnected audio source nodes to destination
-    const allAudioSources = store.visualNodes.filter(node => {
-      const nodeType = node.data.nodeType
-      const isAudioSource = [
-        'OscillatorNode',
-        'AudioBufferSourceNode',
-        'MediaStreamAudioSourceNode',
-        'MediaElementAudioSourceNode',
-        'ConstantSourceNode',
-        'SoundFileNode', // SoundFileNode has audio output
-      ].includes(nodeType)
-
-      // IMPORTANT: Exclude control-only nodes like MidiToFreqNode
-      // MidiToFreqNode only has control outputs, not audio outputs
-      const isControlOnlyNode = [
-        'MidiToFreqNode',
-        'SliderNode',
-        'ButtonNode',
-        'DisplayNode',
-        'MidiInputNode',
-        'GreaterThanNode',
-        'EqualsNode',
-        'SelectNode',
-        'RandomNode',
-        'TimerNode',
-      ].includes(nodeType)
-
-      // Check if this node has any outgoing audio connections
-      const hasOutgoingAudioConnection = store.visualEdges.some(
-        edge => edge.source === node.id && edge.sourceHandle === 'output'
-      )
-
-      return isAudioSource && !isControlOnlyNode && !hasOutgoingAudioConnection
-    })
-
-    // Connect ALL unconnected source nodes to destination
-    allAudioSources.forEach(sourceNode => {
-      try {
-        store.addEdge(sourceNode.id, destinationNode!.id, 'output', 'input')
-        console.log(`Connected ${sourceNode.data.nodeType} to destination`)
-      } catch (error) {
-        console.error('Failed to connect source to destination:', error)
-      }
-    })
-
-    // PRIORITY 3: Insert effect nodes into existing audio chains
-    const unconnectedEffectNodes = store.visualNodes.filter(node => {
-      const nodeType = node.data.nodeType
-      const isEffect = [
-        'GainNode',
-        'BiquadFilterNode',
-        'DelayNode',
-        'ConvolverNode',
-        'DynamicsCompressorNode',
-        'WaveShaperNode',
-        'StereoPannerNode',
-      ].includes(nodeType)
-
-      const hasAudioConnections = store.visualEdges.some(
-        edge =>
-          (edge.source === node.id && edge.sourceHandle === 'output') ||
-          (edge.target === node.id && edge.targetHandle === 'input')
-      )
-
-      return isEffect && !hasAudioConnections
-    })
-
-    // Find existing audio chains to insert effects into
-    const connectedSources = store.visualNodes.filter(node => {
-      const nodeType = node.data.nodeType
-      const isAudioSource = [
-        'OscillatorNode',
-        'AudioBufferSourceNode',
-        'MediaStreamAudioSourceNode',
-        'MediaElementAudioSourceNode',
-        'ConstantSourceNode',
-        'SoundFileNode',
-      ].includes(nodeType)
-
-      const hasOutgoingConnection = store.visualEdges.some(
-        edge => edge.source === node.id && edge.sourceHandle === 'output'
-      )
-
-      return isAudioSource && hasOutgoingConnection
-    })
-
-    // Insert unconnected effects into existing chains
-    unconnectedEffectNodes.forEach(effectNode => {
-      if (connectedSources.length > 0) {
-        const sourceNode = connectedSources[0]
-
-        try {
-          // Find the current connection from source to destination
-          const directConnection = store.visualEdges.find(
-            edge => edge.source === sourceNode.id && edge.target === destinationNode.id
-          )
-
-          if (directConnection) {
-            // Remove direct connection
-            store.removeEdge(directConnection.id)
-
-            // Create source → effect → destination chain
-            store.addEdge(sourceNode.id, effectNode.id, 'output', 'input')
-            store.addEdge(effectNode.id, destinationNode.id, 'output', 'input')
-            console.log(`Inserted ${effectNode.data.nodeType} into audio chain`)
-          }
-        } catch (error) {
-          console.error('Failed to insert effect into chain:', error)
-        }
-      }
-    })
-
-    // PRIORITY 4: Connect ALL remaining sliders to available parameters
-    const stillUnconnectedSliders = store.visualNodes.filter(node => {
-      const isSlider = node.data.nodeType === 'SliderNode'
-      const hasOutgoingConnection = store.visualEdges.some(edge => edge.source === node.id)
-      return isSlider && !hasOutgoingConnection
-    })
-
-    // 🎛️ PRO AUDIO ENGINEERING: Apply proper parameter controls for audio effects
-    this.applyProAudioEngineering(store, stillUnconnectedSliders)
-
-    // Re-fetch unconnected sliders after pro audio setup
-    const remainingUnconnectedSliders = store.visualNodes.filter(node => {
-      const isSlider = node.data.nodeType === 'SliderNode'
-      const hasOutgoingConnection = store.visualEdges.some(edge => edge.source === node.id)
-      return isSlider && !hasOutgoingConnection
-    })
-
-    // Find nodes with uncontrolled parameters
-    const nodesNeedingControl = store.visualNodes.filter(node => {
-      const nodeType = node.data.nodeType
-
-      // Define which nodes have which controllable parameters
-      const controllableParams: Record<string, string[]> = {
-        GainNode: ['gain'],
-        BiquadFilterNode: ['frequency', 'Q', 'gain'],
-        DelayNode: ['delayTime'],
-        DynamicsCompressorNode: ['threshold', 'ratio', 'attack', 'release'],
-        OscillatorNode: ['frequency', 'detune'],
-        StereoPannerNode: ['pan'],
-        WaveShaperNode: ['curve'],
-        ConvolverNode: ['normalize'],
-        AnalyserNode: ['fftSize', 'smoothingTimeConstant'],
-      }
-
-      const params = controllableParams[nodeType] || []
-
-      // Check if any parameter is uncontrolled
-      return params.some(param => {
-        const hasParamConnection = store.visualEdges.some(
-          edge => edge.target === node.id && edge.targetHandle === param
-        )
-        return !hasParamConnection
-      })
-    })
-
-    // Connect remaining sliders to available parameters
-    remainingUnconnectedSliders.forEach((slider, index) => {
-      if (index < nodesNeedingControl.length) {
-        const targetNode = nodesNeedingControl[index]
-        const nodeType = targetNode.data.nodeType
-
-        // Determine best parameter to control and slider configuration
-        let targetParam = 'gain'
-        let sliderConfig = { min: 0, max: 100, value: 50, step: 1, label: 'Control' }
-
-        if (nodeType === 'GainNode') {
-          targetParam = 'gain'
-          sliderConfig = { min: 0, max: 100, value: 50, step: 1, label: 'Volume' }
-        } else if (nodeType === 'BiquadFilterNode') {
-          // Check if frequency is already controlled
-          const hasFreqControl = store.visualEdges.some(
-            edge => edge.target === targetNode.id && edge.targetHandle === 'frequency'
-          )
-          if (!hasFreqControl) {
-            targetParam = 'frequency'
-            sliderConfig = {
-              min: 100,
-              max: 10000,
-              value: 1000,
-              step: 10,
-              label: 'Filter Frequency',
-            }
-          } else {
-            targetParam = 'Q'
-            sliderConfig = { min: 0.1, max: 30, value: 5, step: 0.1, label: 'Filter Resonance' }
-          }
-        } else if (nodeType === 'DelayNode') {
-          targetParam = 'delayTime'
-          sliderConfig = { min: 0.001, max: 1.0, value: 0.3, step: 0.001, label: 'Delay Time (s)' }
-        } else if (nodeType === 'OscillatorNode') {
-          // Check if frequency is already controlled
-          const hasFreqControl = store.visualEdges.some(
-            edge => edge.target === targetNode.id && edge.targetHandle === 'frequency'
-          )
-          if (!hasFreqControl) {
-            targetParam = 'frequency'
-            sliderConfig = { min: 20, max: 5000, value: 440, step: 1, label: 'Frequency (Hz)' }
-          } else {
-            targetParam = 'detune'
-            sliderConfig = { min: -100, max: 100, value: 0, step: 1, label: 'Detune (cents)' }
-          }
-        } else if (nodeType === 'DynamicsCompressorNode') {
-          targetParam = 'threshold'
-          sliderConfig = { min: -50, max: 0, value: -24, step: 1, label: 'Compressor Threshold' }
-        } else if (nodeType === 'StereoPannerNode') {
-          targetParam = 'pan'
-          sliderConfig = { min: -1, max: 1, value: 0, step: 0.1, label: 'Stereo Pan' }
-        } else if (nodeType === 'WaveShaperNode') {
-          targetParam = 'curve'
-          sliderConfig = { min: 0, max: 100, value: 50, step: 1, label: 'Distortion Drive' }
-        } else if (nodeType === 'ConvolverNode') {
-          targetParam = 'normalize'
-          sliderConfig = { min: 0, max: 1, value: 1, step: 0.1, label: 'Reverb Mix' }
-        }
-
-        try {
-          store.addEdge(slider.id, targetNode.id, 'value', targetParam)
-
-          // Configure slider with descriptive label and appropriate range
-          store.updateNodeProperty(slider.id, 'min', sliderConfig.min)
-          store.updateNodeProperty(slider.id, 'max', sliderConfig.max)
-          store.updateNodeProperty(slider.id, 'value', sliderConfig.value)
-          store.updateNodeProperty(slider.id, 'step', sliderConfig.step)
-          store.updateNodeProperty(slider.id, 'label', sliderConfig.label)
-
-          console.log(`Connected slider "${sliderConfig.label}" to ${nodeType}.${targetParam}`)
-        } catch (error) {
-          console.error('Failed to connect slider to parameter:', error)
-        }
-      }
-    })
-
-    // PRIORITY 5: Handle special delay feedback loops
-    const delayNodes = store.visualNodes.filter(node => node.data.nodeType === 'DelayNode')
-
-    delayNodes.forEach(delayNode => {
-      // Check if delay has feedback loop
-      const hasFeedbackLoop = store.visualEdges.some(
-        edge => edge.source === delayNode.id && edge.target === delayNode.id
-      )
-
-      if (!hasFeedbackLoop) {
-        // Find or create a GainNode for feedback
-        let feedbackGain = store.visualNodes.find(node => {
-          const isGain = node.data.nodeType === 'GainNode'
-          const isUnconnected = !store.visualEdges.some(
-            edge => edge.source === node.id || edge.target === node.id
-          )
-          return isGain && isUnconnected
-        })
-
-        if (!feedbackGain) {
-          // Create feedback gain node
-          store.addNode('GainNode', {
-            x: delayNode.position.x,
-            y: delayNode.position.y + 100,
-          })
-          feedbackGain = store.visualNodes[store.visualNodes.length - 1]
-
-          // Set feedback gain to 30%
-          store.updateNodeProperty(feedbackGain.id, 'gain', 0.3)
-        }
-
-        try {
-          // Create feedback loop: DelayNode → GainNode → DelayNode
-          store.addEdge(delayNode.id, feedbackGain.id, 'output', 'input')
-          store.addEdge(feedbackGain.id, delayNode.id, 'output', 'input')
-          console.log('Created delay feedback loop')
-        } catch (error) {
-          console.error('Failed to create delay feedback loop:', error)
-        }
-      }
-    })
-
-    // PRIORITY 6: Final check - connect ANY remaining unconnected nodes
-    const finalUnconnectedNodes = store.visualNodes.filter(node => {
-      const hasAnyConnection = store.visualEdges.some(
-        edge => edge.source === node.id || edge.target === node.id
-      )
-      return !hasAnyConnection && node.data.nodeType !== 'AudioDestinationNode'
-    })
-
-    // Force connect any remaining nodes
-    finalUnconnectedNodes.forEach(node => {
-      const nodeType = node.data.nodeType
-
-      try {
-        if (['ButtonNode', 'DisplayNode'].includes(nodeType)) {
-          // Connect utility nodes to the first available audio source
-          const audioSource = store.visualNodes.find(n =>
-            ['OscillatorNode', 'AudioBufferSourceNode'].includes(n.data.nodeType)
-          )
-          if (audioSource) {
-            if (nodeType === 'DisplayNode') {
-              // Connect audio source to display for monitoring
-              store.addEdge(audioSource.id, node.id, 'output', 'input')
-              // Set descriptive label for display
-              store.updateNodeProperty(node.id, 'label', 'Audio Level Monitor')
-              console.log(`Connected DisplayNode "Audio Level Monitor" to audio chain`)
-            } else if (nodeType === 'ButtonNode') {
-              // Connect button to audio source start/stop (if available)
-              store.addEdge(node.id, audioSource.id, 'trigger', 'start')
-              // Set descriptive label for button
-              store.updateNodeProperty(node.id, 'label', 'Play/Stop')
-              console.log(`Connected ButtonNode "Play/Stop" to audio chain`)
-            }
-          }
-        } else {
-          // For any other unconnected node, try to connect it to destination as audio
-          store.addEdge(node.id, destinationNode!.id, 'output', 'input')
-          console.log(`Force-connected ${nodeType} to destination`)
-        }
-      } catch (error) {
-        console.error(`Failed to force-connect ${nodeType}:`, error)
-      }
-    })
-
-    console.log('Audio chain verification complete - NO UNCONNECTED NODES ALLOWED')
-  }
-
-  private applyProAudioEngineering(store: AudioGraphStoreType, availableSliders: any[]): void {
-    // 🎛️ PRO AUDIO ENGINEERING: Apply proper parameter controls for audio effects
-
-    // 1. DelayNode: ALWAYS add delayTime control
-    const delayNodes = store.visualNodes.filter(node => {
-      const isDelay = node.data.nodeType === 'DelayNode'
-      const hasDelayTimeControl = store.visualEdges.some(
-        edge => edge.target === node.id && edge.targetHandle === 'delayTime'
-      )
-      return isDelay && !hasDelayTimeControl
-    })
-
-    delayNodes.forEach(delayNode => {
-      if (availableSliders.length > 0) {
-        const slider = availableSliders.shift()
-        try {
-          store.addEdge(slider.id, delayNode.id, 'value', 'delayTime')
-          store.updateNodeProperty(slider.id, 'min', 0.001)
-          store.updateNodeProperty(slider.id, 'max', 1.0)
-          store.updateNodeProperty(slider.id, 'value', 0.3)
-          store.updateNodeProperty(slider.id, 'step', 0.001)
-          store.updateNodeProperty(slider.id, 'label', 'Delay Time')
-          console.log('Added delay time control')
-        } catch (error) {
-          console.error('Failed to add delay time control:', error)
-        }
-      }
-    })
-
-    // 2. BiquadFilterNode: Add frequency control
-    const filterNodes = store.visualNodes.filter(node => {
-      const isFilter = node.data.nodeType === 'BiquadFilterNode'
-      const hasFreqControl = store.visualEdges.some(
-        edge => edge.target === node.id && edge.targetHandle === 'frequency'
-      )
-      return isFilter && !hasFreqControl
-    })
-
-    filterNodes.forEach(filterNode => {
-      if (availableSliders.length > 0) {
-        const slider = availableSliders.shift()
-        try {
-          store.addEdge(slider.id, filterNode.id, 'value', 'frequency')
-          store.updateNodeProperty(slider.id, 'min', 100)
-          store.updateNodeProperty(slider.id, 'max', 10000)
-          store.updateNodeProperty(slider.id, 'value', 1000)
-          store.updateNodeProperty(slider.id, 'step', 10)
-          store.updateNodeProperty(slider.id, 'label', 'Filter Freq')
-          console.log('Added filter frequency control')
-        } catch (error) {
-          console.error('Failed to add filter frequency control:', error)
-        }
-      }
-    })
-
-    // 3. GainNode: Add gain control (if not already used for volume in audio chain)
-    const gainNodes = store.visualNodes.filter(node => {
-      const isGain = node.data.nodeType === 'GainNode'
-      const hasGainControl = store.visualEdges.some(
-        edge => edge.target === node.id && edge.targetHandle === 'gain'
-      )
-      return isGain && !hasGainControl
-    })
-
-    gainNodes.forEach(gainNode => {
-      if (availableSliders.length > 0) {
-        const slider = availableSliders.shift()
-        try {
-          store.addEdge(slider.id, gainNode.id, 'value', 'gain')
-          store.updateNodeProperty(slider.id, 'min', 0)
-          store.updateNodeProperty(slider.id, 'max', 100)
-          store.updateNodeProperty(slider.id, 'value', 50)
-          store.updateNodeProperty(slider.id, 'step', 1)
-          store.updateNodeProperty(slider.id, 'label', 'Volume')
-          console.log('Added volume control')
-        } catch (error) {
-          console.error('Failed to add volume control:', error)
-        }
-      }
-    })
-
-    // 4. DynamicsCompressorNode: Add threshold control
-    const compressorNodes = store.visualNodes.filter(node => {
-      const isCompressor = node.data.nodeType === 'DynamicsCompressorNode'
-      const hasThresholdControl = store.visualEdges.some(
-        edge => edge.target === node.id && edge.targetHandle === 'threshold'
-      )
-      return isCompressor && !hasThresholdControl
-    })
-
-    compressorNodes.forEach(compressorNode => {
-      if (availableSliders.length > 0) {
-        const slider = availableSliders.shift()
-        try {
-          store.addEdge(slider.id, compressorNode.id, 'value', 'threshold')
-          store.updateNodeProperty(slider.id, 'min', -50)
-          store.updateNodeProperty(slider.id, 'max', 0)
-          store.updateNodeProperty(slider.id, 'value', -24)
-          store.updateNodeProperty(slider.id, 'step', 1)
-          store.updateNodeProperty(slider.id, 'label', 'Threshold')
-          console.log('Added compressor threshold control')
-        } catch (error) {
-          console.error('Failed to add compressor threshold control:', error)
-        }
-      }
-    })
-
-    // 5. Label all remaining utility nodes that don't have labels
-    this.labelUtilityNodes(store)
-  }
-
-  private labelUtilityNodes(store: AudioGraphStoreType): void {
-    // Label unlabeled utility nodes
-    store.visualNodes.forEach(node => {
-      const nodeType = node.data.nodeType
-      const currentLabel = node.data.properties.get('label')
-
-      // Check if the node needs a better label (empty, undefined, or generic default)
-      const needsLabel =
-        !currentLabel ||
-        currentLabel === '' ||
-        (nodeType === 'SliderNode' && currentLabel === 'Slider') ||
-        (nodeType === 'ButtonNode' && currentLabel === 'Click Me') ||
-        (nodeType === 'DisplayNode' && currentLabel === 'Display')
-
-      if (needsLabel) {
-        let defaultLabel = ''
-
-        if (nodeType === 'SliderNode') {
-          defaultLabel = 'Control'
-        } else if (nodeType === 'ButtonNode') {
-          defaultLabel = 'Trigger'
-        } else if (nodeType === 'DisplayNode') {
-          defaultLabel = 'Monitor'
-        }
-
-        if (defaultLabel) {
-          try {
-            store.updateNodeProperty(node.id, 'label', defaultLabel)
-            console.log(`Labeled ${nodeType} as "${defaultLabel}"`)
-          } catch (error) {
-            console.error(`Failed to label ${nodeType}:`, error)
-          }
-        }
-      }
-    })
-  }
-
-  private applySmartLayout(store: AudioGraphStoreType): void {
-    // Create a flow-based layout that follows the audio signal chain
-    const nodes = store.visualNodes
-    const edges = store.visualEdges
-
-    if (nodes.length === 0) return
-
-    // Find the audio signal flow by starting from sources and following connections
-    const audioSources = nodes.filter(node =>
-      [
-        'OscillatorNode',
-        'AudioBufferSourceNode',
-        'MediaStreamAudioSourceNode',
-        'MediaElementAudioSourceNode',
-        'ConstantSourceNode',
-      ].includes(node.data.nodeType)
-    )
-
-    // Layout configuration
-    const HORIZONTAL_SPACING = 200
-    const VERTICAL_SPACING = 150
-    const START_X = 50
-    const START_Y = 100
-
-    // Track positioned nodes to avoid duplicates
-    const positionedNodes = new Set<string>()
-
-    // Position audio signal chain(s)
-    audioSources.forEach((source, sourceIndex) => {
-      const chain = this.buildAudioChain(source, edges, nodes)
-      const baseY = START_Y + sourceIndex * VERTICAL_SPACING * 2
-
-      chain.forEach((node, index) => {
-        if (!positionedNodes.has(node.id)) {
-          const newPosition = {
-            x: START_X + index * HORIZONTAL_SPACING,
-            y: baseY,
-          }
-          store.updateNodePosition(node.id, newPosition)
-          positionedNodes.add(node.id)
-          console.log(`Positioned ${node.data.nodeType} at (${newPosition.x}, ${newPosition.y})`)
-        }
-      })
-    })
-
-    // Position control nodes (sliders, buttons, etc.) above their targets
-    const controlNodes = nodes.filter(node =>
-      ['SliderNode', 'ButtonNode', 'MidiToFreqNode', 'RandomNode', 'TimerNode'].includes(
-        node.data.nodeType
-      )
-    )
-
-    controlNodes.forEach(controlNode => {
-      if (!positionedNodes.has(controlNode.id)) {
-        // Find what this control node connects to
-        const targetEdge = edges.find(edge => edge.source === controlNode.id)
-        if (targetEdge) {
-          const targetNode = nodes.find(n => n.id === targetEdge.target)
-          if (targetNode && positionedNodes.has(targetNode.id)) {
-            // Position control node above its target
-            const newPosition = {
-              x: targetNode.position.x,
-              y: targetNode.position.y - VERTICAL_SPACING,
-            }
-            store.updateNodePosition(controlNode.id, newPosition)
-            positionedNodes.add(controlNode.id)
-            console.log(`Positioned ${controlNode.data.nodeType} above ${targetNode.data.nodeType}`)
-          }
-        }
-      }
-    })
-
-    // Position any remaining unpositioned nodes in a grid
-    const unpositionedNodes = nodes.filter(node => !positionedNodes.has(node.id))
-    unpositionedNodes.forEach((node, index) => {
-      const gridX = START_X + (index % 4) * HORIZONTAL_SPACING
-      const gridY = START_Y + Math.floor(index / 4) * VERTICAL_SPACING + VERTICAL_SPACING * 3
-
-      const newPosition = { x: gridX, y: gridY }
-      store.updateNodePosition(node.id, newPosition)
-      console.log(
-        `Positioned remaining ${node.data.nodeType} in grid at (${newPosition.x}, ${newPosition.y})`
-      )
-    })
-
-    console.log('Smart layout complete - nodes positioned based on signal flow')
-  }
-
-  private buildAudioChain(startNode: any, edges: any[], allNodes: any[]): any[] {
-    const chain = [startNode]
-    const visited = new Set([startNode.id])
-
-    let currentNode = startNode
-
-    // Follow the audio output connections to build the chain
-    while (true) {
-      const nextEdge = edges.find(
-        (edge: any) =>
-          edge.source === currentNode.id &&
-          edge.sourceHandle === 'output' &&
-          !visited.has(edge.target)
-      )
-
-      if (!nextEdge) break
-
-      const nextNode = allNodes.find((n: any) => n.id === nextEdge.target)
-      if (!nextNode) break
-
-      chain.push(nextNode)
-      visited.add(nextNode.id)
-      currentNode = nextNode
-
-      // Stop if we reach the destination
-      if (nextNode.data.nodeType === 'AudioDestinationNode') break
-    }
-
-    return chain
   }
 
   updateConfig(config: Partial<LangChainConfig>) {
