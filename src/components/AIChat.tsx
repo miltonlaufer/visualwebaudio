@@ -209,7 +209,7 @@ const AIChat: React.FC = observer(() => {
     <div className="fixed bottom-6 right-6 w-96 h-[500px] bg-white rounded-lg shadow-2xl border border-gray-200 flex flex-col z-50 select-text">
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-blue-600 text-white rounded-t-lg">
-        <h3 className="font-semibold">AI Assistant (beta)</h3>
+        <h3 className="font-semibold">AI Assistant (mega alpha)</h3>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setIsConfigOpen(true)}

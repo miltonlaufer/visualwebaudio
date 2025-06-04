@@ -54,7 +54,7 @@ describe('AIChat', () => {
     fireEvent.click(chatButton)
 
     await waitFor(() => {
-      expect(screen.getByText('AI Assistant (beta)')).toBeInTheDocument()
+      expect(screen.getByText('AI Assistant (mega alpha)')).toBeInTheDocument()
     })
   })
 

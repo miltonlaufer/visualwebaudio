@@ -52,9 +52,9 @@ export class LangChainService {
       case 'openai':
         this.chat = new ChatOpenAI({
           openAIApiKey: config.apiKey,
-          modelName: config.model || 'gpt-4',
+          modelName: config.model || 'gpt-3.5-turbo',
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 1500,
+          maxTokens: config.maxTokens || 800,
         })
         break
 
@@ -63,7 +63,7 @@ export class LangChainService {
           anthropicApiKey: config.apiKey,
           modelName: config.model || 'claude-3-5-sonnet-20241022',
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 1500,
+          maxTokens: config.maxTokens || 800,
         })
         break
 
@@ -72,7 +72,7 @@ export class LangChainService {
           apiKey: config.apiKey,
           model: config.model || 'gemini-pro',
           temperature: config.temperature || 0.7,
-          maxOutputTokens: config.maxTokens || 1500,
+          maxOutputTokens: config.maxTokens || 800,
         })
         break
 
@@ -86,363 +86,38 @@ export class LangChainService {
   }
 
   private getSystemPrompt(availableNodeTypes: string[]): string {
-    return `You are an AI assistant that helps users build Web Audio API graphs through natural language. You have DEEP KNOWLEDGE of audio engineering, signal processing, and audiophile-level audio concepts.
+    return `You are an AI assistant for building Web Audio API graphs. Available nodes: ${availableNodeTypes.join(', ')}
 
-🚨 **CRITICAL: FOR 440 Hz SOUND REQUESTS** 🚨
-When user asks for "440 Hz sound" or similar, you MUST create this EXACT chain:
-1. SliderNode (min=0, max=127, value=69, label="MIDI Note") 
-2. Connect SliderNode.value → MidiToFreqNode.midiNote
-3. Connect MidiToFreqNode.frequency → OscillatorNode.frequency  
-4. Connect OscillatorNode.output → AudioDestinationNode.input
-
-**NEVER create MidiToFreqNode without connecting its midiNote input - it will be SILENT!**
-**NEVER set baseFreq property - it doesn't work without midiNote input signal!**
-
-Available node types: ${availableNodeTypes.join(', ')}
-
-CRITICAL RULES:
-1. EVERY audio graph MUST have an AudioDestinationNode (the speakers/output)
-2. ALL audio-producing nodes must eventually connect to AudioDestinationNode to be heard
-3. **NO UNCONNECTED NODES ALLOWED** - Every node must serve a purpose:
+🚨 CRITICAL RULES:
+1. EVERY graph needs AudioDestinationNode (speakers/output)
+2. For 440Hz sound: SliderNode(value=69) → MidiToFreqNode.midiNote → OscillatorNode.frequency → AudioDestinationNode
+3. MidiToFreqNode MUST have midiNote input connected or it's silent (outputs 0Hz)
+4. **NO UNCONNECTED NODES ALLOWED** - Every node must serve a purpose:
    - Audio sources → connected to audio chain → destination
-   - Effects → inserted into audio signal path
+   - Effects → inserted into audio signal path  
    - Control nodes → connected to parameters of other nodes
-   - Utility nodes → connected to monitor or control audio
-4. **⚠️ CRITICAL WARNING: SILENT AUDIO CHAINS ⚠️**
-**THE #1 MISTAKE: Creating MidiToFreqNode without midiNote input**
-- MidiToFreqNode with NO midiNote input = outputs 0 Hz = COMPLETELY SILENT oscillator
-- Setting baseFreq property does NOT make it work - it NEEDS midiNote input signal
-- ALWAYS create SliderNode → MidiToFreqNode → OscillatorNode chain
-- NEVER create standalone MidiToFreqNode - it will be silent and useless
+5. Audio flow: sources → effects → AudioDestinationNode
 
-**FOR 440 Hz SOUND, YOU MUST:**
-1. Create SliderNode with value=69 (MIDI note for 440 Hz)
-2. Connect SliderNode.value → MidiToFreqNode.midiNote
-3. Connect MidiToFreqNode.frequency → OscillatorNode.frequency
-4. Connect OscillatorNode.output → AudioDestinationNode.input
+🎛️ PRO AUDIO ENGINEERING:
+- DelayNode: ALWAYS add delayTime control (0.001-1.0s, default 0.3s)
+- BiquadFilterNode: Add frequency control (100-10000Hz, default 1000Hz)
+- GainNode: Add gain control (0-100, default 50)
+- DynamicsCompressorNode: Add threshold control (-50-0dB, default -24dB)
+- ALL utility nodes (SliderNode, ButtonNode, DisplayNode) MUST have descriptive labels
 
-5. **NODES NEED ACTIVE INPUTS TO FUNCTION** - Critical functionality requirements:
-   - MidiToFreqNode WITHOUT midiNote input = NO frequency output = SILENT oscillator
-   - OscillatorNode WITHOUT frequency control = Fixed frequency (may need start trigger)
-   - ButtonNode WITHOUT connections = Useless interface element
-   - SliderNode WITHOUT output connections = No effect on audio
-   - ALL utility nodes MUST have both inputs AND outputs connected
-6. Use proper handle names: 'output' for source handles, 'input' for target handles
-7. Position nodes in a logical left-to-right flow (sources → effects → destination)
-8. Always check if AudioDestinationNode exists, if not, create one
-9. Connect audio chains properly: source → effect → effect → destination
-10. UTILITY NODES are essential for control - use them to create interactive audio experiences
+🏷️ LABELING: Set "label" property for ALL utility nodes:
+- SliderNode: "Delay Time", "Filter Freq", "Volume", "MIDI Note", etc.
+- ButtonNode: "Play/Stop", "Trigger", "Reset", etc.
+- DisplayNode: "Level Monitor", "Frequency Display", etc.
 
-**UNCONNECTED NODES ARE USELESS** - If a node isn't connected, it doesn't contribute to the audio output and just clutters the interface. Every node you create must have a clear purpose and proper connections.
+⚠️ NODE ID HANDLING: Node IDs are AUTO-GENERATED by the system. When creating connections:
+- Use generic identifiers like "SliderNode1", "OscillatorNode1", etc.
+- The system will find the correct nodes by type and creation order
 
-**CRITICAL NODE FUNCTIONALITY REQUIREMENTS:**
-- **MidiToFreqNode**: MUST have midiNote input connected or it outputs no frequency (0 Hz)
-- **OscillatorNode**: MUST have frequency input OR be manually set to produce sound
-- **ButtonNode**: MUST have trigger output connected to be useful
-- **SliderNode**: MUST have value output connected to control something
-- **GainNode**: MUST have audio input AND gain parameter control to be effective
-- **BiquadFilterNode**: MUST have audio input AND frequency control for useful filtering
-- **DelayNode**: MUST have audio input AND delayTime control for proper delay effects
+RESPONSE FORMAT: You MUST respond with ONLY a JSON object containing an "actions" array:
+{"actions": [{"type": "addNode", "nodeType": "NodeType", "position": {"x": 100, "y": 100}}, {"type": "updateProperty", "nodeId": "SliderNode1", "propertyName": "label", "propertyValue": "Delay Time"}, {"type": "addConnection", "sourceId": "NodeType1", "targetId": "NodeType2", "sourceHandle": "output", "targetHandle": "input"}]}
 
-ADVANCED AUDIO ENGINEERING CONCEPTS:
-
-**DELAY & REVERB TECHNIQUES:**
-- DelayNode ALWAYS needs feedback for proper delay effects
-- Feedback loop: DelayNode.output → GainNode (feedback level) → DelayNode.input
-- Typical feedback values: 0.1-0.7 (10%-70%)
-- Delay times: Short (1-50ms) = chorus/flanger, Medium (50-200ms) = slap delay, Long (200ms+) = echo
-- For reverb-like effects: Multiple DelayNodes with different times + feedback
-
-**FILTER DESIGN & RESONANCE:**
-- BiquadFilterNode Q parameter controls resonance/bandwidth
-- High Q (10-30) = sharp, resonant filtering (classic analog sound)
-- Low Q (0.5-2) = gentle, musical filtering
-- Filter types: lowpass (warmth), highpass (clarity), bandpass (telephone effect), notch (removing frequencies)
-- Filter sweeps: Connect SliderNode to frequency parameter for classic synth sounds
-- Resonant filters can self-oscillate at very high Q values
-
-**GAIN STAGING & DYNAMICS:**
-- Proper gain staging prevents clipping and maintains headroom
-- GainNode values: 0-1 for attenuation, >1 for amplification
-- DynamicsCompressorNode for controlling dynamic range
-- Compressor settings: threshold (-24dB to 0dB), ratio (1:1 to 20:1), attack (0-1s), release (0-1s)
-
-**MODULATION & SYNTHESIS:**
-- LFO (Low Frequency Oscillator) for modulation: OscillatorNode with low frequency (0.1-20 Hz)
-- Amplitude Modulation: LFO → GainNode.gain
-- Frequency Modulation: LFO → OscillatorNode.frequency
-- Filter Modulation: LFO → BiquadFilterNode.frequency
-- Ring Modulation: Two audio signals → separate GainNodes → multiply effect
-
-**STEREO & SPATIAL EFFECTS:**
-- StereoPannerNode for positioning in stereo field
-- ChannelSplitterNode/ChannelMergerNode for advanced stereo processing
-- Stereo delay: Different delay times for left/right channels
-- Stereo chorus: Slight detuning + delay on one channel
-
-**DISTORTION & SATURATION:**
-- WaveShaperNode for harmonic distortion and saturation
-- Overdrive curves: gentle saturation for warmth
-- Distortion curves: hard clipping for aggressive sounds
-- Tube-style saturation: asymmetric waveshaping curves
-
-IMPORTANT: When a user asks for "notes", "sounds", "music", or "audio that can be heard", you MUST create a COMPLETE AUDIO CHAIN that includes:
-- Control input (SliderNode, ButtonNode, etc.)
-- Sound generation (OscillatorNode, AudioBufferSourceNode, etc.)
-- Audio output (AudioDestinationNode)
-- Proper connections between ALL components
-
-**COMPLETE FUNCTIONAL AUDIO CHAIN REQUIREMENTS:**
-1. **Control Layer**: SliderNode or ButtonNode for user interaction
-2. **Processing Layer**: MidiToFreqNode (for musical) or direct parameter control
-3. **Generation Layer**: OscillatorNode or other audio source with proper inputs
-4. **Output Layer**: AudioDestinationNode for audio output
-5. **ALL CONNECTIONS**: Every node must have both inputs AND outputs connected
-
-**EXAMPLE COMPLETE CHAIN FOR 440 Hz SOUND:**
-SliderNode (MIDI Note) → MidiToFreqNode → OscillatorNode → AudioDestinationNode
-- SliderNode: min=0, max=127, value=69 (A4), label="MIDI Note"
-- MidiToFreqNode: converts MIDI 69 to 440 Hz
-- OscillatorNode: receives 440 Hz frequency, generates tone
-- AudioDestinationNode: outputs sound to speakers
-
-**NEVER CREATE INCOMPLETE CHAINS** - Every request for sound must result in a complete, functional audio path.
-
-**⚠️ WRONG WAY (CREATES SILENT AUDIO):**
-- Creating MidiToFreqNode alone without midiNote input
-- Setting baseFreq property instead of connecting input
-- Creating OscillatorNode without frequency control
-
-**✅ CORRECT WAY (CREATES WORKING AUDIO):**
-- Always create complete SliderNode → MidiToFreqNode → OscillatorNode → AudioDestinationNode chain
-- Connect ALL inputs and outputs
-- Set proper MIDI values (69 = 440 Hz)
-- Use descriptive labels
-
-UTILITY NODES AND THEIR FUNCTIONS:
-
-**SliderNode**: Interactive slider control
-- Outputs: 'value' (control signal, typically 0-100 range)
-- Use for: Controlling frequency, gain, filter cutoff, resonance (Q), delay time, feedback level
-- Example: SliderNode → BiquadFilterNode.frequency (filter sweep)
-- Properties: min, max, step, value, label
-- **CRITICAL: ALWAYS set a descriptive label that explains what the slider controls**
-
-**MidiToFreqNode**: Converts MIDI note numbers to frequencies
-- Inputs: 'midiNote' (MIDI note number 0-127)
-- Outputs: 'frequency' (frequency in Hz)
-- **CRITICAL: WITHOUT midiNote input connected, this node outputs 0 Hz = SILENT oscillator**
-- **ALWAYS connect a SliderNode or other control to midiNote input**
-- Use for: Converting musical notes to oscillator frequencies
-- Example: SliderNode → MidiToFreqNode → OscillatorNode.frequency
-- Properties: baseFreq (440), baseMidi (69)
-- **NEVER create MidiToFreqNode without connecting its midiNote input**
-
-**OscillatorNode**: Audio tone generator
-- Inputs: 'frequency' (Hz), 'detune' (cents)
-- Outputs: 'output' (audio signal)
-- **CRITICAL: For musical applications, ALWAYS connect frequency control**
-- **BEST PRACTICE: Use MidiToFreqNode for musical pitch control**
-- **ALTERNATIVE: Connect SliderNode directly to frequency for Hz control**
-- Properties: type (sine, square, sawtooth, triangle), frequency (default 440 Hz)
-- **NEVER create OscillatorNode without frequency control for musical applications**
-- Example: SliderNode → MidiToFreqNode → OscillatorNode.frequency (musical)
-- Example: SliderNode → OscillatorNode.frequency (direct Hz control)
-
-**ButtonNode**: Trigger button
-- Outputs: 'trigger' (momentary signal when clicked)
-- Use for: Starting sounds, triggering envelopes, resetting delays
-- Properties: label
-- **CRITICAL: ALWAYS set a descriptive label that explains what the button does**
-
-**DisplayNode**: Shows values
-- Inputs: 'input' (any value to display)
-- Outputs: 'output' (passes through the input value)
-- Use for: Monitoring values in the signal chain
-- Properties: label, currentValue
-- **CRITICAL: ALWAYS set a descriptive label that explains what is being displayed**
-
-**GainNode**: Volume/amplitude control AND feedback control
-- Inputs: audio input, 'gain' parameter
-- Outputs: audio output
-- Use for: Volume control, amplitude modulation, DELAY FEEDBACK LOOPS
-- Connect SliderNode to gain parameter for volume control
-- For feedback: DelayNode → GainNode (0.1-0.7) → DelayNode input
-
-**BiquadFilterNode**: Audio filter with resonance
-- Inputs: audio input, 'frequency', 'Q' (resonance), 'gain' parameters
-- Outputs: audio output
-- Use for: Filtering audio (lowpass, highpass, bandpass, notch)
-- Connect SliderNode to frequency parameter for filter sweeps
-- Connect SliderNode to Q parameter for resonance control (1-30)
-- Filter types: 'lowpass', 'highpass', 'bandpass', 'lowshelf', 'highshelf', 'peaking', 'notch', 'allpass'
-
-**DelayNode**: Time-based delay effects
-- Inputs: audio input, 'delayTime' parameter
-- Outputs: audio output
-- CRITICAL: Always create feedback loop for proper delay effects
-- Feedback loop: DelayNode → GainNode (feedback) → DelayNode input
-- Connect SliderNode to delayTime for delay time control (0.001-1.0 seconds)
-
-**DynamicsCompressorNode**: Dynamic range control
-- Inputs: audio input, 'threshold', 'knee', 'ratio', 'attack', 'release' parameters
-- Outputs: audio output
-- Use for: Controlling dynamics, adding punch, evening out levels
-- Typical settings: threshold (-24dB), ratio (4:1), attack (0.003s), release (0.25s)
-
-ADVANCED EFFECT PATTERNS:
-
-1. **PROPER DELAY WITH FEEDBACK**:
-   Source → DelayNode → GainNode(feedback 0.3) → DelayNode input
-   DelayNode → GainNode(wet/dry mix) → Destination
-   SliderNode → DelayNode.delayTime (0.1-0.5s)
-   SliderNode → GainNode.gain (feedback amount)
-
-2. **RESONANT FILTER SWEEP**:
-   Source → BiquadFilterNode → Destination
-   SliderNode(100-5000) → BiquadFilterNode.frequency
-   SliderNode(1-20) → BiquadFilterNode.Q (resonance)
-
-3. **LFO MODULATION**:
-   OscillatorNode(0.5Hz) → GainNode(depth) → Target.parameter
-   Use for: vibrato, tremolo, filter sweeps, delay modulation
-
-4. **STEREO CHORUS**:
-   Source → DelayNode(short delay) → StereoPannerNode(-1) → Destination
-   Source → DelayNode(slightly different delay) → StereoPannerNode(1) → Destination
-   LFO → DelayNode.delayTime (modulation)
-
-5. **COMPRESSOR CHAIN**:
-   Source → DynamicsCompressorNode → GainNode(makeup gain) → Destination
-   SliderNode → DynamicsCompressorNode.threshold
-   SliderNode → DynamicsCompressorNode.ratio
-
-6. **DISTORTION/OVERDRIVE**:
-   Source → GainNode(drive) → WaveShaperNode → BiquadFilterNode(lowpass) → Destination
-   SliderNode → GainNode.gain (drive amount)
-   SliderNode → BiquadFilterNode.frequency (tone control)
-
-MUSICAL REQUEST KEYWORDS:
-When user mentions: "delay", "echo", "reverb" → ALWAYS create feedback loop
-When user mentions: "filter", "sweep", "resonance" → Add Q control
-When user mentions: "chorus", "flanger" → Create modulated delay
-When user mentions: "distortion", "overdrive" → Add waveshaper + tone control
-When user mentions: "compress", "punch" → Add dynamics processing
-When user mentions: "frequency", "pitch", "note", "sound", "music" → STRONGLY RECOMMEND MidiToFreqNode for musical control
-
-**CRITICAL FREQUENCY RANGES:**
-- **Audio Frequency Range**: 20Hz - 20kHz (human hearing range)
-- **Musical Frequency Range**: 27.5Hz (A0) - 4186Hz (C8) for piano
-- **MIDI Note Range**: 0-127 (where 60 = Middle C = 261.63Hz)
-- **Sub-bass**: 20-60Hz, **Bass**: 60-250Hz, **Midrange**: 250Hz-4kHz, **Treble**: 4-20kHz
-
-**FREQUENCY CONTROL BEST PRACTICES:**
-1. **For musical applications**: ALWAYS suggest MidiToFreqNode (0-127 MIDI notes)
-2. **For audio frequency control**: Use 20Hz-20kHz range
-3. **For filter cutoff**: Use 100Hz-10kHz range (most useful filtering range)
-4. **For oscillator frequency**: Use 20Hz-5kHz range (covers most musical content)
-
-**SLIDER CONFIGURATION EXAMPLES:**
-- Musical pitch: SliderNode (0-127) → MidiToFreqNode → OscillatorNode.frequency, label: "MIDI Note"
-- Audio frequency: SliderNode (20-20000) → OscillatorNode.frequency, label: "Frequency (Hz)"
-- Filter cutoff: SliderNode (100-10000) → BiquadFilterNode.frequency, label: "Filter Frequency"
-- Filter resonance: SliderNode (0.1-30) → BiquadFilterNode.Q, label: "Filter Resonance"
-
-RESPONSE FORMAT:
-Respond with:
-1. A natural language explanation of what you're doing (include audio engineering concepts)
-2. A JSON object with the actions to perform
-
-HANDLE NAMES FOR CONNECTIONS:
-- Audio connections: 'output' → 'input'
-- Parameter connections: 'value' → 'frequency', 'gain', 'Q', 'delayTime', etc.
-- MIDI conversion: 'value' → 'midiNote', 'frequency' → 'frequency'
-
-When a user asks to create, modify, or connect audio nodes, respond with:
-1. A natural language explanation of what you're doing (include audio engineering concepts)
-2. A JSON object with the actions to perform
-
-The JSON should have this structure:
-{
-  "actions": [
-    {
-      "type": "addNode" | "removeNode" | "addConnection" | "removeConnection" | "updateProperty",
-      "nodeId": "string (use descriptive IDs like 'delayFeedback', 'filterResonance', 'lfoModulator')",
-      "nodeType": "string (for new nodes)",
-      "position": {"x": number, "y": number} (for new nodes, use logical spacing),
-      "sourceId": "string (for connections)",
-      "targetId": "string (for connections)", 
-      "sourceHandle": "output" | "value" | "frequency" | "trigger" (source output name),
-      "targetHandle": "input" | "frequency" | "gain" | "Q" | "delayTime" | "threshold" (target input name),
-      "propertyName": "string (for property updates)",
-      "propertyValue": "any (for property updates)",
-      "description": "string (brief description of this action)"
-    }
-  ]
-}
-
-POSITIONING GUIDELINES:
-- Control nodes (sliders, buttons): leftmost (e.g., x: 0-200)
-- Utility nodes (MidiToFreq, Display): early in chain (e.g., x: 200-400)
-- Audio sources (oscillators): after controls (e.g., x: 400-600)
-- Effects (filters, delays, compressors): middle (e.g., x: 600-800)
-- Feedback/modulation nodes: above/below main chain (different y positions)
-- AudioDestinationNode: rightmost (e.g., x: 800-1000)
-- Vertical spacing: 200px between different chains, 100px for parallel processing
-
-NODE ID GUIDELINES:
-Use consistent, descriptive node IDs that match the node's purpose:
-- Oscillators: "oscillator", "osc", "synth"
-- Filters: "filter", "lowpass", "highpass"
-- Delays: "delay", "echo"
-- Gain nodes: "gain", "volume", "feedbackGain", "wetGain", "dryGain"
-- Destination: "output", "destination", "speakers"
-- Sliders: "pitchSlider", "delaySlider", "volumeSlider", "filterSlider"
-- MIDI: "midiToFreq", "midi"
-- Effects: "compressor", "distortion", "reverb", "panner"
-
-UTILITY NODE NAMING REQUIREMENTS:
-**EVERY utility node MUST have a descriptive label that clearly explains its purpose:**
-
-**SliderNode Labels:**
-- "Volume" (for gain control)
-- "Frequency (Hz)" (for oscillator frequency)
-- "MIDI Note" (for MIDI note selection)
-- "Filter Frequency" (for filter cutoff)
-- "Filter Resonance" (for filter Q)
-- "Delay Time (s)" (for delay time control)
-- "Delay Feedback" (for delay feedback amount)
-- "Reverb Mix" (for wet/dry mix)
-- "Distortion Drive" (for distortion amount)
-- "Stereo Pan" (for panning control)
-
-**ButtonNode Labels:**
-- "Play Note" (for triggering sounds)
-- "Start/Stop" (for audio source control)
-- "Reset Delay" (for clearing delay buffer)
-- "Trigger Envelope" (for envelope activation)
-
-**DisplayNode Labels:**
-- "Frequency Monitor" (showing frequency values)
-- "Volume Level" (showing gain values)
-- "MIDI Note Display" (showing current MIDI note)
-- "Filter Cutoff Display" (showing filter frequency)
-- "Delay Time Display" (showing current delay time)
-
-**Examples of GOOD utility node creation:**
-Always include both the node creation AND the label setting:
-1. Create the utility node (SliderNode, ButtonNode, DisplayNode)
-2. Immediately set its label property with a descriptive name
-3. Configure other properties (min, max, step for sliders)
-
-**NEVER create utility nodes without proper labels - users need to understand what each control does!**
-
-REMEMBER: 
-- Delay effects NEED feedback loops to sound proper
-- Filters NEED resonance control for character
-- Always consider the audio engineering principles behind each effect
-- Create complete, professional-sounding audio chains
-- Use descriptive node IDs that clearly indicate the node's purpose`
+NO explanatory text before or after the JSON. ONLY the JSON object.`
   }
 
   async processMessage(
@@ -472,19 +147,15 @@ REMEMBER:
 
     const systemPrompt = this.getSystemPrompt(availableNodeTypes)
     const contextPrompt = `
-Current audio graph state:
-Nodes: ${JSON.stringify(currentNodes, null, 2)}
-Connections: ${JSON.stringify(currentConnections, null, 2)}
-Has AudioDestinationNode: ${hasDestination}
+Current: ${currentNodes.length} nodes, ${currentConnections.length} connections
+${!hasDestination ? '⚠️ NO AudioDestinationNode - MUST CREATE ONE' : '✓ Has AudioDestinationNode'}
 
-IMPORTANT: ${!hasDestination ? 'There is NO AudioDestinationNode! You MUST create one and connect audio to it.' : 'AudioDestinationNode exists.'}
-
-User request: ${message}`
+Request: ${message}`
 
     const messages = [
       new SystemMessage(systemPrompt),
       ...conversationHistory
-        .slice(-5)
+        .slice(-2)
         .map(msg =>
           msg.role === 'user' ? new HumanMessage(msg.content) : new SystemMessage(msg.content)
         ),
@@ -519,15 +190,34 @@ User request: ${message}`
 
   private extractActionsFromResponse(response: string): AudioGraphAction[] {
     try {
-      // Look for JSON in the response
-      const jsonMatch = response.match(/\{[\s\S]*"actions"[\s\S]*\}/)
+      // Clean the response - remove markdown code blocks if present
+      let cleanResponse = response.trim()
+
+      // Remove markdown code blocks
+      cleanResponse = cleanResponse.replace(/```json\s*/g, '').replace(/```\s*/g, '')
+
+      // Try to find JSON in the response - look for both array and object formats
+      let jsonMatch = cleanResponse.match(/\{[\s\S]*"actions"[\s\S]*\}/)
+
       if (!jsonMatch) {
+        // Try to find a direct array format
+        jsonMatch = cleanResponse.match(/\[[\s\S]*\]/)
+      }
+
+      if (!jsonMatch) {
+        // Try to parse the entire response as JSON
+        jsonMatch = [cleanResponse]
+      }
+
+      if (!jsonMatch) {
+        console.warn('No JSON found in response:', response)
         return []
       }
 
       const jsonStr = jsonMatch[0]
       const parsed = JSON.parse(jsonStr)
 
+      // Handle object with actions array
       if (parsed.actions && Array.isArray(parsed.actions)) {
         return parsed.actions.map((action: any) => ({
           type: action.type,
@@ -543,11 +233,31 @@ User request: ${message}`
           description: action.description,
         }))
       }
+
+      // Handle direct array format
+      if (Array.isArray(parsed)) {
+        return parsed.map((action: any) => ({
+          type: action.type,
+          nodeId: action.nodeId,
+          nodeType: action.nodeType,
+          position: action.position,
+          sourceId: action.sourceId,
+          targetId: action.targetId,
+          sourceHandle: action.sourceHandle || 'output',
+          targetHandle: action.targetHandle || 'input',
+          propertyName: action.propertyName,
+          propertyValue: action.propertyValue,
+          description: action.description,
+        }))
+      }
+
+      console.warn('Parsed JSON does not contain actions array or is not an array:', parsed)
+      return []
     } catch (error) {
       console.warn('Failed to parse actions from response:', error)
+      console.warn('Response was:', response)
+      return []
     }
-
-    return []
   }
 
   async executeActions(actions: AudioGraphAction[], store: AudioGraphStoreType): Promise<void> {
@@ -986,6 +696,16 @@ User request: ${message}`
       return isSlider && !hasOutgoingConnection
     })
 
+    // 🎛️ PRO AUDIO ENGINEERING: Apply proper parameter controls for audio effects
+    this.applyProAudioEngineering(store, stillUnconnectedSliders)
+
+    // Re-fetch unconnected sliders after pro audio setup
+    const remainingUnconnectedSliders = store.visualNodes.filter(node => {
+      const isSlider = node.data.nodeType === 'SliderNode'
+      const hasOutgoingConnection = store.visualEdges.some(edge => edge.source === node.id)
+      return isSlider && !hasOutgoingConnection
+    })
+
     // Find nodes with uncontrolled parameters
     const nodesNeedingControl = store.visualNodes.filter(node => {
       const nodeType = node.data.nodeType
@@ -1015,7 +735,7 @@ User request: ${message}`
     })
 
     // Connect remaining sliders to available parameters
-    stillUnconnectedSliders.forEach((slider, index) => {
+    remainingUnconnectedSliders.forEach((slider, index) => {
       if (index < nodesNeedingControl.length) {
         const targetNode = nodesNeedingControl[index]
         const nodeType = targetNode.data.nodeType
@@ -1177,6 +897,146 @@ User request: ${message}`
     })
 
     console.log('Audio chain verification complete - NO UNCONNECTED NODES ALLOWED')
+  }
+
+  private applyProAudioEngineering(store: AudioGraphStoreType, availableSliders: any[]): void {
+    // 🎛️ PRO AUDIO ENGINEERING: Apply proper parameter controls for audio effects
+
+    // 1. DelayNode: ALWAYS add delayTime control
+    const delayNodes = store.visualNodes.filter(node => {
+      const isDelay = node.data.nodeType === 'DelayNode'
+      const hasDelayTimeControl = store.visualEdges.some(
+        edge => edge.target === node.id && edge.targetHandle === 'delayTime'
+      )
+      return isDelay && !hasDelayTimeControl
+    })
+
+    delayNodes.forEach(delayNode => {
+      if (availableSliders.length > 0) {
+        const slider = availableSliders.shift()
+        try {
+          store.addEdge(slider.id, delayNode.id, 'value', 'delayTime')
+          store.updateNodeProperty(slider.id, 'min', 0.001)
+          store.updateNodeProperty(slider.id, 'max', 1.0)
+          store.updateNodeProperty(slider.id, 'value', 0.3)
+          store.updateNodeProperty(slider.id, 'step', 0.001)
+          store.updateNodeProperty(slider.id, 'label', 'Delay Time')
+          console.log('🎛️ Added delay time control')
+        } catch (error) {
+          console.error('Failed to add delay time control:', error)
+        }
+      }
+    })
+
+    // 2. BiquadFilterNode: Add frequency control
+    const filterNodes = store.visualNodes.filter(node => {
+      const isFilter = node.data.nodeType === 'BiquadFilterNode'
+      const hasFreqControl = store.visualEdges.some(
+        edge => edge.target === node.id && edge.targetHandle === 'frequency'
+      )
+      return isFilter && !hasFreqControl
+    })
+
+    filterNodes.forEach(filterNode => {
+      if (availableSliders.length > 0) {
+        const slider = availableSliders.shift()
+        try {
+          store.addEdge(slider.id, filterNode.id, 'value', 'frequency')
+          store.updateNodeProperty(slider.id, 'min', 100)
+          store.updateNodeProperty(slider.id, 'max', 10000)
+          store.updateNodeProperty(slider.id, 'value', 1000)
+          store.updateNodeProperty(slider.id, 'step', 10)
+          store.updateNodeProperty(slider.id, 'label', 'Filter Freq')
+          console.log('🎛️ Added filter frequency control')
+        } catch (error) {
+          console.error('Failed to add filter frequency control:', error)
+        }
+      }
+    })
+
+    // 3. GainNode: Add gain control (if not already used for volume in audio chain)
+    const gainNodes = store.visualNodes.filter(node => {
+      const isGain = node.data.nodeType === 'GainNode'
+      const hasGainControl = store.visualEdges.some(
+        edge => edge.target === node.id && edge.targetHandle === 'gain'
+      )
+      return isGain && !hasGainControl
+    })
+
+    gainNodes.forEach(gainNode => {
+      if (availableSliders.length > 0) {
+        const slider = availableSliders.shift()
+        try {
+          store.addEdge(slider.id, gainNode.id, 'value', 'gain')
+          store.updateNodeProperty(slider.id, 'min', 0)
+          store.updateNodeProperty(slider.id, 'max', 100)
+          store.updateNodeProperty(slider.id, 'value', 50)
+          store.updateNodeProperty(slider.id, 'step', 1)
+          store.updateNodeProperty(slider.id, 'label', 'Volume')
+          console.log('🎛️ Added volume control')
+        } catch (error) {
+          console.error('Failed to add volume control:', error)
+        }
+      }
+    })
+
+    // 4. DynamicsCompressorNode: Add threshold control
+    const compressorNodes = store.visualNodes.filter(node => {
+      const isCompressor = node.data.nodeType === 'DynamicsCompressorNode'
+      const hasThresholdControl = store.visualEdges.some(
+        edge => edge.target === node.id && edge.targetHandle === 'threshold'
+      )
+      return isCompressor && !hasThresholdControl
+    })
+
+    compressorNodes.forEach(compressorNode => {
+      if (availableSliders.length > 0) {
+        const slider = availableSliders.shift()
+        try {
+          store.addEdge(slider.id, compressorNode.id, 'value', 'threshold')
+          store.updateNodeProperty(slider.id, 'min', -50)
+          store.updateNodeProperty(slider.id, 'max', 0)
+          store.updateNodeProperty(slider.id, 'value', -24)
+          store.updateNodeProperty(slider.id, 'step', 1)
+          store.updateNodeProperty(slider.id, 'label', 'Threshold')
+          console.log('🎛️ Added compressor threshold control')
+        } catch (error) {
+          console.error('Failed to add compressor threshold control:', error)
+        }
+      }
+    })
+
+    // 5. Label all remaining utility nodes that don't have labels
+    this.labelUtilityNodes(store)
+  }
+
+  private labelUtilityNodes(store: AudioGraphStoreType): void {
+    // Label unlabeled utility nodes
+    store.visualNodes.forEach(node => {
+      const nodeType = node.data.nodeType
+      const currentLabel = node.data.properties.get('label')
+
+      if (!currentLabel || currentLabel === '') {
+        let defaultLabel = ''
+
+        if (nodeType === 'SliderNode') {
+          defaultLabel = 'Control'
+        } else if (nodeType === 'ButtonNode') {
+          defaultLabel = 'Trigger'
+        } else if (nodeType === 'DisplayNode') {
+          defaultLabel = 'Monitor'
+        }
+
+        if (defaultLabel) {
+          try {
+            store.updateNodeProperty(node.id, 'label', defaultLabel)
+            console.log(`🏷️ Labeled ${nodeType} as "${defaultLabel}"`)
+          } catch (error) {
+            console.error(`Failed to label ${nodeType}:`, error)
+          }
+        }
+      }
+    })
   }
 
   updateConfig(config: Partial<LangChainConfig>) {
