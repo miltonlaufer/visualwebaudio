@@ -476,6 +476,17 @@ Request: ${message}`
       this.connectOnlyUnconnectedNodes(store)
     }
 
+    // Always apply pro audio engineering (including labeling) when nodes are added
+    if (hasAddNodeActions) {
+      console.log('🎛️ Applying pro audio engineering and labeling')
+      const availableSliders = store.visualNodes.filter(node => {
+        const isSlider = node.data.nodeType === 'SliderNode'
+        const isUnconnected = !store.visualEdges.some(edge => edge.source === node.id)
+        return isSlider && isUnconnected
+      })
+      this.applyProAudioEngineering(store, availableSliders)
+    }
+
     // Fourth pass: Smart auto-layout to prevent overlapping nodes
     if (hasAddNodeActions) {
       console.log('📐 Applying smart auto-layout to prevent overlapping')
