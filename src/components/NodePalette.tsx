@@ -113,7 +113,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
     (nodeType: string) => {
       // Add node at a default position with automatic spacing
       const basePosition = { x: 100, y: 100 }
-      const nodeSpacing = 250
+      const nodeSpacing = 400 // Increased from 250 to 400 for better spacing
       const existingNodes = store.visualNodes
 
       // Find a good position that doesn't overlap

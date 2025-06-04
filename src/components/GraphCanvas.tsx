@@ -435,7 +435,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
       }
 
       // Add automatic spacing to prevent overlapping
-      const nodeSpacing = 250 // Minimum distance between nodes
+      const nodeSpacing = 400 // Increased from 250 to 400 for better spacing
       const existingNodes = store.visualNodes
 
       // Check if position is too close to existing nodes
