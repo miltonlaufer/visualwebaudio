@@ -91,6 +91,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
   const syncingRef = useRef(false)
   const lastSyncedNodesLength = useRef(0)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([])
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
@@ -106,8 +107,26 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
         return
       }
 
+      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
+      const isInSelectableArea = target.closest('.select-text') !== null
+      if (isInSelectableArea) {
+        // Always allow normal text operations in chat area
+        return
+      }
+
+      // Check if there's an active text selection anywhere
+      const selection = window.getSelection()
+      if (selection && selection.toString().length > 0) {
+        // If there's selected text anywhere, allow normal copy/paste behavior
+        return
+      }
+
       // Delete: Delete key
       if (event.key === 'Delete' || event.key === 'Backspace') {
+        console.log('DELETE KEY PRESSED')
+        console.log('Selected nodes:', selectedNodeIds.length)
+        console.log('Selected edges:', selectedEdgeIds.length)
+
         if (selectedNodeIds.length > 0) {
           event.preventDefault()
           event.stopPropagation()
@@ -115,6 +134,17 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
             store.removeNode(nodeId)
           })
           console.log(`Deleted ${selectedNodeIds.length} nodes`)
+          handleForceUpdate()
+        }
+
+        if (selectedEdgeIds.length > 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          selectedEdgeIds.forEach(edgeId => {
+            console.log('DELETING EDGE VIA KEYBOARD:', edgeId)
+            store.removeEdge(edgeId)
+          })
+          console.log(`Deleted ${selectedEdgeIds.length} edges`)
           handleForceUpdate()
         }
         return
@@ -173,12 +203,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [selectedNodeIds, store, handleForceUpdate])
+  }, [selectedNodeIds, selectedEdgeIds, store, handleForceUpdate])
 
   // Debug React Flow state
   useEffect(() => {
     console.log('React Flow nodes state changed:', nodes.length, nodes)
-  }, [nodes])
+  }, [nodes, nodes.length])
 
   // Sync store with React Flow state
   useEffect(() => {
@@ -421,7 +451,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
       }
 
       // Add automatic spacing to prevent overlapping
-      const nodeSpacing = 250 // Minimum distance between nodes
+      const nodeSpacing = 400 // Increased from 250 to 400 for better spacing
       const existingNodes = store.visualNodes
 
       // Check if position is too close to existing nodes
@@ -486,7 +516,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
+      console.log('=== EDGES CHANGE EVENT ===')
       console.log('Edges changed:', changes)
+      console.log('Current edges before change:', store.visualEdges.length)
 
       // Update React Flow state
       onEdgesChange(changes)
@@ -494,8 +526,17 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
       // Handle different types of changes
       changes.forEach(change => {
         if (change.type === 'remove') {
-          console.log('Removing edge from store:', change.id)
+          console.log('REMOVING EDGE FROM STORE:', change.id)
+          console.log(
+            'Edge details:',
+            store.visualEdges.find(e => e.id === change.id)
+          )
+
           store.removeEdge(change.id)
+
+          console.log('Edges after removal:', store.visualEdges.length)
+          console.log('=== EDGE REMOVAL COMPLETE ===')
+
           handleForceUpdate() // Force update after removal
         }
       })
@@ -535,8 +576,16 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
   // Handle selection changes for multinode selection
   const onSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
+      console.log('SELECTION CHANGE:', params)
+
       const nodeIds = params.nodes.map(node => node.id)
+      const edgeIds = params.edges.map(edge => edge.id)
+
+      console.log('Selected nodes:', nodeIds)
+      console.log('Selected edges:', edgeIds)
+
       setSelectedNodeIds(nodeIds)
+      setSelectedEdgeIds(edgeIds)
 
       // Update store selection for single node (for property panel)
       if (nodeIds.length === 1) {

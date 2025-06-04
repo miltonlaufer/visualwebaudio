@@ -59,7 +59,9 @@
         "defaultValue": null
       }
     ],
-    "methods": ["start"],
+    "methods": [
+      "start"
+    ],
     "events": []
   },
   "AudioContext": {
@@ -116,7 +118,9 @@
       }
     ],
     "methods": [],
-    "events": ["processorerror"]
+    "events": [
+      "processorerror"
+    ]
   },
   "BiquadFilterNode": {
     "name": "BiquadFilterNode",
@@ -666,7 +670,9 @@
     ],
     "properties": [],
     "methods": [],
-    "events": ["audioprocess"]
+    "events": [
+      "audioprocess"
+    ]
   },
   "StereoPannerNode": {
     "name": "StereoPannerNode",

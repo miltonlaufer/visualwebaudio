@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-252%2F252%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-277%2F277%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![Coverage](https://img.shields.io/badge/Coverage-60.4%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -52,7 +52,7 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 
 - **Visual Audio Graph Editor**: Drag-and-drop node creation with type validation and color-coded connections
 - **Copy/Paste Nodes**: Multi-node selection with copy/cut/paste support (Ctrl+C/X/V) that preserves connections and works across browser tabs
-- **Metadata-Driven Architecture**: 18+ Web Audio API nodes automatically discovered from TypeScript definitions
+- **Metadata-Driven Architecture**: 22+ Web Audio API nodes automatically discovered from TypeScript definitions
 - **Custom Nodes System**: 10+ interactive custom nodes including buttons, sliders, MIDI input, and sound file players with pause/resume persistence
 - **Voice Effects Processing**: Real-time microphone input with robot voice, vocoder, harmonizer, and transformer effects
 - **Project Management**: Export/Import projects as JSON with unsaved changes tracking and undo/redo system / IndexedDB storage
