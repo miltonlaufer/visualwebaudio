@@ -54,7 +54,7 @@ export class LangChainService {
           openAIApiKey: config.apiKey,
           modelName: config.model || 'gpt-3.5-turbo',
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 800,
+          maxTokens: config.maxTokens || 2000,
         })
         break
 
@@ -63,7 +63,7 @@ export class LangChainService {
           anthropicApiKey: config.apiKey,
           modelName: config.model || 'claude-3-5-sonnet-20241022',
           temperature: config.temperature || 0.7,
-          maxTokens: config.maxTokens || 800,
+          maxTokens: config.maxTokens || 2000,
         })
         break
 
@@ -72,7 +72,7 @@ export class LangChainService {
           apiKey: config.apiKey,
           model: config.model || 'gemini-pro',
           temperature: config.temperature || 0.7,
-          maxOutputTokens: config.maxTokens || 800,
+          maxOutputTokens: config.maxTokens || 2000,
         })
         break
 
@@ -108,120 +108,44 @@ export class LangChainService {
 AVAILABLE NODES: ${availableNodeTypes.join(', ')}
 KEY PARAMETERS: ${paramInfo}
 
-CRITICAL RULES:
+🔥 CRITICAL: ALWAYS CREATE COMPLETE AUDIO CHAINS WITH ALL CONNECTIONS! 🔥
+
+MANDATORY RULES:
 1. Every graph needs AudioDestinationNode
-2. No unconnected nodes - every node must be part of the audio signal path
+2. NO UNCONNECTED NODES - every node must connect to the audio signal path
 3. Audio flow: sources → effects → AudioDestinationNode
-4. Check existing nodes - don't duplicate
-5. PROVIDE COMPLETE SETUPS IN ONE REQUEST - include all nodes, connections, and controls needed
-6. ALWAYS SET ESSENTIAL PARAMETERS - don't create nodes without configuring their key parameters
+4. INCLUDE ALL CONNECTIONS in your response
+5. Set essential parameters for each node
 
-WHEN TO CREATE NODES:
-- User asks to "create", "add", "make", "build" something new
-- User requests specific audio setup (e.g. "vintage synth", "delay effect")
-- User wants to add controls to existing nodes
-
-WHEN NOT TO CREATE NODES (return {"actions": []}):
-- User asks questions ("can I...", "how do I...", "is it possible...")
-- User asks for information or explanations
-- User requests already exist in current graph
-- User asks about existing functionality
-
-COMPLETE SETUPS:
-For requests like "vintage synth with delay" or "synth with user control", provide ALL necessary components:
-- Audio sources (OscillatorNode with proper waveform and frequency)
-- Effects chain (filters, delays, etc. with proper parameters configured)
-- User controls (SliderNode + MidiToFreqNode for musical control)
-- All connections between nodes
-- AudioDestinationNode for output
+COMPLETE SETUPS REQUIRED:
+For "vintage synth with delay", provide ALL:
+- Audio chain: Oscillator → Filter → Delay → Destination
+- Control chain: SliderNode → MidiToFreqNode → Oscillator.frequency
+- Effect controls: Sliders → Filter/Delay parameters
+- Feedback loops: Delay → GainNode → Delay input
 
 MUSICAL CONTROL PATTERN:
-For musical instruments, always include:
-- SliderNode (0-127 MIDI range) → MidiToFreqNode → OscillatorNode.frequency
-- This provides proper musical note control
+SliderNode(0-127) → MidiToFreqNode → OscillatorNode.frequency
 
-AUDIO ENGINEERING KNOWLEDGE:
-- Vintage synths: sawtooth/square waves + lowpass filter + envelope (GainNode) + chorus/delay
-- Classic chains: Oscillator → Filter → Gain → Destination
-- Musical control: MIDI notes (0-127) via MidiToFreqNode for proper pitch
-- Effects order: Distortion → Filter → Delay → Reverb → Gain → Destination
-- Delay effects: delayTime 0.1-0.5s for slap-back, 0.25-0.5s for echo, feedback gain 0.3-0.7
+CONNECTIONS FORMAT:
+- Audio: {"type": "addConnection", "sourceId": "osc", "targetId": "filter", "sourceHandle": "output", "targetHandle": "input"}
+- Control: {"type": "addConnection", "sourceId": "slider", "targetId": "osc", "sourceHandle": "value", "targetHandle": "frequency"}
 
-NODE BEHAVIOR:
-- OscillatorNode: needs frequency input OR direct property OR silent
-- MidiToFreqNode: needs midiNote input (0-127) OR outputs 0Hz
-- Audio effects: must be in signal path with proper parameters
-- Control nodes: must connect to parameters
-
-FREQUENCY STRATEGY:
-- Specific frequency ("440Hz"): set property directly, no controls
-- Variable frequency: SliderNode → OscillatorNode.frequency  
-- Musical notes: SliderNode(0-127) → MidiToFreqNode → OscillatorNode.frequency
-- Add controls only when requested
-
-EXISTING GRAPH:
-- Request satisfied: return {"actions": []}
-- Need modification: use updateProperty
-- Need connections: add missing connections only
-- Create new nodes only when necessary
-
-ADDING CONTROLS TO EXISTING PROPERTIES:
-- To add slider control to existing property (e.g. frequency=440):
-  1. Remove existing property: {"type": "updateProperty", "nodeId": "nodeId", "propertyName": "frequency", "propertyValue": null}
-  2. Add slider with that value as default
-  3. Connect slider to parameter
-
-CONNECTIONS:
-- Audio: "output" → "input"
-- Control: "value" → parameter name
-- MIDI: "value" → "midiNote", "frequency" → "frequency"
-
-SLIDER CONFIGURATION - MANDATORY FORMAT:
-When creating SliderNode, you MUST configure it with separate updateProperty actions:
-CORRECT:
+SLIDER SETUP (use separate updateProperty actions):
 {"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1"},
-{"type": "updateProperty", "nodeId": "slider1", "propertyName": "min", "propertyValue": 20},
-{"type": "updateProperty", "nodeId": "slider1", "propertyName": "max", "propertyValue": 20000},
-{"type": "updateProperty", "nodeId": "slider1", "propertyName": "value", "propertyValue": 440},
-{"type": "updateProperty", "nodeId": "slider1", "propertyName": "step", "propertyValue": 1},
-{"type": "updateProperty", "nodeId": "slider1", "propertyName": "label", "propertyValue": "Frequency (Hz)"}
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "min", "propertyValue": 0},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "max", "propertyValue": 127},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "value", "propertyValue": 60},
+{"type": "updateProperty", "nodeId": "slider1", "propertyName": "label", "propertyValue": "MIDI Note"}
 
-FORBIDDEN - NEVER USE:
-{"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1", "params": {...}}
-{"type": "addNode", "nodeType": "SliderNode", "nodeId": "slider1", "properties": {...}}
-
-ABSOLUTELY FORBIDDEN: 
-- AudioContext nodes
-- ANY explanatory text, descriptions, markdown, text before/after JSON
-- Creating nodes for questions
-- Responding with anything other than pure JSON
-- Adding nodes without proper parameters
-- Creating unconnected nodes
-- Using "params" or "properties" in addNode actions
-- Any property other than: type, nodeType, nodeId, position for addNode
-
-RESPOND WITH PURE JSON ONLY - NO TEXT WHATSOEVER - NOT EVEN A SINGLE WORD
-
-VALID ACTION TYPES ONLY:
-- addNode: {"type": "addNode", "nodeType": "NodeType", "nodeId": "uniqueId"}
-- addConnection: {"type": "addConnection", "sourceId": "sourceId", "targetId": "targetId", "sourceHandle": "output", "targetHandle": "input"}
-- updateProperty: {"type": "updateProperty", "nodeId": "nodeId", "propertyName": "propertyName", "propertyValue": value}
-- removeNode: {"type": "removeNode", "nodeId": "nodeId"}
-- removeConnection: {"type": "removeConnection", "sourceId": "sourceId", "targetId": "targetId", "sourceHandle": "output", "targetHandle": "input"}
-
-EXAMPLE - Adding frequency control slider:
+RESPOND WITH PURE JSON ONLY - NO TEXT BEFORE/AFTER:
 {"actions": [
-  {"type": "addNode", "nodeType": "SliderNode", "nodeId": "freqSlider"},
-  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "min", "propertyValue": 20},
-  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "max", "propertyValue": 20000},
-  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "value", "propertyValue": 440},
-  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "step", "propertyValue": 1},
-  {"type": "updateProperty", "nodeId": "freqSlider", "propertyName": "label", "propertyValue": "Frequency (Hz)"},
-  {"type": "updateProperty", "nodeId": "existingOsc", "propertyName": "frequency", "propertyValue": null},
-  {"type": "addConnection", "sourceId": "freqSlider", "targetId": "existingOsc", "sourceHandle": "value", "targetHandle": "frequency"}
+  {"type": "addNode", "nodeType": "OscillatorNode", "nodeId": "osc"},
+  {"type": "addNode", "nodeType": "AudioDestinationNode", "nodeId": "dest"},
+  {"type": "addConnection", "sourceId": "osc", "targetId": "dest", "sourceHandle": "output", "targetHandle": "input"}
 ]}
 
-Use "nodeId" not "id", "propertyValue" not "value". Complete all connections. Positions handled automatically.`
+REMEMBER: Include ALL nodes AND ALL connections in one complete response!`
   }
 
   async processMessage(
