@@ -770,7 +770,7 @@ export class DisplayNode extends BaseCustomNode {
   }
 
   receiveInput(inputName: string, value: any): void {
-    console.log(`🔍 DisplayNode ${this.id} receiveInput: ${inputName} = ${value}`)
+    console.log(`DisplayNode ${this.id} receiveInput: ${inputName} = ${value}`)
     if (inputName === 'input') {
       const numValue = Number(value) || 0
 
@@ -788,7 +788,7 @@ export class DisplayNode extends BaseCustomNode {
 
       // Update the display
       this.updateDisplay()
-      console.log(`📊 DisplayNode ${this.id} updated display to: ${numValue}`)
+      console.log(`DisplayNode ${this.id} updated display to: ${numValue}`)
     }
   }
 
@@ -972,7 +972,7 @@ export class RandomNode extends BaseCustomNode {
       this.properties.set('currentValue', newValue)
       this.outputs.set('value', newValue)
       this.updateDisplay()
-      console.log(`🎲 RandomNode ${this.id} generated: ${newValue.toFixed(2)}`)
+      console.log(`RandomNode ${this.id} generated: ${newValue.toFixed(2)}`)
       this.notifyConnections('value', newValue)
     }, intervalMs)
   }
@@ -1034,16 +1034,16 @@ export class SoundFileNode extends BaseCustomNode {
     const audioBufferData = this.properties.get('audioBufferData')
     const fileName = this.properties.get('fileName')
 
-    console.log(`🔍 SoundFileNode: Attempting to restore audio data...`)
-    console.log(`🔍 audioBufferData exists: ${!!audioBufferData}, type: ${typeof audioBufferData}`)
-    console.log(`🔍 fileName: ${fileName}`)
-    console.log(`🔍 Properties keys: [${Array.from(this.properties.keys()).join(', ')}]`)
+    console.log(`SoundFileNode: Attempting to restore audio data...`)
+    console.log(`audioBufferData exists: ${!!audioBufferData}, type: ${typeof audioBufferData}`)
+    console.log(`fileName: ${fileName}`)
+    console.log(`Properties keys: [${Array.from(this.properties.keys()).join(', ')}]`)
 
     if (audioBufferData && fileName) {
       try {
-        console.log(`🎵 SoundFileNode: Restoring audio buffer for ${fileName}`)
+        console.log(`SoundFileNode: Successfully restored audio buffer for ${fileName}`)
         console.log(
-          `🎵 Data length: ${typeof audioBufferData === 'string' ? audioBufferData.length : 'not string'}`
+          `Data length: ${typeof audioBufferData === 'string' ? audioBufferData.length : 'not string'}`
         )
 
         // Ensure audioBufferData is a string (base64)
@@ -1060,7 +1060,7 @@ export class SoundFileNode extends BaseCustomNode {
         this.outputs.set('loaded', 1)
         this.notifyConnections('loaded', 1)
 
-        console.log(`✅ SoundFileNode: Successfully restored audio buffer for ${fileName}`)
+        console.log(`SoundFileNode: Successfully restored audio buffer for ${fileName}`)
         console.log(`   - Duration: ${this.audioBuffer.duration.toFixed(2)}s`)
         console.log(`   - Sample rate: ${this.audioBuffer.sampleRate}Hz`)
         console.log(`   - Channels: ${this.audioBuffer.numberOfChannels}`)
@@ -1074,7 +1074,7 @@ export class SoundFileNode extends BaseCustomNode {
         console.warn('🔄 SoundFileNode: Audio data preserved - user can try reloading')
       }
     } else {
-      console.log(`⚠️ SoundFileNode: No stored audio data found`)
+      console.log(`SoundFileNode: No stored audio data found`)
       console.log(`   - audioBufferData missing: ${!audioBufferData}`)
       console.log(`   - fileName missing: ${!fileName}`)
       this.outputs.set('loaded', 0)
@@ -1153,7 +1153,7 @@ export class SoundFileNode extends BaseCustomNode {
       this.outputs.set('loaded', 1)
       this.notifyConnections('loaded', 1)
 
-      console.log(`🎵 SoundFileNode: Loaded and stored audio file: ${file.name}`)
+      console.log(`SoundFileNode: Loaded and stored audio file: ${file.name}`)
     } catch (error) {
       console.error('Error loading audio file:', error)
       this.outputs.set('loaded', 0)
@@ -1171,7 +1171,7 @@ export class SoundFileNode extends BaseCustomNode {
   }
 
   trigger(): void {
-    console.log(`🎯 SoundFileNode trigger called:`)
+    console.log(`SoundFileNode trigger called:`)
     console.log(`   - audioBuffer exists: ${!!this.audioBuffer}`)
     console.log(`   - gainNode exists: ${!!this.gainNode}`)
     console.log(`   - audioContext state: ${this.audioContext.state}`)
@@ -1269,7 +1269,7 @@ export class SoundFileNode extends BaseCustomNode {
     // Recreate audio nodes with the new context
     this.setupAudioNodes()
 
-    console.log(`✅ SoundFileNode: Audio context updated and nodes recreated`)
+    console.log(`SoundFileNode: Audio context updated and nodes recreated`)
   }
 }
 
@@ -1555,16 +1555,16 @@ export class TimerNode extends BaseCustomNode {
   }
 
   cleanup(): void {
-    console.log(`⏱️ TimerNode ${this.id}: Starting cleanup...`)
+    console.log(`TimerNode ${this.id}: Starting cleanup...`)
 
     // Only stop timer if we're actually being destroyed, not just recreated
     if (this.timeoutId || this.intervalId) {
-      console.log(`⏱️ TimerNode ${this.id}: Stopping active timers during cleanup`)
+      console.log(`TimerNode ${this.id}: Stopping active timers during cleanup`)
       this.stopTimer()
     }
 
     super.cleanup()
-    console.log(`⏱️ TimerNode ${this.id}: Cleanup completed`)
+    console.log(`TimerNode ${this.id}: Cleanup completed`)
   }
 
   // Override to handle audio context updates
@@ -1573,7 +1573,7 @@ export class TimerNode extends BaseCustomNode {
       `🔄 TimerNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
     )
     super.updateAudioContext(newAudioContext)
-    console.log(`✅ TimerNode: Audio context updated`)
+    console.log(`TimerNode: Audio context updated`)
   }
 }
 

@@ -362,7 +362,7 @@ Request: ${message}`
           if (action.nodeId && store.visualNodes.length > nodeCountBefore) {
             const newNode = store.visualNodes[store.visualNodes.length - 1]
             nodeIdMapping[action.nodeId] = newNode.id
-            console.log(`🔗 Mapped AI nodeId "${action.nodeId}" to actual nodeId "${newNode.id}"`)
+            console.log(`Mapped AI nodeId "${action.nodeId}" to actual nodeId "${newNode.id}"`)
           }
         } catch (error) {
           console.error('Failed to add node:', action, error)
@@ -469,16 +469,16 @@ Request: ${message}`
 
     // If AI provided explicit connections, trust them and only do minimal auto-connection
     if (hasAddNodeActions && !hasConnectionActions) {
-      console.log('🔗 AI provided no connections - running full auto-connection')
+      console.log('AI provided no connections - running full auto-connection')
       this.ensureProperAudioChain(store)
     } else if (hasAddNodeActions && hasConnectionActions) {
-      console.log('🎯 AI provided explicit connections - only connecting truly unconnected nodes')
+      console.log('AI provided explicit connections - only connecting truly unconnected nodes')
       this.connectOnlyUnconnectedNodes(store)
     }
 
     // Always apply pro audio engineering (including labeling) when nodes are added
     if (hasAddNodeActions) {
-      console.log('🎛️ Applying pro audio engineering and labeling')
+      console.log('Applying pro audio engineering and labeling')
       const availableSliders = store.visualNodes.filter(node => {
         const isSlider = node.data.nodeType === 'SliderNode'
         const isUnconnected = !store.visualEdges.some(edge => edge.source === node.id)
@@ -489,7 +489,7 @@ Request: ${message}`
 
     // Fourth pass: Smart auto-layout to prevent overlapping nodes
     if (hasAddNodeActions) {
-      console.log('📐 Applying smart auto-layout to prevent overlapping')
+      console.log('Applying smart auto-layout to prevent overlapping')
       this.applySmartLayout(store)
     }
   }
@@ -655,14 +655,14 @@ Request: ${message}`
       if (isAudioSource) {
         try {
           store.addEdge(node.id, destinationNode!.id, 'output', 'input')
-          console.log(`🔗 Connected isolated ${nodeType} to destination`)
+          console.log(`Connected isolated ${nodeType} to destination`)
         } catch (error) {
           console.error('Failed to connect isolated source to destination:', error)
         }
       }
     })
 
-    console.log('🎯 Minimal auto-connection complete - preserved AI connections')
+    console.log('Minimal auto-connection complete - preserved AI connections')
   }
 
   private ensureProperAudioChain(store: AudioGraphStoreType): void {
@@ -1128,7 +1128,7 @@ Request: ${message}`
           store.updateNodeProperty(slider.id, 'value', 0.3)
           store.updateNodeProperty(slider.id, 'step', 0.001)
           store.updateNodeProperty(slider.id, 'label', 'Delay Time')
-          console.log('🎛️ Added delay time control')
+          console.log('Added delay time control')
         } catch (error) {
           console.error('Failed to add delay time control:', error)
         }
@@ -1154,7 +1154,7 @@ Request: ${message}`
           store.updateNodeProperty(slider.id, 'value', 1000)
           store.updateNodeProperty(slider.id, 'step', 10)
           store.updateNodeProperty(slider.id, 'label', 'Filter Freq')
-          console.log('🎛️ Added filter frequency control')
+          console.log('Added filter frequency control')
         } catch (error) {
           console.error('Failed to add filter frequency control:', error)
         }
@@ -1180,7 +1180,7 @@ Request: ${message}`
           store.updateNodeProperty(slider.id, 'value', 50)
           store.updateNodeProperty(slider.id, 'step', 1)
           store.updateNodeProperty(slider.id, 'label', 'Volume')
-          console.log('🎛️ Added volume control')
+          console.log('Added volume control')
         } catch (error) {
           console.error('Failed to add volume control:', error)
         }
@@ -1206,7 +1206,7 @@ Request: ${message}`
           store.updateNodeProperty(slider.id, 'value', -24)
           store.updateNodeProperty(slider.id, 'step', 1)
           store.updateNodeProperty(slider.id, 'label', 'Threshold')
-          console.log('🎛️ Added compressor threshold control')
+          console.log('Added compressor threshold control')
         } catch (error) {
           console.error('Failed to add compressor threshold control:', error)
         }
@@ -1237,7 +1237,7 @@ Request: ${message}`
         if (defaultLabel) {
           try {
             store.updateNodeProperty(node.id, 'label', defaultLabel)
-            console.log(`🏷️ Labeled ${nodeType} as "${defaultLabel}"`)
+            console.log(`Labeled ${nodeType} as "${defaultLabel}"`)
           } catch (error) {
             console.error(`Failed to label ${nodeType}:`, error)
           }
@@ -1286,7 +1286,7 @@ Request: ${message}`
           }
           store.updateNodePosition(node.id, newPosition)
           positionedNodes.add(node.id)
-          console.log(`📍 Positioned ${node.data.nodeType} at (${newPosition.x}, ${newPosition.y})`)
+          console.log(`Positioned ${node.data.nodeType} at (${newPosition.x}, ${newPosition.y})`)
         }
       })
     })
@@ -1333,7 +1333,7 @@ Request: ${message}`
       )
     })
 
-    console.log('📐 Smart layout complete - nodes positioned based on signal flow')
+    console.log('Smart layout complete - nodes positioned based on signal flow')
   }
 
   private buildAudioChain(startNode: any, edges: any[], allNodes: any[]): any[] {

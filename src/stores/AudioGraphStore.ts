@@ -242,7 +242,7 @@ export const AudioGraphStore = types
             typeof customNode.updateAudioContext === 'function'
           ) {
             ;(customNode as any).updateAudioContext(self.audioContext)
-            console.log(`✅ Updated audio context for custom node ${nodeId}`)
+            console.log(`Updated audio context for custom node ${nodeId}`)
           }
         })
 

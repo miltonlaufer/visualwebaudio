@@ -1181,11 +1181,11 @@ export const useExamples = () => {
           const customNode = store.customNodes.get(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
-            console.log('✅ Sound File Player: Sample audio loaded successfully')
+            console.log('Sound File Player: Sample audio loaded successfully')
           }
         } catch (error) {
           console.error('Sound File Player: Failed to load sample audio:', error)
-          console.log('💡 You can still upload your own audio file using the file input')
+          console.log('You can still upload your own audio file using the file input')
         }
       }),
     },
@@ -1237,11 +1237,11 @@ export const useExamples = () => {
           const customNode = store.customNodes.get(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
-            console.log('✅ Auto File Player: Sample audio loaded successfully')
+            console.log('Auto File Player: Sample audio loaded successfully')
           }
         } catch (error) {
           console.error('Auto File Player: Failed to load sample audio:', error)
-          console.log('💡 You can still upload your own audio file using the file input')
+          console.log('You can still upload your own audio file using the file input')
         }
       }),
     },

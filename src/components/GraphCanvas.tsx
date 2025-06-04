@@ -123,7 +123,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
 
       // Delete: Delete key
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        console.log('🔑 DELETE KEY PRESSED')
+        console.log('DELETE KEY PRESSED')
         console.log('Selected nodes:', selectedNodeIds.length)
         console.log('Selected edges:', selectedEdgeIds.length)
 
@@ -141,7 +141,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
           event.preventDefault()
           event.stopPropagation()
           selectedEdgeIds.forEach(edgeId => {
-            console.log('🗑️ DELETING EDGE VIA KEYBOARD:', edgeId)
+            console.log('DELETING EDGE VIA KEYBOARD:', edgeId)
             store.removeEdge(edgeId)
           })
           console.log(`Deleted ${selectedEdgeIds.length} edges`)
@@ -526,7 +526,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
       // Handle different types of changes
       changes.forEach(change => {
         if (change.type === 'remove') {
-          console.log('🗑️ REMOVING EDGE FROM STORE:', change.id)
+          console.log('REMOVING EDGE FROM STORE:', change.id)
           console.log(
             'Edge details:',
             store.visualEdges.find(e => e.id === change.id)
@@ -576,7 +576,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick, onForce
   // Handle selection changes for multinode selection
   const onSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
-      console.log('🎯 SELECTION CHANGE:', params)
+      console.log('SELECTION CHANGE:', params)
 
       const nodeIds = params.nodes.map(node => node.id)
       const edgeIds = params.edges.map(edge => edge.id)

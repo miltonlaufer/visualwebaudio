@@ -221,7 +221,7 @@ describe('AudioParam Connection Tests', () => {
 
   describe('Visual verification test', () => {
     it('should create a complete working example for manual testing', () => {
-      console.log('\n🎵 CREATING MANUAL TEST EXAMPLE:')
+      console.log('\nCREATING MANUAL TEST EXAMPLE:')
 
       // Create a complete audio chain for testing
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
@@ -243,10 +243,10 @@ describe('AudioParam Connection Tests', () => {
       // Verify the connections
       const oscAudioNode = store.audioNodes.get(oscId) as any
       console.log(`6. Oscillator frequency base value: ${oscAudioNode.frequency.value} Hz`)
-      console.log('   ✅ Should be 0 for direct slider control')
+      console.log('   Should be 0 for direct slider control')
 
       // Simulate slider changes
-      console.log('\n🎚️ SIMULATING SLIDER CHANGES:')
+      console.log('\nSIMULATING SLIDER CHANGES:')
       store.updateNodeProperty(sliderId, 'value', 220)
       console.log('   Set slider to 220 → Should control frequency directly')
 
@@ -256,11 +256,11 @@ describe('AudioParam Connection Tests', () => {
       store.updateNodeProperty(sliderId, 'value', 880)
       console.log('   Set slider to 880 → Should control frequency directly')
 
-      console.log('\n✅ Example created successfully!')
+      console.log('\nExample created successfully!')
       console.log(
         '💡 In the browser: Create SliderNode → connect to OscillatorNode frequency → connect to output'
       )
-      console.log('💡 Move the slider and the frequency should change directly!')
+      console.log('Move the slider and the frequency should change directly!')
 
       // Verify all nodes exist
       expect(store.visualNodes.length).toBe(3)

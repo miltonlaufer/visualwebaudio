@@ -45,7 +45,7 @@ const CustomNodeState = types
   .actions(self => {
     return {
       setProperty(name: string, value: any): void {
-        console.log(`📝 CustomNode ${self.id}: Setting property ${name} = ${value}`)
+        console.log(`CustomNode ${self.id}: Setting property ${name} = ${value}`)
         self.properties.set(name, value)
 
         // For certain node types, also update outputs when properties change
@@ -160,7 +160,7 @@ const CustomNodeState = types
           const frequency = this.midiToFrequency(midiNote)
           this.setOutput('frequency', frequency)
         } else if (self.nodeType === 'SoundFileNode' && targetInput === 'trigger' && value > 0) {
-          console.log(`🎯 MST SoundFileNode ${self.id}: Trigger received with value ${value}`)
+          console.log(`MST SoundFileNode ${self.id}: Trigger received with value ${value}`)
           this.performSoundFileTrigger()
         }
       },
@@ -180,7 +180,7 @@ const CustomNodeState = types
           self.audioContext = audioContext
           this.setupAudioNodes()
           this.restoreAudioBufferFromProperties()
-          console.log(`✅ MST SoundFileNode: Audio context updated and nodes recreated`)
+          console.log(`MST SoundFileNode: Audio context updated and nodes recreated`)
         }
       },
 
@@ -198,7 +198,7 @@ const CustomNodeState = types
           // Update state in a synchronous action
           this.updateAudioFileState(audioBuffer, arrayBuffer, file.name, file.size)
 
-          console.log(`🎵 MST SoundFileNode: Successfully loaded ${file.name}`)
+          console.log(`MST SoundFileNode: Successfully loaded ${file.name}`)
           console.log(`   - Duration: ${audioBuffer.duration.toFixed(2)}s`)
           console.log(`   - Sample rate: ${audioBuffer.sampleRate}Hz`)
           console.log(`   - Channels: ${audioBuffer.numberOfChannels}`)
@@ -242,7 +242,7 @@ const CustomNodeState = types
 
         if (audioBufferData && fileName) {
           try {
-            console.log(`🎵 MST SoundFileNode: Restoring audio buffer for ${fileName}`)
+            console.log(`MST SoundFileNode: Restoring audio buffer for ${fileName}`)
 
             if (typeof audioBufferData !== 'string') {
               console.error('🚨 audioBufferData is not a string:', typeof audioBufferData)
@@ -255,13 +255,13 @@ const CustomNodeState = types
             // Update state in a synchronous action
             this.restoreAudioBufferState(audioBuffer)
 
-            console.log(`✅ MST SoundFileNode: Successfully restored audio buffer for ${fileName}`)
+            console.log(`MST SoundFileNode: Successfully restored audio buffer for ${fileName}`)
           } catch (error) {
             console.error('🚨 MST SoundFileNode: Error restoring audio buffer:', error)
             this.setOutput('loaded', 0)
           }
         } else {
-          console.log(`⚠️ MST SoundFileNode: No stored audio data found`)
+          console.log(`MST SoundFileNode: No stored audio data found`)
           this.setOutput('loaded', 0)
         }
       },
@@ -558,10 +558,10 @@ const CustomNodeStore = types
           const initialValue = propertiesObj['currentValue'] || 0
           outputsObj['output'] = initialValue
         } else if (nodeType === 'SoundFileNode') {
-          console.log(`🎵 Creating MST SoundFileNode ${id}`)
+          console.log(`Creating MST SoundFileNode ${id}`)
           outputsObj['loaded'] = 0
         } else if (nodeType === 'TimerNode') {
-          console.log(`⏱️ Creating MST TimerNode ${id}`)
+          console.log(`Creating MST TimerNode ${id}`)
           // Initialize timer-specific properties
           propertiesObj['isRunning'] = 'false'
           propertiesObj['_timeoutId'] = undefined
@@ -572,7 +572,7 @@ const CustomNodeStore = types
           const enabled = (propertiesObj['enabled'] || 'true') === 'true'
 
           if (startMode !== 'manual' && enabled) {
-            console.log(`⏱️ MST TimerNode ${id}: Auto-starting timer (startMode: ${startMode})`)
+            console.log(`MST TimerNode ${id}: Auto-starting timer (startMode: ${startMode})`)
             // Use setTimeout to auto-start after the node is fully created
             setTimeout(() => {
               const node = self.nodes.get(id)
@@ -611,16 +611,16 @@ const CustomNodeStore = types
       },
 
       removeNode(id: string): void {
-        console.log(`🗑️ MST CustomNodeStore: removeNode called for ${id}`)
+        console.log(`MST CustomNodeStore: removeNode called for ${id}`)
         console.trace('removeNode call stack')
 
         const node = self.nodes.get(id)
         if (node) {
-          console.log(`🗑️ MST CustomNodeStore: Found node ${id} of type ${node.nodeType}`)
+          console.log(`MST CustomNodeStore: Found node ${id} of type ${node.nodeType}`)
 
           // Special cleanup for TimerNode
           if (node.nodeType === 'TimerNode') {
-            console.log(`⏱️ MST TimerNode ${id}: Cleaning up timer`)
+            console.log(`MST TimerNode ${id}: Cleaning up timer`)
             node.stopTimer()
           }
 
@@ -644,9 +644,9 @@ const CustomNodeStore = types
           })
 
           self.nodes.delete(id)
-          console.log(`🗑️ CustomNode ${id}: Removed from store`)
+          console.log(`CustomNode ${id}: Removed from store`)
         } else {
-          console.log(`🗑️ MST CustomNodeStore: Node ${id} not found in store`)
+          console.log(`MST CustomNodeStore: Node ${id} not found in store`)
         }
       },
 
