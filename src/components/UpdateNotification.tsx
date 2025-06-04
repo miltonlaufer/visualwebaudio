@@ -29,10 +29,11 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
     }
 
     // Listen for the Vite PWA update event
-    const handleVitePwaUpdate = (event: any) => {
-      console.log('Vite PWA update event received:', event.detail)
-      if (event.detail && event.detail.type === 'UPDATE_AVAILABLE') {
-        showUpdateNotification(event.detail.updateSW)
+    const handleVitePwaUpdate = (event: Event) => {
+      const customEvent = event as CustomEvent
+      console.log('Vite PWA update event received:', customEvent.detail)
+      if (customEvent.detail && customEvent.detail.type === 'UPDATE_AVAILABLE') {
+        showUpdateNotification(customEvent.detail.updateSW)
       }
     }
 

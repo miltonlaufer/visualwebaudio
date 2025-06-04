@@ -2,6 +2,7 @@ import React from 'react'
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import UpdateNotification from './UpdateNotification'
+import type { MockedFunction } from 'vitest'
 
 // Mock service worker
 const mockServiceWorker = {
@@ -57,20 +58,20 @@ describe('UpdateNotification', () => {
     render(<UpdateNotification />)
 
     // Get the event handler that was registered for 'vite:pwa-update'
-    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
-      (call: any) => call[0] === 'vite:pwa-update'
+    const vitePwaUpdateHandler = (window.addEventListener as MockedFunction<typeof window.addEventListener>).mock.calls.find(
+      (call: Parameters<typeof window.addEventListener>) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     expect(vitePwaUpdateHandler).toBeDefined()
 
     // Simulate the vite:pwa-update event
     await act(async () => {
-      vitePwaUpdateHandler({
+      vitePwaUpdateHandler!({
         detail: {
           type: 'UPDATE_AVAILABLE',
           updateSW: vi.fn(),
         },
-      })
+      } as CustomEvent)
     })
 
     await waitFor(() => {
@@ -86,17 +87,17 @@ describe('UpdateNotification', () => {
     render(<UpdateNotification onClose={onClose} />)
 
     // Get the event handler and trigger update
-    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
-      (call: any) => call[0] === 'vite:pwa-update'
+    const vitePwaUpdateHandler = (window.addEventListener as MockedFunction<typeof window.addEventListener>).mock.calls.find(
+      (call: Parameters<typeof window.addEventListener>) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      vitePwaUpdateHandler({
+      vitePwaUpdateHandler!({
         detail: {
           type: 'UPDATE_AVAILABLE',
           updateSW: vi.fn(),
         },
-      })
+      } as CustomEvent)
     })
 
     await waitFor(() => {
@@ -120,17 +121,17 @@ describe('UpdateNotification', () => {
     render(<UpdateNotification />)
 
     // Get the event handler and trigger update
-    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
-      (call: any) => call[0] === 'vite:pwa-update'
+    const vitePwaUpdateHandler = (window.addEventListener as MockedFunction<typeof window.addEventListener>).mock.calls.find(
+      (call: Parameters<typeof window.addEventListener>) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      vitePwaUpdateHandler({
+      vitePwaUpdateHandler!({
         detail: {
           type: 'UPDATE_AVAILABLE',
           updateSW: vi.fn(),
         },
-      })
+      } as CustomEvent)
     })
 
     await waitFor(() => {
@@ -153,17 +154,17 @@ describe('UpdateNotification', () => {
     render(<UpdateNotification />)
 
     // Get the event handler and trigger update
-    const vitePwaUpdateHandler = (window.addEventListener as any).mock.calls.find(
-      (call: any) => call[0] === 'vite:pwa-update'
+    const vitePwaUpdateHandler = (window.addEventListener as MockedFunction<typeof window.addEventListener>).mock.calls.find(
+      (call: Parameters<typeof window.addEventListener>) => call[0] === 'vite:pwa-update'
     )?.[1]
 
     await act(async () => {
-      vitePwaUpdateHandler({
+      vitePwaUpdateHandler!({
         detail: {
           type: 'UPDATE_AVAILABLE',
           updateSW: mockUpdateSW,
         },
-      })
+      } as CustomEvent)
     })
 
     await waitFor(() => {
