@@ -124,16 +124,6 @@ npm run type-check   # TypeScript type checking
 npm run lint         # ESLint code quality
 ```
 
-### Tech Stack
-
-- **React 19** with TypeScript
-- **Vite** for development and building
-- **MobX State Tree** for type-safe state management
-- **React Flow** for visual graph editing
-- **Tailwind CSS** for styling
-- **Vitest** for testing (60.4% coverage)
-
-
 ### CI/CD
 GitHub Actions automatically runs type checking, tests, and linting on all PRs.
 
