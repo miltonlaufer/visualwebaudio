@@ -12,7 +12,7 @@ const DarkModeToggle: React.FC<DarkModeToggleProps> = observer(({ className = ''
   return (
     <button
       onClick={() => themeStore.toggleDarkMode()}
-      className={`p-2 rounded-lg transition-colors ${
+      className={`p-2 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 ${
         themeStore.isDarkMode
           ? 'bg-gray-700 text-yellow-400 hover:bg-gray-600'
           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
