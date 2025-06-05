@@ -50,30 +50,6 @@ const ExportJSButton: React.FC = observer(() => {
     const nodes = store.visualNodes as AudioNode[]
     const edges = store.visualEdges
 
-    // Check if there are any custom nodes
-    const hasCustomNodes = nodes.some(node => {
-      const customNodeTypes = [
-        'SliderNode',
-        'ButtonNode',
-        'GreaterThanNode',
-        'EqualsNode',
-        'SelectNode',
-        'MidiInputNode',
-        'MidiToFreqNode',
-        'DisplayNode',
-        'SoundFileNode',
-        'RandomNode',
-      ]
-      return customNodeTypes.includes(node.data.nodeType)
-    })
-
-    if (hasCustomNodes) {
-      alert(
-        'Support for exporting utility nodes coming soon. This feature is only available for pure Web Audio API projects.'
-      )
-      return
-    }
-
     const generatedCode = generateJavaScriptCode(nodes, edges)
     setCode(generatedCode)
     setIsModalOpen(true)
@@ -107,34 +83,1109 @@ const ExportJSButton: React.FC = observer(() => {
     return id.replace(/[^a-zA-Z0-9_]/g, '_')
   }
 
+  const generateCustomNodeClasses = (customNodes: AudioNode[]) => {
+    const nodeTypes = [...new Set(customNodes.map(node => node.data.nodeType))]
+
+    return nodeTypes
+      .map(nodeType => {
+        switch (nodeType) {
+          case 'SliderNode':
+            return `// Slider Node Implementation
+class SliderNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.bridges = new Map(); // Store ConstantSourceNode bridges
+    
+    // Initialize default properties
+    this.setProperty('value', 50);
+    this.setProperty('min', 0);
+    this.setProperty('max', 100);
+    this.setProperty('step', 1);
+    this.setProperty('label', 'Slider');
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+    if (name === 'value') {
+      this.outputs.set('value', value);
+      this.notifyConnections('value', value);
+    }
+  }
+  
+  connect(targetNode, outputName = 'value', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+    
+    // If connecting to a Web Audio node, create a ConstantSourceNode bridge
+    if (targetNode && typeof targetNode.connect === 'function' && !targetNode.receiveInput) {
+      const bridgeKey = \`\${targetNode.constructor.name}_\${inputName}\`;
+      if (!this.bridges.has(bridgeKey)) {
+        const constantSource = this.audioContext.createConstantSource();
+        constantSource.start();
+        
+        // Connect to the target parameter
+        if (inputName === 'frequency' && targetNode.frequency) {
+          constantSource.connect(targetNode.frequency);
+        } else if (inputName === 'gain' && targetNode.gain) {
+          constantSource.connect(targetNode.gain);
+        } else if (inputName === 'Q' && targetNode.Q) {
+          constantSource.connect(targetNode.Q);
+        } else if (inputName === 'delayTime' && targetNode.delayTime) {
+          constantSource.connect(targetNode.delayTime);
+        }
+        
+        this.bridges.set(bridgeKey, constantSource);
+      }
+    }
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          // Custom node connection
+          conn.target.receiveInput(conn.inputName, value);
+        } else if (conn.target && typeof conn.target.connect === 'function') {
+          // Web Audio node connection - update the bridge
+          const bridgeKey = \`\${conn.target.constructor.name}_\${conn.inputName}\`;
+          const bridge = this.bridges.get(bridgeKey);
+          if (bridge && bridge.offset) {
+            bridge.offset.value = value;
+          }
+        }
+      });
+  }
+}`
+
+          case 'ButtonNode':
+            return `// Button Node Implementation
+class ButtonNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    
+    this.setProperty('label', 'Click Me');
+    this.setProperty('outputValue', 1);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  trigger() {
+    const outputValue = this.properties.get('outputValue') || 1;
+    this.outputs.set('trigger', outputValue);
+    this.notifyConnections('trigger', outputValue);
+  }
+  
+  connect(targetNode, outputName = 'trigger', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'MidiToFreqNode':
+            return `// MIDI to Frequency Node Implementation
+class MidiToFreqNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.bridges = new Map(); // Store ConstantSourceNode bridges
+    
+    this.setProperty('baseFreq', 440);
+    this.setProperty('baseMidi', 69);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'midiNote') {
+      const midiNote = Number(value) || 0;
+      const frequency = this.midiToFrequency(midiNote);
+      this.outputs.set('frequency', frequency);
+      this.notifyConnections('frequency', frequency);
+    }
+  }
+  
+  midiToFrequency(midiNote) {
+    const baseFreq = this.properties.get('baseFreq') || 440;
+    const baseMidi = this.properties.get('baseMidi') || 69;
+    return baseFreq * Math.pow(2, (midiNote - baseMidi) / 12);
+  }
+  
+  connect(targetNode, outputName = 'frequency', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+    
+    // If connecting to a Web Audio node, create a ConstantSourceNode bridge
+    if (targetNode && typeof targetNode.connect === 'function' && targetNode.constructor.name !== 'MidiToFreqNode') {
+      const bridgeKey = \`\${targetNode.constructor.name}_\${inputName}\`;
+      if (!this.bridges.has(bridgeKey)) {
+        const constantSource = this.audioContext.createConstantSource();
+        constantSource.start();
+        
+        // Connect to the target parameter
+        if (inputName === 'frequency' && targetNode.frequency) {
+          constantSource.connect(targetNode.frequency);
+        } else if (inputName === 'gain' && targetNode.gain) {
+          constantSource.connect(targetNode.gain);
+        } else if (inputName === 'Q' && targetNode.Q) {
+          constantSource.connect(targetNode.Q);
+        } else if (inputName === 'delayTime' && targetNode.delayTime) {
+          constantSource.connect(targetNode.delayTime);
+        }
+        
+        this.bridges.set(bridgeKey, constantSource);
+      }
+    }
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          // Custom node connection
+          conn.target.receiveInput(conn.inputName, value);
+        } else if (conn.target && typeof conn.target.connect === 'function') {
+          // Web Audio node connection - update the bridge
+          const bridgeKey = \`\${conn.target.constructor.name}_\${conn.inputName}\`;
+          const bridge = this.bridges.get(bridgeKey);
+          if (bridge && bridge.offset) {
+            bridge.offset.value = value;
+          }
+        }
+      });
+  }
+}`
+
+          case 'DisplayNode':
+            return `// Display Node Implementation
+class DisplayNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    
+    this.setProperty('currentValue', 0);
+    this.setProperty('label', 'Display');
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'input') {
+      const numValue = Number(value) || 0;
+      this.setProperty('currentValue', numValue);
+      this.outputs.set('output', numValue);
+      this.notifyConnections('output', numValue);
+    }
+  }
+  
+  connect(targetNode, outputName = 'output', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'MidiInputNode':
+            return `// MIDI Input Node Implementation
+class MidiInputNode {
+  constructor(id, audioContext, midiAccess) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.midiAccess = midiAccess;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    
+    this.setProperty('channel', 1);
+    this.setProperty('deviceName', '');
+    
+    this.setupMidiListeners();
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+    if (name === 'channel') {
+      this.setupMidiListeners();
+    }
+  }
+  
+  setupMidiListeners() {
+    if (!this.midiAccess) return;
+    
+    const channel = this.properties.get('channel') || 1;
+    
+    this.midiAccess.inputs.forEach((input) => {
+      input.onmidimessage = (event) => {
+        if (!event.data || event.data.length < 2) return;
+        
+        const status = event.data[0];
+        const data1 = event.data[1];
+        const data2 = event.data.length > 2 ? event.data[2] : 0;
+        const messageChannel = (status & 0x0f) + 1;
+        
+        if (messageChannel === channel) {
+          const messageType = status & 0xf0;
+          
+          switch (messageType) {
+            case 0x90: // Note on
+              this.outputs.set('note', data1);
+              this.outputs.set('velocity', data2);
+              this.notifyConnections('note', data1);
+              this.notifyConnections('velocity', data2);
+              break;
+              
+            case 0x80: // Note off
+              this.outputs.set('note', data1);
+              this.outputs.set('velocity', 0);
+              this.notifyConnections('note', data1);
+              this.notifyConnections('velocity', 0);
+              break;
+              
+            case 0xb0: // Control change
+              this.outputs.set('cc', data2);
+              this.notifyConnections('cc', data2);
+              break;
+              
+            case 0xe0: // Pitch bend
+              const pitchValue = (data2 << 7) | data1;
+              this.outputs.set('pitch', pitchValue);
+              this.notifyConnections('pitch', pitchValue);
+              break;
+          }
+        }
+      };
+    });
+  }
+  
+  connect(targetNode, outputName = 'note', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'SoundFileNode':
+            return `// Sound File Node Implementation
+class SoundFileNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.gainNode = audioContext.createGain();
+    this.audioBuffer = null;
+    
+    this.setProperty('fileName', '');
+    this.setProperty('duration', 0);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'trigger' && value > 0) {
+      this.trigger();
+    }
+  }
+  
+  trigger() {
+    if (!this.audioBuffer) {
+      console.warn('No audio buffer loaded for SoundFileNode');
+      return;
+    }
+    
+    const source = this.audioContext.createBufferSource();
+    source.buffer = this.audioBuffer;
+    source.connect(this.gainNode);
+    source.start();
+  }
+  
+  getAudioOutput() {
+    return this.gainNode;
+  }
+  
+  connect(targetNode, outputName = 'output', inputName = 'input') {
+    if (targetNode.receiveInput) {
+      this.connections.push({ target: targetNode, outputName, inputName });
+    } else {
+      // Direct audio connection
+      this.gainNode.connect(targetNode);
+    }
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'GreaterThanNode':
+            return `// Greater Than Node Implementation
+class GreaterThanNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.inputs = { input1: 0, input2: 0 };
+    
+    this.setProperty('threshold', 0);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'input1' || inputName === 'input2') {
+      this.inputs[inputName] = Number(value) || 0;
+      this.compute();
+    }
+  }
+  
+  compute() {
+    const result = this.inputs.input1 > this.inputs.input2 ? 1 : 0;
+    this.outputs.set('result', result);
+    this.notifyConnections('result', result);
+  }
+  
+  connect(targetNode, outputName = 'result', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'EqualsNode':
+            return `// Equals Node Implementation
+class EqualsNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.inputs = { input1: 0, input2: 0 };
+    
+    this.setProperty('tolerance', 0.001);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'input1' || inputName === 'input2') {
+      this.inputs[inputName] = Number(value) || 0;
+      this.compute();
+    }
+  }
+  
+  compute() {
+    const tolerance = this.properties.get('tolerance') || 0.001;
+    const result = Math.abs(this.inputs.input1 - this.inputs.input2) <= tolerance ? 1 : 0;
+    this.outputs.set('result', result);
+    this.notifyConnections('result', result);
+  }
+  
+  connect(targetNode, outputName = 'result', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'SelectNode':
+            return `// Select Node Implementation
+class SelectNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.inputs = { selector: 0, input: 0 };
+    
+    this.setProperty('numOutputs', 2);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'selector' || inputName === 'input') {
+      this.inputs[inputName] = Number(value) || 0;
+      this.compute();
+    }
+  }
+  
+  compute() {
+    const selector = Math.floor(this.inputs.selector);
+    const numOutputs = this.properties.get('numOutputs') || 2;
+    const inputValue = this.inputs.input;
+    
+    // Clear all outputs
+    for (let i = 0; i < numOutputs; i++) {
+      this.outputs.set(\`output\${i}\`, 0);
+    }
+    
+    // Set the selected output
+    if (selector >= 0 && selector < numOutputs) {
+      this.outputs.set(\`output\${selector}\`, inputValue);
+      this.notifyConnections(\`output\${selector}\`, inputValue);
+    }
+  }
+  
+  connect(targetNode, outputName = 'output0', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'RandomNode':
+            return `// Random Node Implementation
+class RandomNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    
+    this.setProperty('min', 0);
+    this.setProperty('max', 1);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'trigger' && value > 0) {
+      this.generate();
+    }
+  }
+  
+  generate() {
+    const min = this.properties.get('min') || 0;
+    const max = this.properties.get('max') || 1;
+    const randomValue = Math.random() * (max - min) + min;
+    this.outputs.set('value', randomValue);
+    this.notifyConnections('value', randomValue);
+  }
+  
+  connect(targetNode, outputName = 'value', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          case 'TimerNode':
+            return `// Timer Node Implementation
+class TimerNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.intervalId = null;
+    
+    this.setProperty('interval', 1000);
+    this.setProperty('count', 0);
+    this.setProperty('isRunning', false);
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  startTimer() {
+    if (this.intervalId) return; // Already running
+    
+    this.setProperty('isRunning', true);
+    const interval = this.properties.get('interval') || 1000;
+    
+    this.intervalId = setInterval(() => {
+      const currentCount = this.properties.get('count') || 0;
+      const newCount = currentCount + 1;
+      this.setProperty('count', newCount);
+      this.outputs.set('count', newCount);
+      this.notifyConnections('count', newCount);
+    }, interval);
+  }
+  
+  stopTimer() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    this.setProperty('isRunning', false);
+  }
+  
+  resetTimer() {
+    this.stopTimer();
+    this.setProperty('count', 0);
+    this.outputs.set('count', 0);
+    this.notifyConnections('count', 0);
+  }
+  
+  connect(targetNode, outputName = 'count', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+
+          default:
+            return `// ${nodeType} - Basic Implementation
+class ${nodeType} {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+  }
+  
+  connect(targetNode, outputName = 'output', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          conn.target.receiveInput(conn.inputName, value);
+        }
+      });
+  }
+}`
+        }
+      })
+      .join('\n\n')
+  }
+
+  const generateConnections = (edges: Edge[], nodes: AudioNode[], idMap: Map<string, string>) => {
+    const customNodeTypes = [
+      'SliderNode',
+      'ButtonNode',
+      'GreaterThanNode',
+      'EqualsNode',
+      'SelectNode',
+      'MidiInputNode',
+      'MidiToFreqNode',
+      'DisplayNode',
+      'SoundFileNode',
+      'RandomNode',
+      'TimerNode',
+    ]
+
+    return edges
+      .map(edge => {
+        const sourceId = idMap.get(edge.source)
+        const targetId = idMap.get(edge.target)
+        const sourceNode = nodes.find(n => n.id === edge.source)
+        const targetNode = nodes.find(n => n.id === edge.target)
+
+        if (!sourceNode || !targetNode) return ''
+
+        const isSourceCustom = customNodeTypes.includes(sourceNode.data.nodeType)
+        const isTargetCustom = customNodeTypes.includes(targetNode.data.nodeType)
+
+        const sourceHandle = edge.sourceHandle || 'output'
+        const targetHandle = edge.targetHandle || 'input'
+
+        if (isSourceCustom && isTargetCustom) {
+          // Custom to Custom connection
+          return `${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
+        } else if (isSourceCustom && !isTargetCustom) {
+          // Custom to Web Audio connection
+          if (sourceNode.data.nodeType === 'SoundFileNode') {
+            // SoundFileNode has audio output
+            return `${sourceId}.connect(${targetId});`
+          } else {
+            // Control connection - create bridge
+            return `${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
+          }
+        } else if (!isSourceCustom && isTargetCustom) {
+          // Web Audio to Custom connection
+          return `// Web Audio to Custom connection - requires manual bridging
+// ${sourceId}.connect(${targetId}); // This connection needs custom implementation`
+        } else {
+          // Web Audio to Web Audio connection
+          if (targetHandle !== 'input') {
+            // Connection to AudioParam
+            return `${sourceId}.connect(${targetId}.${targetHandle});`
+          } else {
+            // Normal audio connection
+            return `${sourceId}.connect(${targetId});`
+          }
+        }
+      })
+      .filter(Boolean)
+      .join('\n')
+  }
+
+  const generateUIControls = (
+    customNodes: AudioNode[],
+    idMap: Map<string, string>,
+    allNodes: AudioNode[],
+    edges: Edge[]
+  ) => {
+    const interactiveNodes = customNodes.filter(node =>
+      ['SliderNode', 'ButtonNode', 'RandomNode', 'TimerNode'].includes(node.data.nodeType)
+    )
+
+    const hasOscillators = allNodes.some(node => node.data.nodeType === 'OscillatorNode')
+
+    if (interactiveNodes.length === 0 && !hasOscillators) {
+      return '// No interactive UI controls needed'
+    }
+
+    return `// Create UI controls for interactive nodes
+function createAudioControls() {
+  // Create main controls container
+  const controlsContainer = document.createElement('div');
+  controlsContainer.id = 'audio-controls';
+  controlsContainer.style.cssText = \`
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+    font-family: Arial, sans-serif;
+  \`;
+
+  // Create title
+  const title = document.createElement('h3');
+  title.textContent = 'Audio Controls';
+  title.style.cssText = 'margin: 0 0 15px 0; color: #333;';
+  controlsContainer.appendChild(title);
+
+  // Create controls wrapper
+  const controlsWrapper = document.createElement('div');
+  controlsWrapper.style.cssText = 'display: flex; flex-wrap: wrap; gap: 20px;';
+  controlsContainer.appendChild(controlsWrapper);
+
+${interactiveNodes
+  .map(node => {
+    const nodeId = idMap.get(node.id)
+    const nodeType = node.data.nodeType
+    const properties = node.data.properties
+
+    switch (nodeType) {
+      case 'SliderNode': {
+        const min = Array.from(properties.entries()).find(([key]) => key === 'min')?.[1] || 0
+        const max = Array.from(properties.entries()).find(([key]) => key === 'max')?.[1] || 100
+        const step = Array.from(properties.entries()).find(([key]) => key === 'step')?.[1] || 1
+        const value = Array.from(properties.entries()).find(([key]) => key === 'value')?.[1] || 50
+        const label =
+          Array.from(properties.entries()).find(([key]) => key === 'label')?.[1] || 'Slider'
+
+        // Find what this slider is connected to
+        const sliderConnections = edges.filter((edge: any) => edge.source === node.id)
+
+        return `
+  // Create ${label} slider control
+  const ${nodeId}Container = document.createElement('div');
+  ${nodeId}Container.style.cssText = 'display: flex; flex-direction: column; gap: 8px; min-width: 200px;';
+  
+  const ${nodeId}Label = document.createElement('label');
+  ${nodeId}Label.textContent = '${label}';
+  ${nodeId}Label.style.cssText = 'font-weight: bold; color: #333;';
+  
+  const ${nodeId}Slider = document.createElement('input');
+  ${nodeId}Slider.type = 'range';
+  ${nodeId}Slider.id = '${nodeId}-slider';
+  ${nodeId}Slider.min = '${min}';
+  ${nodeId}Slider.max = '${max}';
+  ${nodeId}Slider.step = '${step}';
+  ${nodeId}Slider.value = '${value}';
+  ${nodeId}Slider.style.cssText = 'width: 100%;';
+  
+  const ${nodeId}Value = document.createElement('span');
+  ${nodeId}Value.id = '${nodeId}-value';
+  ${nodeId}Value.textContent = '${value}';
+  ${nodeId}Value.style.cssText = 'text-align: center; font-family: monospace; background: #fff; padding: 4px; border-radius: 4px;';
+  
+  ${nodeId}Container.appendChild(${nodeId}Label);
+  ${nodeId}Container.appendChild(${nodeId}Slider);
+  ${nodeId}Container.appendChild(${nodeId}Value);
+  controlsWrapper.appendChild(${nodeId}Container);
+  
+  // Add event listener for slider
+  ${nodeId}Slider.addEventListener('input', (e) => {
+    const value = parseFloat(e.target.value);
+    ${nodeId}Value.textContent = value;
+    ${nodeId}.setProperty('value', value);
+    
+    // Update connected audio parameters
+    ${sliderConnections
+      .map((conn: any) => {
+        const targetNode = allNodes.find(n => n.id === conn.target)
+        const targetNodeId = idMap.get(conn.target)
+        const targetHandle = conn.targetHandle
+
+        if (targetNode && targetNodeId && targetNode.data.nodeType !== 'SliderNode') {
+          // Check if it's a custom node that needs receiveInput
+          if (
+            ['MidiToFreqNode', 'GreaterThanNode', 'EqualsNode', 'SelectNode'].includes(
+              targetNode.data.nodeType
+            )
+          ) {
+            return `${targetNodeId}.receiveInput('${targetHandle}', value);`
+          }
+          // Check if it's an AudioParam (frequency, gain, etc.)
+          else if (['frequency', 'detune', 'gain', 'delayTime', 'Q'].includes(targetHandle)) {
+            return `${targetNodeId}.${targetHandle}.value = value;`
+          } else {
+            return `${targetNodeId}.${targetHandle} = value;`
+          }
+        }
+        return ''
+      })
+      .filter(Boolean)
+      .join('\n    ')}
+  });`
+      }
+
+      case 'ButtonNode': {
+        const buttonLabel =
+          Array.from(properties.entries()).find(([key]) => key === 'label')?.[1] || 'Click Me'
+
+        return `
+  // Create ${buttonLabel} button control
+  const ${nodeId}Container = document.createElement('div');
+  ${nodeId}Container.style.cssText = 'display: flex; flex-direction: column; gap: 8px; align-items: center;';
+  
+  const ${nodeId}Button = document.createElement('button');
+  ${nodeId}Button.id = '${nodeId}-button';
+  ${nodeId}Button.textContent = '${buttonLabel}';
+  ${nodeId}Button.style.cssText = 'padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 16px; font-weight: bold;';
+  
+  ${nodeId}Container.appendChild(${nodeId}Button);
+  controlsWrapper.appendChild(${nodeId}Container);
+  
+  // Add event listener for button
+  ${nodeId}Button.addEventListener('click', () => {
+    ${nodeId}.trigger();
+  });`
+      }
+
+      case 'RandomNode': {
+        return `
+  // Create Random Generator control
+  const ${nodeId}Container = document.createElement('div');
+  ${nodeId}Container.style.cssText = 'display: flex; flex-direction: column; gap: 8px; min-width: 200px;';
+  
+  const ${nodeId}Label = document.createElement('label');
+  ${nodeId}Label.textContent = 'Random Generator';
+  ${nodeId}Label.style.cssText = 'font-weight: bold; color: #333;';
+  
+  const ${nodeId}Controls = document.createElement('div');
+  ${nodeId}Controls.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+  
+  const ${nodeId}Generate = document.createElement('button');
+  ${nodeId}Generate.id = '${nodeId}-generate';
+  ${nodeId}Generate.textContent = 'Generate';
+  ${nodeId}Generate.style.cssText = 'padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;';
+  
+  const ${nodeId}Display = document.createElement('span');
+  ${nodeId}Display.id = '${nodeId}-display';
+  ${nodeId}Display.textContent = '0';
+  ${nodeId}Display.style.cssText = 'font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px; min-width: 60px; text-align: center;';
+  
+  ${nodeId}Controls.appendChild(${nodeId}Generate);
+  ${nodeId}Controls.appendChild(${nodeId}Display);
+  ${nodeId}Container.appendChild(${nodeId}Label);
+  ${nodeId}Container.appendChild(${nodeId}Controls);
+  controlsWrapper.appendChild(${nodeId}Container);
+  
+  // Add event listeners for random generator
+  ${nodeId}Generate.addEventListener('click', () => {
+    ${nodeId}.generate();
+    const value = ${nodeId}.outputs.get('value');
+    ${nodeId}Display.textContent = value.toFixed(3);
+  });`
+      }
+
+      case 'TimerNode': {
+        return `
+  // Create Timer control
+  const ${nodeId}Container = document.createElement('div');
+  ${nodeId}Container.style.cssText = 'display: flex; flex-direction: column; gap: 8px; min-width: 200px;';
+  
+  const ${nodeId}Label = document.createElement('label');
+  ${nodeId}Label.textContent = 'Timer';
+  ${nodeId}Label.style.cssText = 'font-weight: bold; color: #333;';
+  
+  const ${nodeId}Controls = document.createElement('div');
+  ${nodeId}Controls.style.cssText = 'display: flex; gap: 8px; align-items: center;';
+  
+  const ${nodeId}Start = document.createElement('button');
+  ${nodeId}Start.id = '${nodeId}-start';
+  ${nodeId}Start.textContent = 'Start';
+  ${nodeId}Start.style.cssText = 'padding: 6px 12px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer;';
+  
+  const ${nodeId}Stop = document.createElement('button');
+  ${nodeId}Stop.id = '${nodeId}-stop';
+  ${nodeId}Stop.textContent = 'Stop';
+  ${nodeId}Stop.style.cssText = 'padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;';
+  
+  const ${nodeId}Count = document.createElement('span');
+  ${nodeId}Count.id = '${nodeId}-count';
+  ${nodeId}Count.textContent = '0';
+  ${nodeId}Count.style.cssText = 'font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px; min-width: 40px; text-align: center;';
+  
+  ${nodeId}Controls.appendChild(${nodeId}Start);
+  ${nodeId}Controls.appendChild(${nodeId}Stop);
+  ${nodeId}Controls.appendChild(${nodeId}Count);
+  ${nodeId}Container.appendChild(${nodeId}Label);
+  ${nodeId}Container.appendChild(${nodeId}Controls);
+  controlsWrapper.appendChild(${nodeId}Container);
+  
+  // Add event listeners for timer controls
+  ${nodeId}Start.addEventListener('click', () => {
+    ${nodeId}.startTimer();
+  });
+  
+  ${nodeId}Stop.addEventListener('click', () => {
+    ${nodeId}.stopTimer();
+  });
+  
+  // Update display periodically
+  setInterval(() => {
+    const count = ${nodeId}.properties.get('count') || 0;
+    ${nodeId}Count.textContent = count;
+  }, 100);`
+      }
+
+      default:
+        return ''
+    }
+  })
+  .filter(Boolean)
+  .join('')}
+
+  ${
+    hasOscillators || interactiveNodes.length > 0
+      ? `
+  // Add Start Audio button
+  const startAudioContainer = document.createElement('div');
+  startAudioContainer.style.cssText = 'display: flex; justify-content: center; margin-bottom: 15px;';
+  
+  const startAudioButton = document.createElement('button');
+  startAudioButton.id = 'start-audio-button';
+  startAudioButton.textContent = '▶️ Start Audio';
+  startAudioButton.style.cssText = 'padding: 15px 30px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; box-shadow: 0 2px 4px rgba(0,0,0,0.1);';
+  
+  let isAudioActive = false;
+  
+  startAudioButton.addEventListener('click', async () => {
+    try {
+      if (!isAudioActive) {
+        // Start audio
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+        
+        // Start any oscillators or other nodes that need to be started
+        ${allNodes
+          .filter(node => node.data.nodeType === 'OscillatorNode')
+          .map(node => {
+            const nodeId = idMap.get(node.id)
+            return `if (${nodeId} && typeof ${nodeId}.start === 'function' && !${nodeId}._started) {
+          ${nodeId}.start();
+          ${nodeId}._started = true;
+        }`
+          })
+          .join('\n        ')}
+        
+        startAudioButton.textContent = '⏹️ Stop Audio';
+        startAudioButton.style.background = '#ef4444';
+        isAudioActive = true;
+      } else {
+        // Stop audio
+        await audioContext.suspend();
+        startAudioButton.textContent = '▶️ Start Audio';
+        startAudioButton.style.background = '#10b981';
+        isAudioActive = false;
+      }
+    } catch (error) {
+      console.error('Failed to toggle audio:', error);
+      startAudioButton.textContent = '❌ Audio Failed';
+      startAudioButton.style.background = '#6b7280';
+    }
+  });
+  
+  startAudioContainer.appendChild(startAudioButton);
+  controlsContainer.insertBefore(startAudioContainer, controlsWrapper);`
+      : '// No Start Audio button needed - no oscillators or interactive nodes'
+  }
+
+  // Add controls to the page
+  document.body.insertBefore(controlsContainer, document.body.firstChild);
+}
+
+// UI controls are now connected directly when created above`
+  }
+
   const generateJavaScriptCode = (nodes: AudioNode[], edges: Edge[]) => {
     // Create a mapping of original IDs to sanitized IDs
     const idMap = new Map(nodes.map(node => [node.id, sanitizeId(node.id)]))
 
-    // Check if there are any MediaStreamAudioSourceNode nodes
+    // Separate custom nodes from Web Audio nodes
+    const customNodeTypes = [
+      'SliderNode',
+      'ButtonNode',
+      'GreaterThanNode',
+      'EqualsNode',
+      'SelectNode',
+      'MidiInputNode',
+      'MidiToFreqNode',
+      'DisplayNode',
+      'SoundFileNode',
+      'RandomNode',
+      'TimerNode',
+    ]
+
+    const webAudioNodes = nodes.filter(node => !customNodeTypes.includes(node.data.nodeType))
+    const customNodes = nodes.filter(node => customNodeTypes.includes(node.data.nodeType))
+
+    // Check if there are any MediaStreamAudioSourceNode nodes or MIDI nodes
     const hasMicrophoneInput = nodes.some(
       node => node.data.nodeType === 'MediaStreamAudioSourceNode'
     )
+    const hasMidiInput = nodes.some(node => node.data.nodeType === 'MidiInputNode')
+
+    // Generate custom node class definitions
+    const customNodeClasses = generateCustomNodeClasses(customNodes)
 
     const code = `// Generated Audio Graph Code
-${
-  hasMicrophoneInput
-    ? `// Note: This code includes microphone input. To use it:
-// 1. Wrap the code in an async function
-// 2. Request microphone permission using getUserMedia
-// 3. Create MediaStreamAudioSourceNode with the stream
+${customNodeClasses.length > 0 ? `${customNodeClasses}\n` : ''}${
+      hasMicrophoneInput || hasMidiInput
+        ? `// Note: This code includes ${hasMicrophoneInput ? 'microphone input' : ''}${
+            hasMicrophoneInput && hasMidiInput ? ' and ' : ''
+          }${hasMidiInput ? 'MIDI input' : ''}. To use it:
+${hasMicrophoneInput ? '// 1. Request microphone permission using getUserMedia\n' : ''}${
+            hasMidiInput
+              ? `// ${hasMicrophoneInput ? '2' : '1'}. Request MIDI access using requestMIDIAccess\n`
+              : ''
+          }// ${hasMicrophoneInput && hasMidiInput ? '3' : '2'}. Wrap the code in an async function
 
 async function createAudioGraph() {
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  
-  // Request microphone access
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  ${hasMicrophoneInput ? '\n  // Request microphone access\n  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });' : ''}${
+    hasMidiInput
+      ? '\n  // Request MIDI access\n  const midiAccess = await navigator.requestMIDIAccess();'
+      : ''
+  }
 `
-    : 'const audioContext = new (window.AudioContext || window.webkitAudioContext)();'
-}
+        : 'const audioContext = new (window.AudioContext || window.webkitAudioContext)();'
+    }
 
-// Create nodes
-${nodes
+// Create Web Audio nodes
+${webAudioNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
     const nodeType = node.data.nodeType.replace('Node', '') // Remove 'Node' suffix for cleaner code
@@ -160,8 +1211,24 @@ ${nodes
   })
   .join('\n')}
 
-// Set node properties
-${nodes
+// Create custom nodes
+${customNodes
+  .map(node => {
+    const nodeId = idMap.get(node.id)
+    const nodeType = node.data.nodeType
+
+    if (nodeType === 'MidiInputNode') {
+      return `const ${nodeId} = new MidiInputNode('${nodeId}', audioContext, midiAccess);`
+    } else if (nodeType === 'SoundFileNode') {
+      return `const ${nodeId} = new SoundFileNode('${nodeId}', audioContext);`
+    } else {
+      return `const ${nodeId} = new ${nodeType}('${nodeId}', audioContext);`
+    }
+  })
+  .join('\n')}
+
+// Set Web Audio node properties
+${webAudioNodes
   .map(node => {
     const properties = node.data.properties
     const audioProperties = Array.from(properties.entries())
@@ -194,29 +1261,45 @@ ${nodes
   .filter(Boolean)
   .join('\n')}
 
-// Connect nodes
-${edges
-  .map(edge => {
-    const sourceId = idMap.get(edge.source)
-    const targetId = idMap.get(edge.target)
-
-    return `${sourceId}.connect(${targetId});`
-  })
-  .join('\n')}
-
-// Start oscillators
-${nodes
-  .filter(node => node.data.nodeType === 'OscillatorNode')
+// Set custom node properties
+${customNodes
   .map(node => {
+    const properties = node.data.properties
+    const customProperties = Array.from(properties.entries())
+      .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
+      .filter(([, value]) => value !== null) // Filter out null values
+
     const nodeId = idMap.get(node.id)
-    return `${nodeId}.start();`
+
+    const paramSetters = customProperties
+      .map(([key, value]) => {
+        return `${nodeId}.setProperty('${key}', ${JSON.stringify(value)});`
+      })
+      .join('\n')
+
+    return paramSetters
   })
+  .filter(Boolean)
   .join('\n')}
 
-// Start audio context
-audioContext.resume();
+// Connect nodes
+${generateConnections(edges, nodes, idMap)}
+
+// Note: Oscillators will be started by the "Start Audio" button
+// This is required by browser autoplay policies
+
+// Create UI controls for interactive nodes
+${generateUIControls(customNodes, idMap, nodes, edges)}
+
+// Initialize UI controls when page loads
+document.addEventListener('DOMContentLoaded', () => {
+  createAudioControls();
+});
+
+// Note: AudioContext will be started when user clicks "Start Audio" button
+// This is required by browser autoplay policies
 ${
-  hasMicrophoneInput
+  hasMicrophoneInput || hasMidiInput
     ? `}
 
 // Call the function to create the audio graph
