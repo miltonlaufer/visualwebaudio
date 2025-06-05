@@ -159,10 +159,27 @@ const CustomNodeState = types
           const midiNote = Number(value) || 0
           const frequency = this.midiToFrequency(midiNote)
           this.setOutput('frequency', frequency)
+        } else if (self.nodeType === 'ScaleToMidiNode' && targetInput === 'scaleDegree') {
+          const scaleDegree = Number(value) || 0
+          this.setProperty('scaleDegree', scaleDegree)
+          this.updateScaleToMidiOutput()
         } else if (self.nodeType === 'SoundFileNode' && targetInput === 'trigger' && value > 0) {
           console.log(`MST SoundFileNode ${self.id}: Trigger received with value ${value}`)
           this.performSoundFileTrigger()
         }
+      },
+
+      // Initialize ScaleToMidiNode outputs
+      initializeScaleToMidiNode(): void {
+        if (self.nodeType !== 'ScaleToMidiNode') return
+
+        // Set default properties if not already set
+        if (!self.properties.has('scaleDegree')) this.setProperty('scaleDegree', 0)
+        if (!self.properties.has('key')) this.setProperty('key', 'C')
+        if (!self.properties.has('mode')) this.setProperty('mode', 'major')
+
+        // Calculate initial output
+        this.updateScaleToMidiOutput()
       },
 
       // MIDI to frequency conversion
@@ -170,6 +187,74 @@ const CustomNodeState = types
         // MIDI note 69 (A4) = 440 Hz
         // Formula: f = 440 * 2^((n-69)/12)
         return 440 * Math.pow(2, (midiNote - 69) / 12)
+      },
+
+      // Scale to MIDI conversion and output update
+      updateScaleToMidiOutput(): void {
+        if (self.nodeType !== 'ScaleToMidiNode') return
+
+        const scaleDegree = self.properties.get('scaleDegree') || 0
+        const key = self.properties.get('key') || 'C'
+        const mode = self.properties.get('mode') || 'major'
+
+        const midiNote = this.scaleToMidi(scaleDegree, key, mode)
+        const frequency = this.midiToFrequency(midiNote)
+
+        this.setProperty('midiNote', midiNote)
+        this.setProperty('frequency', frequency)
+        this.setOutput('midiNote', midiNote)
+        this.setOutput('frequency', frequency)
+      },
+
+      scaleToMidi(scaleDegree: number, key: string, mode: string): number {
+        // Scale intervals for different modes
+        const SCALE_INTERVALS: Record<string, number[]> = {
+          major: [0, 2, 4, 5, 7, 9, 11],
+          minor: [0, 2, 3, 5, 7, 8, 10],
+          dorian: [0, 2, 3, 5, 7, 9, 10],
+          phrygian: [0, 1, 3, 5, 7, 8, 10],
+          lydian: [0, 2, 4, 6, 7, 9, 11],
+          mixolydian: [0, 2, 4, 5, 7, 9, 10],
+          locrian: [0, 1, 3, 5, 6, 8, 10],
+          pentatonic_major: [0, 2, 4, 7, 9],
+          pentatonic_minor: [0, 3, 5, 7, 10],
+          blues: [0, 3, 5, 6, 7, 10],
+          harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+          melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+        }
+
+        // MIDI note numbers for each key at octave 4
+        const KEY_TO_MIDI: Record<string, number> = {
+          C: 60,
+          'C#': 61,
+          D: 62,
+          'D#': 63,
+          E: 64,
+          F: 65,
+          'F#': 66,
+          G: 67,
+          'G#': 68,
+          A: 69,
+          'A#': 70,
+          B: 71,
+        }
+
+        const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major
+        const rootMidi = KEY_TO_MIDI[key] || 60
+
+        // Handle negative scale degrees
+        const octaveOffset = Math.floor(scaleDegree / intervals.length)
+        const normalizedDegree =
+          ((scaleDegree % intervals.length) + intervals.length) % intervals.length
+
+        // Get the interval for this scale degree
+        const interval = intervals[normalizedDegree]
+
+        // Calculate final MIDI note
+        const midiNote = rootMidi + interval + octaveOffset * 12
+
+        // Clamp to valid MIDI range (0-127)
+        return Math.max(0, Math.min(127, midiNote))
       },
 
       updateAudioContext(audioContext: AudioContext): void {
@@ -581,6 +666,62 @@ const CustomNodeStore = types
               }
             }, 0)
           }
+        } else if (nodeType === 'ScaleToMidiNode') {
+          console.log(`Creating MST ScaleToMidiNode ${id}`)
+          // Initialize with default values if not set
+          if (!propertiesObj['scaleDegree']) propertiesObj['scaleDegree'] = 0
+          if (!propertiesObj['key']) propertiesObj['key'] = 'C'
+          if (!propertiesObj['mode']) propertiesObj['mode'] = 'major'
+
+          // Calculate initial MIDI note and frequency
+          const scaleDegree = propertiesObj['scaleDegree'] || 0
+          const key = propertiesObj['key'] || 'C'
+          const mode = propertiesObj['mode'] || 'major'
+
+          // Use the same scale conversion logic
+          const SCALE_INTERVALS: Record<string, number[]> = {
+            major: [0, 2, 4, 5, 7, 9, 11],
+            minor: [0, 2, 3, 5, 7, 8, 10],
+            dorian: [0, 2, 3, 5, 7, 9, 10],
+            phrygian: [0, 1, 3, 5, 7, 8, 10],
+            lydian: [0, 2, 4, 6, 7, 9, 11],
+            mixolydian: [0, 2, 4, 5, 7, 9, 10],
+            locrian: [0, 1, 3, 5, 6, 8, 10],
+            pentatonic_major: [0, 2, 4, 7, 9],
+            pentatonic_minor: [0, 3, 5, 7, 10],
+            blues: [0, 3, 5, 6, 7, 10],
+            harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+            melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+          }
+
+          const KEY_TO_MIDI: Record<string, number> = {
+            C: 60,
+            'C#': 61,
+            D: 62,
+            'D#': 63,
+            E: 64,
+            F: 65,
+            'F#': 66,
+            G: 67,
+            'G#': 68,
+            A: 69,
+            'A#': 70,
+            B: 71,
+          }
+
+          const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major
+          const rootMidi = KEY_TO_MIDI[key] || 60
+          const octaveOffset = Math.floor(scaleDegree / intervals.length)
+          const normalizedDegree =
+            ((scaleDegree % intervals.length) + intervals.length) % intervals.length
+          const interval = intervals[normalizedDegree]
+          const midiNote = Math.max(0, Math.min(127, rootMidi + interval + octaveOffset * 12))
+          const frequency = 440 * Math.pow(2, (midiNote - 69) / 12)
+
+          propertiesObj['midiNote'] = midiNote
+          propertiesObj['frequency'] = frequency
+          outputsObj['midiNote'] = midiNote
+          outputsObj['frequency'] = frequency
         }
 
         const node = CustomNodeState.create({

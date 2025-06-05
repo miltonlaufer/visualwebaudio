@@ -154,6 +154,52 @@ describe('CustomNodeFactory', () => {
     expect(converter.outputs.get('frequency')).toBe(220)
   })
 
+  it('ScaleToMidiNode converts scale degrees to MIDI notes correctly', () => {
+    const metadata: NodeMetadata = {
+      name: 'Scale to MIDI',
+      description: 'Test scale converter',
+      category: 'processing',
+      inputs: [{ name: 'scaleDegree', type: 'control' }],
+      outputs: [
+        { name: 'midiNote', type: 'control' },
+        { name: 'frequency', type: 'control' },
+      ],
+      properties: [
+        { name: 'scaleDegree', type: 'number', defaultValue: 0 },
+        { name: 'key', type: 'string', defaultValue: 'C' },
+        { name: 'mode', type: 'string', defaultValue: 'major' },
+      ],
+      methods: [],
+      events: [],
+    }
+
+    const scaleConverter = factory.createCustomNode('ScaleToMidiNode', metadata)
+
+    // Test C major scale
+    scaleConverter.receiveInput?.('scaleDegree', 0) // C
+    expect(scaleConverter.outputs.get('midiNote')).toBe(60)
+
+    scaleConverter.receiveInput?.('scaleDegree', 1) // D
+    expect(scaleConverter.outputs.get('midiNote')).toBe(62)
+
+    scaleConverter.receiveInput?.('scaleDegree', 2) // E
+    expect(scaleConverter.outputs.get('midiNote')).toBe(64)
+
+    // Test negative scale degrees
+    scaleConverter.receiveInput?.('scaleDegree', -1) // B (previous octave)
+    expect(scaleConverter.outputs.get('midiNote')).toBe(59)
+
+    // Test different key (A major)
+    scaleConverter.setProperty?.('key', 'A')
+    scaleConverter.receiveInput?.('scaleDegree', 0) // A
+    expect(scaleConverter.outputs.get('midiNote')).toBe(69)
+
+    // Test different mode (A minor)
+    scaleConverter.setProperty?.('mode', 'minor')
+    scaleConverter.receiveInput?.('scaleDegree', 2) // C (third of A minor)
+    expect(scaleConverter.outputs.get('midiNote')).toBe(72)
+  })
+
   it('applies initial properties correctly', () => {
     const metadata: NodeMetadata = {
       name: 'Slider',

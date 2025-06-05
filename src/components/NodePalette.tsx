@@ -199,6 +199,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
     'SelectNode',
     'MidiInputNode',
     'MidiToFreqNode',
+    'ScaleToMidiNode',
     'DisplayNode',
     'SoundFileNode',
     'RandomNode',

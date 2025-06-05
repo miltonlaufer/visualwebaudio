@@ -31,6 +31,7 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
     'SoundFileNode',
     'RandomNode',
     'TimerNode',
+    'ScaleToMidiNode',
   ]
   const isCustomNode = customNodeTypes.includes(nodeType)
 

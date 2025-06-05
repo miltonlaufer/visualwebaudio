@@ -279,6 +279,135 @@ class MidiToFreqNode {
   }
 }`
 
+          case 'ScaleToMidiNode':
+            return `// Scale to MIDI Node Implementation
+class ScaleToMidiNode {
+  constructor(id, audioContext) {
+    this.id = id;
+    this.audioContext = audioContext;
+    this.properties = new Map();
+    this.outputs = new Map();
+    this.connections = [];
+    this.bridges = new Map(); // Store ConstantSourceNode bridges
+    
+    this.setProperty('scaleDegree', 0);
+    this.setProperty('key', 'C');
+    this.setProperty('mode', 'major');
+    this.updateOutput();
+  }
+  
+  setProperty(name, value) {
+    this.properties.set(name, value);
+    if (name === 'scaleDegree' || name === 'key' || name === 'mode') {
+      this.updateOutput();
+    }
+  }
+  
+  receiveInput(inputName, value) {
+    if (inputName === 'scaleDegree') {
+      const scaleDegree = Number(value) || 0;
+      this.setProperty('scaleDegree', scaleDegree);
+    }
+  }
+  
+  updateOutput() {
+    const scaleDegree = this.properties.get('scaleDegree') || 0;
+    const key = this.properties.get('key') || 'C';
+    const mode = this.properties.get('mode') || 'major';
+    
+    const midiNote = this.scaleToMidi(scaleDegree, key, mode);
+    const frequency = this.midiToFrequency(midiNote);
+    
+    this.properties.set('midiNote', midiNote);
+    this.properties.set('frequency', frequency);
+    this.outputs.set('midiNote', midiNote);
+    this.outputs.set('frequency', frequency);
+    
+    this.notifyConnections('midiNote', midiNote);
+    this.notifyConnections('frequency', frequency);
+  }
+  
+  scaleToMidi(scaleDegree, key, mode) {
+    const SCALE_INTERVALS = {
+      major: [0, 2, 4, 5, 7, 9, 11],
+      minor: [0, 2, 3, 5, 7, 8, 10],
+      dorian: [0, 2, 3, 5, 7, 9, 10],
+      phrygian: [0, 1, 3, 5, 7, 8, 10],
+      lydian: [0, 2, 4, 6, 7, 9, 11],
+      mixolydian: [0, 2, 4, 5, 7, 9, 10],
+      locrian: [0, 1, 3, 5, 6, 8, 10],
+      pentatonic_major: [0, 2, 4, 7, 9],
+      pentatonic_minor: [0, 3, 5, 7, 10],
+      blues: [0, 3, 5, 6, 7, 10],
+      harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+      melodic_minor: [0, 2, 3, 5, 7, 9, 11]
+    };
+    
+    const KEY_TO_MIDI = {
+      'C': 60, 'C#': 61, 'D': 62, 'D#': 63, 'E': 64, 'F': 65,
+      'F#': 66, 'G': 67, 'G#': 68, 'A': 69, 'A#': 70, 'B': 71
+    };
+    
+    const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major;
+    const rootMidi = KEY_TO_MIDI[key] || 60;
+    
+    const octaveOffset = Math.floor(scaleDegree / intervals.length);
+    const normalizedDegree = ((scaleDegree % intervals.length) + intervals.length) % intervals.length;
+    const interval = intervals[normalizedDegree];
+    const midiNote = rootMidi + interval + (octaveOffset * 12);
+    
+    return Math.max(0, Math.min(127, midiNote));
+  }
+  
+  midiToFrequency(midiNote) {
+    return 440 * Math.pow(2, (midiNote - 69) / 12);
+  }
+  
+  connect(targetNode, outputName = 'midiNote', inputName = 'input') {
+    this.connections.push({ target: targetNode, outputName, inputName });
+    
+    // If connecting to a Web Audio node, create a ConstantSourceNode bridge
+    if (targetNode && typeof targetNode.connect === 'function' && targetNode.constructor.name !== 'ScaleToMidiNode') {
+      const bridgeKey = \`\${targetNode.constructor.name}_\${inputName}\`;
+      if (!this.bridges.has(bridgeKey)) {
+        const constantSource = this.audioContext.createConstantSource();
+        constantSource.start();
+        
+        // Connect to the target parameter
+        if (inputName === 'frequency' && targetNode.frequency) {
+          constantSource.connect(targetNode.frequency);
+        } else if (inputName === 'gain' && targetNode.gain) {
+          constantSource.connect(targetNode.gain);
+        } else if (inputName === 'Q' && targetNode.Q) {
+          constantSource.connect(targetNode.Q);
+        } else if (inputName === 'delayTime' && targetNode.delayTime) {
+          constantSource.connect(targetNode.delayTime);
+        }
+        
+        this.bridges.set(bridgeKey, constantSource);
+      }
+    }
+  }
+  
+  notifyConnections(outputName, value) {
+    this.connections
+      .filter(conn => conn.outputName === outputName)
+      .forEach(conn => {
+        if (conn.target.receiveInput) {
+          // Custom node connection
+          conn.target.receiveInput(conn.inputName, value);
+        } else if (conn.target && typeof conn.target.connect === 'function') {
+          // Web Audio node connection - update the bridge
+          const bridgeKey = \`\${conn.target.constructor.name}_\${conn.inputName}\`;
+          const bridge = this.bridges.get(bridgeKey);
+          if (bridge && bridge.offset) {
+            bridge.offset.value = value;
+          }
+        }
+      });
+  }
+}`
+
           case 'DisplayNode':
             return `// Display Node Implementation
 class DisplayNode {

@@ -170,6 +170,43 @@ The application includes 21+ working audio examples:
 
 **Synthesizers**: **Vintage Analog Synth** - Classic analog synthesizer with oscillators, filters, and envelopes
 
+## Custom Nodes
+
+The application includes several custom nodes for enhanced functionality:
+
+- **Slider Node**: Interactive slider for controlling values
+- **Button Node**: Clickable button for triggering events
+- **Display Node**: Shows numeric values with customizable precision
+- **Random Node**: Generates random values at specified intervals
+- **Timer Node**: Generates periodic triggers with configurable timing
+- **Sound File Node**: Loads and plays audio files
+- **MIDI Input Node**: Receives MIDI messages from connected devices
+- **MIDI to Frequency Node**: Converts MIDI note numbers to frequencies
+- **Scale to MIDI Node**: Converts scale degrees to MIDI notes based on key and mode
+- **Logic Nodes**: Greater Than, Equals, and Select nodes for conditional logic
+
+### Scale to MIDI Node
+
+The Scale to MIDI Node is a powerful utility that converts scale degrees to MIDI notes based on a specified key and musical mode. This allows for easy creation of musical sequences using scale-based thinking rather than absolute MIDI note numbers.
+
+**Features:**
+- **Key Selection**: All 12 chromatic keys (C, C#, D, D#, E, F, F#, G, G#, A, A#, B)
+- **Multiple Modes**: Major, Minor, Dorian, Phrygian, Lydian, Mixolydian, Locrian, Pentatonic Major/Minor, Blues, Harmonic Minor, Melodic Minor
+- **Scale Degree Input**: Accepts positive and negative integers (0 = root note)
+- **Dual Outputs**: Both MIDI note number (0-127) and frequency in Hz
+
+**Usage:**
+1. Set the desired key (e.g., "C", "F#", "Bb")
+2. Choose a mode (e.g., "major", "minor", "pentatonic_major")
+3. Input scale degrees where 0 = root note, 1 = second degree, etc.
+4. Negative values access lower octaves (-1 = seventh of previous octave)
+5. Connect the MIDI output to other nodes or the frequency output to oscillators
+
+**Example:**
+- Key: C, Mode: major, Scale Degree: 0 → MIDI 60 (C4, 261.63 Hz)
+- Key: C, Mode: major, Scale Degree: 4 → MIDI 67 (G4, 392.00 Hz)
+- Key: A, Mode: minor, Scale Degree: 2 → MIDI 72 (C5, 523.25 Hz)
+
 ## Contributing
 
 1. Fork the repository

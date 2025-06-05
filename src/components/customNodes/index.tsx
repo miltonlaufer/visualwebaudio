@@ -39,6 +39,8 @@ const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = ({ nodeId, nodeTyp
     case 'MidiToFreqNode':
       // MidiToFreqNode doesn't need a UI component - it's a pure computation node
       return <div className="text-gray-600 text-xs p-2 text-center">MIDI → Freq</div>
+    case 'ScaleToMidiNode':
+      return <div className="text-gray-600 text-xs p-2 text-center">Scale → MIDI</div>
     case 'GreaterThanNode':
     case 'EqualsNode':
     case 'SelectNode':
