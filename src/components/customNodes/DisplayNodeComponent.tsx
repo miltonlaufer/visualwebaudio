@@ -40,8 +40,8 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
         <div className="text-red-500 text-xs">DisplayNode not found</div>
       ) : (
         <>
-          <div className="text-xs font-medium text-gray-700">{label}</div>
-          <div className="text-lg font-mono bg-gray-50 px-2 py-1 rounded border text-center">
+          <div className="text-xs font-medium text-gray-700 dark:text-gray-300">{label}</div>
+          <div className="text-lg font-mono bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 rounded border text-center">
             {formattedValue}
           </div>
         </>

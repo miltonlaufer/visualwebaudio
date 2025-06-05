@@ -28,6 +28,7 @@ class MobXCustomNodeAdapter implements CustomNode {
   private uiElement?: HTMLElement
   private fileInputElement?: HTMLInputElement
   private disposer?: () => void
+  private themeObserver?: MutationObserver
 
   constructor(mobxNode: ICustomNodeState) {
     this.mobxNode = mobxNode
@@ -93,6 +94,9 @@ class MobXCustomNodeAdapter implements CustomNode {
     }
     if (this.disposer) {
       this.disposer()
+    }
+    if (this.themeObserver) {
+      this.themeObserver.disconnect()
     }
   }
 
@@ -202,24 +206,42 @@ class MobXCustomNodeAdapter implements CustomNode {
     `
 
     const labelElement = document.createElement('span')
-    labelElement.style.cssText = `
-      font-size: 10px;
-      color: #666;
-      font-weight: bold;
-    `
+    const updateLabelStyle = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      labelElement.style.cssText = `
+        font-size: 10px;
+        color: ${isDark ? '#d1d5db' : '#666'};
+        font-weight: bold;
+      `
+    }
+    updateLabelStyle()
     labelElement.textContent = this.mobxNode.properties.get('label') || 'Display'
 
     const valueElement = document.createElement('span')
-    valueElement.style.cssText = `
-      font-size: 14px;
-      color: #2563eb;
-      font-weight: bold;
-      background: #f1f5f9;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #cbd5e1;
-      font-family: 'Courier New', monospace;
-    `
+    const updateValueStyle = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      valueElement.style.cssText = `
+        font-size: 14px;
+        color: ${isDark ? '#f3f4f6' : '#1f2937'};
+        font-weight: bold;
+        background: ${isDark ? '#374151' : '#f1f5f9'};
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid ${isDark ? '#4b5563' : '#cbd5e1'};
+        font-family: 'Courier New', monospace;
+      `
+    }
+    updateValueStyle()
+
+    // Listen for theme changes
+    this.themeObserver = new MutationObserver(() => {
+      updateLabelStyle()
+      updateValueStyle()
+    })
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
 
     const updateDisplay = (): void => {
       const value = this.mobxNode.properties.get('currentValue') || 0
@@ -716,6 +738,7 @@ export class DisplayNode extends BaseCustomNode {
   private valueElement?: HTMLSpanElement
   private labelElement?: HTMLSpanElement
   private onPropertyChangeCallback?: (nodeId: string, propertyName: string, value: any) => void
+  private themeObserver?: MutationObserver
 
   constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
     super(id, type, audioContext, metadata)
@@ -744,24 +767,43 @@ export class DisplayNode extends BaseCustomNode {
     `
 
     this.labelElement = document.createElement('span')
-    this.labelElement.style.cssText = `
-      font-size: 10px;
-      color: #666;
-      font-weight: bold;
-    `
+    const updateLabelStyle = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      this.labelElement!.style.cssText = `
+        font-size: 10px;
+        color: ${isDark ? '#d1d5db' : '#666'};
+        font-weight: bold;
+      `
+    }
+    updateLabelStyle()
     this.labelElement.textContent = this.properties.get('label') || 'Display'
 
     this.valueElement = document.createElement('span')
-    this.valueElement.style.cssText = `
-      font-size: 14px;
-      color: #2563eb;
-      font-weight: bold;
-      background: #f1f5f9;
-      padding: 4px 8px;
-      border-radius: 4px;
-      border: 1px solid #cbd5e1;
-      font-family: 'Courier New', monospace;
-    `
+    const updateValueStyle = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      this.valueElement!.style.cssText = `
+        font-size: 14px;
+        color: ${isDark ? '#f3f4f6' : '#1f2937'};
+        font-weight: bold;
+        background: ${isDark ? '#374151' : '#f1f5f9'};
+        padding: 4px 8px;
+        border-radius: 4px;
+        border: 1px solid ${isDark ? '#4b5563' : '#cbd5e1'};
+        font-family: 'Courier New', monospace;
+      `
+    }
+    updateValueStyle()
+
+    // Listen for theme changes
+    this.themeObserver = new MutationObserver(() => {
+      updateLabelStyle()
+      updateValueStyle()
+    })
+    this.themeObserver.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+
     this.updateDisplay()
 
     this.displayElement.appendChild(this.labelElement)
@@ -817,6 +859,13 @@ export class DisplayNode extends BaseCustomNode {
     } else if (typeof value === 'string' && this.labelElement) {
       this.properties.set('label', value)
       this.labelElement.textContent = value
+    }
+  }
+
+  cleanup(): void {
+    super.cleanup()
+    if (this.themeObserver) {
+      this.themeObserver.disconnect()
     }
   }
 }
