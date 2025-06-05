@@ -34,14 +34,23 @@ export const ThemeStore = types
       if (typeof localStorage !== 'undefined') {
         const saved = localStorage.getItem('visualwebaudio-theme')
         if (saved) {
+          // Use saved preference
           self.isDarkMode = saved === 'dark'
         } else {
-          // Default to dark mode if no saved preference and no system preference
+          // No saved preference - default to dark mode
+          // Only check system preference if user explicitly wants to respect it
           if (typeof window !== 'undefined' && window.matchMedia) {
-            // Check system preference, but default to dark if no preference
-            self.isDarkMode =
-              window.matchMedia('(prefers-color-scheme: dark)').matches ||
-              !window.matchMedia('(prefers-color-scheme: light)').matches
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+            const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches
+
+            // If user has an explicit system preference, respect it
+            // Otherwise, default to dark mode
+            if (prefersLight && !prefersDark) {
+              self.isDarkMode = false
+            } else {
+              // Default to dark mode (covers prefersDark=true, no preference, or both false)
+              self.isDarkMode = true
+            }
           } else {
             // Fallback to dark mode if window/matchMedia not available
             self.isDarkMode = true
