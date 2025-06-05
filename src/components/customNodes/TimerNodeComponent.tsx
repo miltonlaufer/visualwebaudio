@@ -40,12 +40,12 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
 
   // All hooks called first, now prepare data for rendering
   const isValidNode = node && node.nodeType === 'TimerNode'
-  const mode = isValidNode ? node.properties.get('mode') || 'loop' : 'loop'
-  const delay = isValidNode ? node.properties.get('delay') || 1000 : 1000
-  const interval = isValidNode ? node.properties.get('interval') || 1000 : 1000
-  const startMode = isValidNode ? node.properties.get('startMode') || 'auto' : 'auto'
+  const mode = isValidNode ? (node.properties.get('mode') ?? 'loop') : 'loop'
+  const delay = isValidNode ? (node.properties.get('delay') ?? 1000) : 1000
+  const interval = isValidNode ? (node.properties.get('interval') ?? 1000) : 1000
+  const startMode = isValidNode ? (node.properties.get('startMode') ?? 'auto') : 'auto'
+  const isRunning = isValidNode ? (node.properties.get('isRunning') ?? 'false') === 'true' : false
   const triggerCount = isValidNode ? node.outputs.get('count') || 0 : 0
-  const isRunning = isValidNode ? (node.properties.get('isRunning') || 'false') === 'true' : false
 
   const handleStart = () => {
     if (isValidNode) {

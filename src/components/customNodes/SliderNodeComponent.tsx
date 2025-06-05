@@ -35,11 +35,11 @@ const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ node
 
   // All hooks called first, now prepare data for rendering
   const isValidNode = node && node.nodeType === 'SliderNode'
-  const nodeCurrentValue = isValidNode ? node.properties.get('value') || 50 : 50
-  const min = isValidNode ? node.properties.get('min') || 0 : 0
-  const max = isValidNode ? node.properties.get('max') || 100 : 100
-  const step = isValidNode ? node.properties.get('step') || 1 : 1
-  const label = isValidNode ? node.properties.get('label') || 'Slider' : 'Slider'
+  const nodeCurrentValue = isValidNode ? (node.properties.get('value') ?? 50) : 50
+  const min = isValidNode ? (node.properties.get('min') ?? 0) : 0
+  const max = isValidNode ? (node.properties.get('max') ?? 100) : 100
+  const step = isValidNode ? (node.properties.get('step') ?? 1) : 1
+  const label = isValidNode ? (node.properties.get('label') ?? 'Slider') : 'Slider'
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {

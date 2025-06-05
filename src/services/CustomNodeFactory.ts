@@ -165,15 +165,15 @@ class MobXCustomNodeAdapter implements CustomNode {
 
     const sliderElement = document.createElement('input')
     sliderElement.type = 'range'
-    sliderElement.min = String(this.mobxNode.properties.get('min') || 0)
-    sliderElement.max = String(this.mobxNode.properties.get('max') || 100)
-    sliderElement.step = String(this.mobxNode.properties.get('step') || 1)
-    sliderElement.value = String(this.mobxNode.properties.get('value') || 50)
+    sliderElement.min = String(this.mobxNode.properties.get('min') ?? 0)
+    sliderElement.max = String(this.mobxNode.properties.get('max') ?? 100)
+    sliderElement.step = String(this.mobxNode.properties.get('step') ?? 1)
+    sliderElement.value = String(this.mobxNode.properties.get('value') ?? 50)
     sliderElement.style.cssText = `width: 120px; margin: 0;`
 
     const updateLabel = (): void => {
-      const label = this.mobxNode.properties.get('label') || 'Slider'
-      const value = this.mobxNode.properties.get('value') || 0
+      const label = this.mobxNode.properties.get('label') ?? 'Slider'
+      const value = this.mobxNode.properties.get('value') ?? 0
       labelElement.textContent = `${label}: ${value}`
     }
 
@@ -503,10 +503,10 @@ export class SliderNode extends BaseCustomNode {
 
     this.sliderElement = document.createElement('input')
     this.sliderElement.type = 'range'
-    this.sliderElement.min = String(this.properties.get('min') || 0)
-    this.sliderElement.max = String(this.properties.get('max') || 100)
-    this.sliderElement.step = String(this.properties.get('step') || 1)
-    this.sliderElement.value = String(this.properties.get('value') || 50)
+    this.sliderElement.min = String(this.properties.get('min') ?? 0)
+    this.sliderElement.max = String(this.properties.get('max') ?? 100)
+    this.sliderElement.step = String(this.properties.get('step') ?? 1)
+    this.sliderElement.value = String(this.properties.get('value') ?? 50)
 
     this.sliderElement.style.cssText = `
       width: 120px;
@@ -553,8 +553,8 @@ export class SliderNode extends BaseCustomNode {
   }
 
   private updateLabel(): void {
-    const label = this.properties.get('label') || 'Slider'
-    const value = this.properties.get('value') || 0
+    const label = this.properties.get('label') ?? 'Slider'
+    const value = this.properties.get('value') ?? 0
     if (this.labelElement) {
       this.labelElement.textContent = `${label}: ${value}`
     }
@@ -1100,8 +1100,8 @@ export class RandomNode extends BaseCustomNode {
   }
 
   private generateRandomValue(): number {
-    const min = this.properties.get('min') || 0
-    const max = this.properties.get('max') || 100
+    const min = this.properties.get('min') ?? 0
+    const max = this.properties.get('max') ?? 100
     return Math.random() * (max - min) + min
   }
 

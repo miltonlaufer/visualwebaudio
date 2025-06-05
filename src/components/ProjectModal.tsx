@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { customNodeStore } from '~/stores/CustomNodeStore'
 import { projectOperations, type SavedProject } from '~/utils/database'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
@@ -94,12 +95,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
   const getCurrentProjectData = () => {
     const snapshot = getSnapshot(store)
+    const customNodeSnapshot = getSnapshot(customNodeStore) as any
     return JSON.stringify({
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       visualNodes: snapshot.visualNodes,
       visualEdges: snapshot.visualEdges,
       audioConnections: snapshot.audioConnections,
+      customNodes: customNodeSnapshot.nodes,
     })
   }
 
@@ -207,6 +210,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           }
 
           applySnapshot(store, newSnapshot)
+
+          // Restore CustomNodeStore state if available
+          if (importData.customNodes) {
+            const customNodeSnapshot = {
+              nodes: importData.customNodes,
+            }
+            applySnapshot(customNodeStore, customNodeSnapshot)
+          }
 
           // Set current project info
           setCurrentProjectId(project.id || null)
@@ -355,6 +366,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           }
 
           applySnapshot(store, newSnapshot)
+
+          // Restore CustomNodeStore state if available
+          if (importData.customNodes) {
+            const customNodeSnapshot = {
+              nodes: importData.customNodes,
+            }
+            applySnapshot(customNodeStore, customNodeSnapshot)
+          }
 
           // Clear current project info since this is an import
           setCurrentProjectId(null)

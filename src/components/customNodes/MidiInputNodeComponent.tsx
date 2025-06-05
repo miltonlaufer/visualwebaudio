@@ -128,8 +128,8 @@ const MidiInputNodeComponent: React.FC<MidiInputNodeComponentProps> = observer((
     }
   }
 
-  const selectedDeviceId = node.properties.get('selectedDeviceId') || ''
-  const currentChannel = node.properties.get('channel') || 1
+  const selectedDeviceId = node.properties.get('selectedDeviceId') ?? ''
+  const currentChannel = node.properties.get('channel') ?? 1
 
   return (
     <div className="p-3 min-w-[200px]">
