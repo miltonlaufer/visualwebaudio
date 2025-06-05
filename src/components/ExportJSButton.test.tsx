@@ -201,8 +201,10 @@ describe('ExportJSButton', () => {
     expect(generatedCode).toContain('osc_1.frequency.value = 440;')
     expect(generatedCode).toContain("osc_1.type = 'sine';")
     expect(generatedCode).toContain('osc_1.connect(dest_1);')
-    expect(generatedCode).toContain('osc_1.start();')
-    expect(generatedCode).toContain('audioContext.resume();')
+    expect(generatedCode).toContain('Oscillators will be started by the "Start Audio" button')
+    expect(generatedCode).toContain(
+      'AudioContext will be started when user clicks "Start Audio" button'
+    )
   })
 
   it('generates correct code for gain node', async () => {
@@ -441,11 +443,8 @@ describe('ExportJSButton', () => {
     expect(generatedCode).not.toContain('detune')
   })
 
-  it('shows warning for custom nodes and prevents export', async () => {
+  it('supports export for projects with custom nodes', async () => {
     const user = userEvent.setup()
-
-    // Mock alert
-    const mockAlert = vi.spyOn(window, 'alert').mockImplementation(() => {})
 
     const mockStoreWithCustomNodes = {
       ...mockStore,
@@ -467,6 +466,15 @@ describe('ExportJSButton', () => {
           },
         },
       ],
+      visualEdges: [
+        {
+          id: 'edge-1',
+          source: 'slider-1',
+          target: 'osc-1',
+          sourceHandle: 'value',
+          targetHandle: 'frequency',
+        },
+      ],
     }
 
     vi.mocked(useAudioGraphStore).mockReturnValue(mockStoreWithCustomNodes as any)
@@ -476,13 +484,29 @@ describe('ExportJSButton', () => {
     const button = screen.getByRole('button')
     await user.click(button)
 
-    // Should show alert and not open modal
-    expect(mockAlert).toHaveBeenCalledWith(
-      'Support for exporting utility nodes coming soon. This feature is only available for pure Web Audio API projects.'
-    )
-    expect(screen.queryByText('Exported JavaScript Code')).not.toBeInTheDocument()
+    // Should open modal and generate code with custom nodes
+    expect(screen.getByText('Exported JavaScript Code')).toBeInTheDocument()
 
-    mockAlert.mockRestore()
+    const codeElement = screen.getByTestId('syntax-highlighter')
+    const generatedCode = codeElement.textContent
+
+    // Should include custom node class definition
+    expect(generatedCode).toContain('class SliderNode')
+    expect(generatedCode).toContain('const slider_1 = new SliderNode')
+    expect(generatedCode).toContain('const osc_1 = audioContext.createOscillator')
+    expect(generatedCode).toContain('slider_1.setProperty')
+
+    // Should include UI controls for interactive nodes
+    expect(generatedCode).toContain('Create UI controls for interactive nodes')
+    expect(generatedCode).toContain('createAudioControls')
+    expect(generatedCode).toContain('document.createElement')
+    expect(generatedCode).toContain('slider_1-slider')
+    expect(generatedCode).toContain('addEventListener')
+
+    // Should include Start Audio button
+    expect(generatedCode).toContain('Start Audio')
+    expect(generatedCode).toContain('start-audio-button')
+    expect(generatedCode).toContain('audioContext.resume()')
   })
 
   it('allows export for pure Web Audio API projects', async () => {
