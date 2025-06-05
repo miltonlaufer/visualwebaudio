@@ -149,14 +149,16 @@ const FrequencyAnalyzer: React.FC = observer(() => {
   }, [isActive, store.frequencyAnalyzer, store.audioContext])
 
   return (
-    <div className="p-4 bg-gray-50">
-      <h3 className="text-sm font-medium text-gray-700 mb-2">Frequency Analyzer</h3>
+    <div className="p-4 bg-gray-50 dark:bg-gray-800">
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+        Frequency Analyzer
+      </h3>
       <div className="relative">
         <canvas
           ref={canvasRef}
           width={280}
           height={120}
-          className="w-full h-24 bg-black rounded border"
+          className="w-full h-24 bg-black rounded border border-gray-200 dark:border-gray-600"
           style={{ imageRendering: 'pixelated' }}
         />
         {!isActive && (
@@ -165,7 +167,7 @@ const FrequencyAnalyzer: React.FC = observer(() => {
           </div>
         )}
       </div>
-      <div className="mt-2 text-xs text-gray-500">
+      <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
         Real-time frequency spectrum (20Hz - 22kHz) • {isActive ? 'Monitoring' : 'Inactive'} •{' '}
         {store.frequencyAnalyzer ? 'Analyzer ready' : 'No analyzer'}
       </div>

@@ -7,6 +7,7 @@ import {
   AudioGraphStoreContext,
   useAudioGraphStore,
 } from '~/stores/AudioGraphStore'
+import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
 import Header from '~/components/Header'
@@ -17,18 +18,22 @@ import AIChat from '~/components/AIChat'
 
 const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
+  const themeStore = useMemo(() => createThemeStore(), [])
 
   // Make store available for debugging
   useEffect(() => {
     if (typeof window !== 'undefined') {
       ;(window as any).__STORE__ = store
+      ;(window as any).__THEME_STORE__ = themeStore
     }
-  }, [store])
+  }, [store, themeStore])
 
   return (
-    <AudioGraphStoreContext.Provider value={store}>
-      <AppContent />
-    </AudioGraphStoreContext.Provider>
+    <ThemeStoreContext.Provider value={themeStore}>
+      <AudioGraphStoreContext.Provider value={store}>
+        <AppContent />
+      </AudioGraphStoreContext.Provider>
+    </ThemeStoreContext.Provider>
   )
 })
 
@@ -138,7 +143,7 @@ const AppContent: React.FC = observer(() => {
   }, [])
 
   return (
-    <div className="h-screen flex flex-col bg-gray-100 select-none">
+    <div className="h-screen flex flex-col bg-gray-100 dark:bg-gray-900 select-none">
       {/* Update Notification */}
       <UpdateNotification />
 
@@ -162,7 +167,7 @@ const AppContent: React.FC = observer(() => {
           md:w-64 md:relative md:translate-x-0
           max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-80 max-md:transform max-md:transition-transform max-md:duration-300 max-md:ease-in-out
           ${!isNodePaletteOpen ? 'max-md:-translate-x-full' : 'max-md:translate-x-0'}
-          bg-white border-r border-gray-200 flex flex-col h-full
+          bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col h-full
         `}
         >
           <div className="flex-1 overflow-y-auto">
@@ -182,7 +187,7 @@ const AppContent: React.FC = observer(() => {
           lg:w-80 lg:relative lg:translate-x-0
           max-lg:fixed max-lg:inset-y-0 max-lg:right-0 max-lg:z-50 max-lg:w-80 max-lg:transform max-lg:transition-transform max-lg:duration-300 max-lg:ease-in-out
           ${!isPropertyPanelOpen ? 'max-lg:translate-x-full' : 'max-lg:translate-x-0'}
-          bg-white border-l border-gray-200 flex flex-col h-full
+          bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 flex flex-col h-full
         `}
         >
           <div className="flex-1 overflow-y-auto">

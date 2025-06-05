@@ -5,6 +5,7 @@ import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import ProjectModal from './ProjectModal'
 import ExportJSButton from './ExportJSButton'
 import ExamplesDropdown from './ExamplesDropdown'
+import DarkModeToggle from './DarkModeToggle'
 import { useExamples } from './Examples'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
@@ -130,7 +131,7 @@ const Header: React.FC<HeaderProps> = observer(
 
     return (
       <>
-        <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between relative z-40">
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between relative z-40">
           {/* Left side - Mobile menu button (node palette), Logo and title */}
           <div className="flex items-center">
             {/* Mobile Menu Button - Controls Node Palette */}
@@ -139,7 +140,7 @@ const Header: React.FC<HeaderProps> = observer(
               className={`md:hidden p-2 rounded-lg transition-colors mr-3 ${
                 isNodePaletteOpen
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title="Toggle Node Palette"
             >
@@ -156,11 +157,11 @@ const Header: React.FC<HeaderProps> = observer(
             <div className="flex items-center space-x-2">
               <img src="./logo.png" alt="Visual Web Audio" className="w-8 h-8" />
               <div className="flex items-center space-x-2">
-                <h1 className="font-bold text-gray-900 text-lg lg:text-2xl">
+                <h1 className="font-bold text-gray-900 dark:text-white text-lg lg:text-2xl">
                   <span className="lg:hidden">VWA</span>
                   <span className="hidden lg:inline">Visual Web Audio</span>
                 </h1>
-                <span className="hidden lg:inline-block px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                <span className="hidden lg:inline-block px-2 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
                   alpha
                 </span>
               </div>
@@ -219,7 +220,7 @@ const Header: React.FC<HeaderProps> = observer(
               {/* Clear All */}
               <button
                 onClick={handleClearAllNodes}
-                className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                className="flex items-center px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -237,7 +238,7 @@ const Header: React.FC<HeaderProps> = observer(
                 <button
                   onClick={handleUndo}
                   disabled={!store.canUndo}
-                  className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Undo (⌘Z)"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -252,7 +253,7 @@ const Header: React.FC<HeaderProps> = observer(
                 <button
                   onClick={handleRedo}
                   disabled={!store.canRedo}
-                  className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Redo (⌘Y)"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -266,10 +267,13 @@ const Header: React.FC<HeaderProps> = observer(
                 </button>
               </div>
 
+              {/* Dark Mode Toggle */}
+              <DarkModeToggle />
+
               {/* GitHub Link */}
               <button
                 onClick={handleGitHubClick}
-                className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 title="View on GitHub"
               >
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -285,7 +289,7 @@ const Header: React.FC<HeaderProps> = observer(
                 className={`p-2 rounded-lg transition-colors ${
                   isMobileMenuOpen
                     ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
                 title="Toggle Menu"
               >
@@ -301,13 +305,13 @@ const Header: React.FC<HeaderProps> = observer(
 
               {/* Mobile Menu Dropdown */}
               {isMobileMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50">
                   <div className="p-2">
                     {/* Examples Section */}
                     <div className="mb-2">
                       <button
                         onClick={handleToggleExamples}
-                        className="w-full flex items-center justify-between px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="w-full flex items-center justify-between px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
                         <span className="font-medium">Quick Examples</span>
                         <svg
@@ -333,7 +337,7 @@ const Header: React.FC<HeaderProps> = observer(
                             <button
                               key={example.id}
                               onClick={handleMobileExampleSelect(example)}
-                              className="w-full text-left px-2 py-1 text-sm text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                              className="w-full text-left px-2 py-1 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 rounded transition-colors"
                             >
                               {example.name}
                             </button>
@@ -343,14 +347,14 @@ const Header: React.FC<HeaderProps> = observer(
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-gray-200 my-2"></div>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
                     {/* Menu Actions */}
                     <div className="space-y-1">
                       {/* Project */}
                       <button
                         onClick={handleMenuActionOpenProject}
-                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
                         <svg
                           className="w-4 h-4 mr-3"
@@ -376,7 +380,7 @@ const Header: React.FC<HeaderProps> = observer(
                       {/* Clear All */}
                       <button
                         onClick={handleMenuActionClearAll}
-                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       >
                         <svg
                           className="w-4 h-4 mr-3"
@@ -398,7 +402,7 @@ const Header: React.FC<HeaderProps> = observer(
                       <button
                         onClick={handleMenuActionUndo}
                         disabled={!store.canUndo}
-                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <svg
                           className="w-4 h-4 mr-3"
@@ -420,7 +424,7 @@ const Header: React.FC<HeaderProps> = observer(
                       <button
                         onClick={handleMenuActionRedo}
                         disabled={!store.canRedo}
-                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <svg
                           className="w-4 h-4 mr-3"
@@ -440,14 +444,14 @@ const Header: React.FC<HeaderProps> = observer(
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-gray-200 my-2"></div>
+                    <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
 
                     {/* GitHub Link */}
                     <a
                       href="https://github.com/miltonlaufer/visualwebaudio"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-full flex items-center px-3 py-2 text-left text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                      className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                       onClick={handleCloseMobileMenu}
                     >
                       <svg className="w-4 h-4 mr-3" fill="currentColor" viewBox="0 0 24 24">
@@ -455,6 +459,11 @@ const Header: React.FC<HeaderProps> = observer(
                       </svg>
                       View on GitHub
                     </a>
+
+                    {/* Dark Mode Toggle */}
+                    <div className="px-3 py-2">
+                      <DarkModeToggle className="w-full" />
+                    </div>
                   </div>
                 </div>
               )}
@@ -466,7 +475,7 @@ const Header: React.FC<HeaderProps> = observer(
               className={`md:hidden p-2 rounded-lg transition-colors ${
                 isPropertyPanelOpen
                   ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
               title="Toggle Property Panel"
             >
