@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import Header from './Header'
+import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
 
 // Mock the AudioGraphStore hook
 const mockStore = {
@@ -28,27 +29,35 @@ vi.mock('./ProjectModal', () => ({
 const mockConfirm = vi.fn(() => true)
 Object.defineProperty(window, 'confirm', { value: mockConfirm, writable: true })
 
+// Helper function to render with theme store
+const renderWithThemeStore = (component: React.ReactElement) => {
+  const themeStore = createThemeStore()
+  return render(
+    <ThemeStoreContext.Provider value={themeStore}>{component}</ThemeStoreContext.Provider>
+  )
+}
+
 describe('Header', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('should render the header with logo and title', () => {
-    render(<Header />)
+    renderWithThemeStore(<Header />)
 
     expect(screen.getByText('Visual Web Audio')).toBeInTheDocument()
     expect(screen.getByText('alpha')).toBeInTheDocument()
   })
 
   it('should render project button', () => {
-    render(<Header />)
+    renderWithThemeStore(<Header />)
 
     const projectButton = screen.getByText('Project')
     expect(projectButton).toBeInTheDocument()
   })
 
   it('should open project modal when project button is clicked', () => {
-    render(<Header />)
+    renderWithThemeStore(<Header />)
 
     const projectButton = screen.getByText('Project')
     fireEvent.click(projectButton)
@@ -57,7 +66,7 @@ describe('Header', () => {
   })
 
   it('should close project modal when close button is clicked', () => {
-    render(<Header />)
+    renderWithThemeStore(<Header />)
 
     // Open modal
     const projectButton = screen.getByText('Project')

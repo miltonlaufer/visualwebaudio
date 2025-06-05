@@ -10,6 +10,14 @@
   background: white;
 }
 
+/* Dark mode styles for React Flow nodes */
+.dark .react-flow__node {
+  border: 1px solid #4b5563;
+  background: #374151;
+  color: white;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
 /* Mobile-responsive node sizing */
 .react-flow__node {
   @apply md:min-w-0 max-md:min-w-[120px] max-md:text-sm;
@@ -105,6 +113,11 @@
   stroke-width: 3;
 }
 
+/* Dark mode connection lines */
+.dark .react-flow__edge-path {
+  stroke: #9ca3af;
+}
+
 /* Mobile: Thicker connection lines for better visibility */
 @media (max-width: 768px) {
   .react-flow__edge-path {
@@ -115,6 +128,11 @@
 .react-flow__edge.selected .react-flow__edge-path {
   stroke: #3b82f6;
   stroke-width: 4;
+}
+
+/* Dark mode selected edges */
+.dark .react-flow__edge.selected .react-flow__edge-path {
+  stroke: #60a5fa;
 }
 
 @media (max-width: 768px) {

@@ -62,7 +62,7 @@ const ExamplesDropdown: React.FC<ExamplesDropdownProps> = observer(
           <button
             ref={buttonRef}
             onClick={toggleDropdown}
-            className="flex items-center px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors"
+            className="flex items-center px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 transition-colors"
           >
             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

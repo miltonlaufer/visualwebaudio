@@ -165,28 +165,28 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   const getCategoryColor = (category: string) => {
     switch (category) {
       case 'source':
-        return 'bg-green-50 border-green-200 text-green-800'
+        return 'bg-green-50 dark:bg-green-900 border-green-200 dark:border-green-700 text-green-800 dark:text-green-200'
       case 'effect':
-        return 'bg-blue-50 border-blue-200 text-blue-800'
+        return 'bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700 text-blue-800 dark:text-blue-200'
       case 'destination':
-        return 'bg-red-50 border-red-200 text-red-800'
+        return 'bg-red-50 dark:bg-red-900 border-red-200 dark:border-red-700 text-red-800 dark:text-red-200'
       case 'analysis':
-        return 'bg-purple-50 border-purple-200 text-purple-800'
+        return 'bg-purple-50 dark:bg-purple-900 border-purple-200 dark:border-purple-700 text-purple-800 dark:text-purple-200'
       case 'processing':
-        return 'bg-yellow-50 border-yellow-200 text-yellow-800'
+        return 'bg-yellow-50 dark:bg-yellow-900 border-yellow-200 dark:border-yellow-700 text-yellow-800 dark:text-yellow-200'
       case 'context':
-        return 'bg-gray-50 border-gray-200 text-gray-800'
+        return 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200'
       // Custom node categories
       case 'control':
-        return 'bg-pink-50 border-pink-200 text-pink-800'
+        return 'bg-pink-50 dark:bg-pink-900 border-pink-200 dark:border-pink-700 text-pink-800 dark:text-pink-200'
       case 'logic':
-        return 'bg-indigo-50 border-indigo-200 text-indigo-800'
+        return 'bg-indigo-50 dark:bg-indigo-900 border-indigo-200 dark:border-indigo-700 text-indigo-800 dark:text-indigo-200'
       case 'input':
-        return 'bg-teal-50 border-teal-200 text-teal-800'
+        return 'bg-teal-50 dark:bg-teal-900 border-teal-200 dark:border-teal-700 text-teal-800 dark:text-teal-200'
       case 'misc':
-        return 'bg-orange-50 border-orange-200 text-orange-800'
+        return 'bg-orange-50 dark:bg-orange-900 border-orange-200 dark:border-orange-700 text-orange-800 dark:text-orange-200'
       default:
-        return 'bg-white border-gray-200 text-gray-800'
+        return 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200'
     }
   }
 
@@ -234,10 +234,10 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
       {/* Scrollable content area */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">Node Palette</h2>
+          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-200">Node Palette</h2>
           <button
             onClick={onClose}
-            className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded lg:hidden"
+            className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded lg:hidden"
             title="Close"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -255,8 +255,10 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         <MicrophoneInput />
 
         {/* Connection Type Legend */}
-        <div className="mb-6 p-3 bg-gray-50 rounded-lg border">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">Connection Types</h3>
+        <div className="mb-6 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            Connection Types
+          </h3>
           <div className="space-y-2">
             <div className="flex items-center">
               <div
@@ -266,8 +268,10 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                   borderColor: '#059669',
                 }}
               />
-              <span className="text-xs text-emerald-700 font-medium mr-2">Audio</span>
-              <span className="text-xs text-gray-500">Sound signals</span>
+              <span className="text-xs text-emerald-700 dark:text-emerald-400 font-medium mr-2">
+                Audio
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Sound signals</span>
             </div>
             <div className="flex items-center">
               <div
@@ -277,11 +281,13 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                   borderColor: '#d97706',
                 }}
               />
-              <span className="text-xs text-amber-700 font-medium mr-2">Control</span>
-              <span className="text-xs text-gray-500">Parameter modulation</span>
+              <span className="text-xs text-amber-700 dark:text-amber-400 font-medium mr-2">
+                Control
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Parameter modulation</span>
             </div>
           </div>
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             💡 Audio can connect to audio or control. Control can only connect to control.
           </div>
         </div>
@@ -298,11 +304,14 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
               placeholder="Search nodes to add..."
               value={searchText}
               onChange={handleSearchTextChange}
-              className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+              className="block w-full pl-10 pr-10 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-white focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
             />
             {searchText && (
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                <button onClick={handleClearSearch} className="text-gray-400 hover:text-gray-600">
+                <button
+                  onClick={handleClearSearch}
+                  className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                >
                   <XMarkIcon className="h-4 w-4" />
                 </button>
               </div>
@@ -313,7 +322,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           <div className="relative">
             <Listbox value={selectedCategories} onChange={setSelectedCategories} multiple>
               <div className="relative">
-                <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm">
+                <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 py-2 pl-3 pr-10 text-left shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm text-gray-900 dark:text-white">
                   <span className="block truncate">
                     {selectedCategories.length === 0
                       ? 'All categories'
@@ -322,7 +331,10 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                         : `${selectedCategories.length} categories selected`}
                   </span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-                    <ChevronUpDownIcon className="h-4 w-4 text-gray-400" aria-hidden="true" />
+                    <ChevronUpDownIcon
+                      className="h-4 w-4 text-gray-400 dark:text-gray-500"
+                      aria-hidden="true"
+                    />
                   </span>
                 </Listbox.Button>
 
@@ -331,13 +343,15 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                   leaveFrom="opacity-100"
                   leaveTo="opacity-0"
                 >
-                  <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-sm shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                  <Listbox.Options className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white dark:bg-gray-800 py-1 text-sm shadow-lg ring-1 ring-black dark:ring-gray-600 ring-opacity-5 focus:outline-none">
                     {allCategories.map(category => (
                       <Listbox.Option
                         key={category}
                         className={({ active }) =>
                           `relative cursor-default select-none py-2 pl-10 pr-4 ${
-                            active ? 'bg-blue-100 text-blue-900' : 'text-gray-900'
+                            active
+                              ? 'bg-blue-100 dark:bg-blue-900 text-blue-900 dark:text-blue-100'
+                              : 'text-gray-900 dark:text-gray-100'
                           }`
                         }
                         value={category}
@@ -368,7 +382,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
           {(searchText || selectedCategories.length > 0) && (
             <button
               onClick={clearFilters}
-              className="w-full text-sm text-gray-600 hover:text-gray-800 py-1 px-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              className="w-full text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 py-1 px-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Clear filters ({filteredNodeTypes.length} of {store.availableNodeTypes.length} nodes
               shown)
@@ -377,12 +391,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         </div>
         {/* Web Audio API Nodes */}
         <div className="mb-8">
-          <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
             🔊 Web Audio API Nodes
           </h2>
           {Object.entries(webAudioCategories).map(([category, nodes]) => (
             <div key={category} className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
                 {category} Nodes
               </h3>
               <div className="space-y-2">
@@ -410,12 +424,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center space-x-1">
                         {metadata.inputs.length > 0 && (
-                          <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
                             {metadata.inputs.length} in
                           </span>
                         )}
                         {metadata.outputs.length > 0 && (
-                          <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
                             {metadata.outputs.length} out
                           </span>
                         )}
@@ -432,12 +446,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         {/* Utility Nodes */}
         {Object.keys(customNodeCategories).length > 0 && (
           <div className="mb-8">
-            <h2 className="text-base font-semibold text-gray-800 mb-4 border-b border-gray-200 pb-2">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
               🎛️ Utility Nodes
             </h2>
             {Object.entries(customNodeCategories).map(([category, nodes]) => (
               <div key={category} className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 mb-2 capitalize">
+                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
                   {category} Nodes
                 </h3>
                 <div className="space-y-2">
@@ -465,12 +479,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                       <div className="flex items-center justify-between mt-2">
                         <div className="flex items-center space-x-1">
                           {metadata.inputs.length > 0 && (
-                            <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
                               {metadata.inputs.length} in
                             </span>
                           )}
                           {metadata.outputs.length > 0 && (
-                            <span className="text-xs bg-white bg-opacity-50 px-1 rounded">
+                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
                               {metadata.outputs.length} out
                             </span>
                           )}
@@ -488,13 +502,13 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         {/* Node Categories - Legacy fallback */}
         {Object.keys(webAudioCategories).length === 0 &&
           Object.keys(customNodeCategories).length === 0 && (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-gray-500 dark:text-gray-400 py-8">
               {searchText || selectedCategories.length > 0 ? (
                 <div>
                   <p className="mb-2">No nodes match your filters</p>
                   <button
                     onClick={clearFilters}
-                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-sm underline"
                   >
                     Clear filters to see all nodes
                   </button>
