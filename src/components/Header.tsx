@@ -174,8 +174,8 @@ const Header: React.FC<HeaderProps> = observer(
               onClick={handleTogglePlayback}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
                 store.isPlaying
-                  ? 'bg-red-500 text-white hover:bg-red-600'
-                  : 'bg-green-500 text-white hover:bg-green-600'
+                  ? 'bg-red-800 text-white hover:bg-red-700'
+                  : 'bg-green-800 text-white hover:bg-green-700'
               }`}
             >
               {store.isPlaying ? (
@@ -201,7 +201,7 @@ const Header: React.FC<HeaderProps> = observer(
               {/* Project */}
               <button
                 onClick={handleOpenProjectModal}
-                className="flex items-center px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors"
+                className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
               >
                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
