@@ -1,5 +1,6 @@
 import { types, flow, onPatch, applyPatch, getEnv, destroy } from 'mobx-state-tree'
 import type { Instance, IJsonPatch } from 'mobx-state-tree'
+import { reaction } from 'mobx'
 import type { NodeMetadata } from '~/types'
 import {
   VisualNodeModel,
@@ -80,6 +81,8 @@ export const AudioGraphStore = types
     // Clipboard permission state
     clipboardPermissionState: 'unknown' as 'granted' | 'denied' | 'prompt' | 'unknown',
     clipboardError: null as string | null,
+    // Reaction disposer for automatic audio node creation
+    audioNodeCreationReactionDisposer: null as (() => void) | null,
   }))
   .actions(self => {
     return {
@@ -148,28 +151,6 @@ export const AudioGraphStore = types
         self.isLoadingProject = value
       },
 
-      // Manually trigger lifecycle hooks for all nodes after project loading
-      // This is needed because applySnapshot doesn't trigger afterAttach hooks
-      triggerLifecycleHooksAfterLoad() {
-        console.log('[AudioGraphStore] Triggering lifecycle hooks for all nodes after project load')
-
-        // Trigger afterAttach for all visual nodes
-        self.visualNodes.forEach(node => {
-          try {
-            // Manually call afterAttach if it exists
-            if (node.afterAttach && typeof node.afterAttach === 'function') {
-              console.log(`[AudioGraphStore] Triggering afterAttach for node ${node.id}`)
-              node.afterAttach()
-            }
-          } catch (error) {
-            console.error(
-              `[AudioGraphStore] Error triggering afterAttach for node ${node.id}:`,
-              error
-            )
-          }
-        })
-      },
-
       // Action to set project modified state
       setProjectModified(value: boolean) {
         self.isProjectModified = value
@@ -178,6 +159,11 @@ export const AudioGraphStore = types
       // Action to mark project as modified (when changes are made)
       markProjectModified() {
         self.isProjectModified = true
+      },
+
+      // Action to force React re-render by incrementing graph change counter
+      forceRerender() {
+        self.graphChangeCounter += 1
       },
 
       // Check clipboard permissions
@@ -318,10 +304,11 @@ export const AudioGraphStore = types
         }
 
         // Add the visual node to the store
-        // The audio node will be created automatically by the afterAttach lifecycle hook
         try {
           self.visualNodes.push(visualNode)
-          //console.log(`STORE: Added visual node ${nodeId}, audio node will be created by lifecycle hook`)
+          //console.log(`STORE: Added visual node ${nodeId}`)
+
+          // Audio node will be created by afterAttach lifecycle hook
         } catch (error) {
           console.error('STORE: Error adding node to visualNodes:', error)
           throw error
@@ -342,9 +329,6 @@ export const AudioGraphStore = types
           return
         }
 
-        //const nodeType = visualNode.data.nodeType
-        //console.log('Node type:', nodeType)
-
         // The audio node cleanup will now happen automatically via beforeDestroy hook
 
         // Remove connected edges
@@ -359,10 +343,8 @@ export const AudioGraphStore = types
         // Remove the visual node (this will trigger beforeDetach/beforeDestroy)
         const nodeIndex = self.visualNodes.findIndex(node => node.id === nodeId)
         if (nodeIndex !== -1) {
-          console.log(`STORE: Removing visual node ${nodeId} using destroy()`)
           // Use MST destroy() to properly trigger lifecycle hooks
           destroy(self.visualNodes[nodeIndex])
-          console.log('STORE: Visual node destroyed')
         }
 
         // Increment graph change counter to force React re-render
@@ -373,18 +355,13 @@ export const AudioGraphStore = types
 
       // New method to handle audio node cleanup (called by VisualNode beforeDestroy)
       cleanupAudioNode(nodeId: string) {
-        console.log(`STORE: cleanupAudioNode called for ${nodeId}`)
         const audioNode = self.audioNodes.get(nodeId)
         const customNode = self.customNodes.get(nodeId)
-        console.log(`STORE: Found audioNode: ${!!audioNode}, customNode: ${!!customNode}`)
 
         if (audioNode) {
-          console.log('STORE: Found audio node, performing thorough cleanup...')
-
           // Disconnect all outputs
           try {
             audioNode.disconnect()
-            console.log('STORE: Audio node outputs disconnected')
           } catch (error) {
             console.error('Error disconnecting audio node:', error)
           }
@@ -393,28 +370,21 @@ export const AudioGraphStore = types
           if ('stop' in audioNode && typeof audioNode.stop === 'function') {
             try {
               ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
-              console.log('STORE: Source node stopped')
             } catch (error) {
               console.error('Error stopping source node:', error)
             }
           }
 
-          // Use factory to clean up if available
-          if (self.audioNodeFactory) {
-            const visualNode = self.visualNodes.find(node => node.id === nodeId)
-            const nodeType = visualNode?.data.nodeType
-            if (nodeType) {
-              try {
-                self.audioNodeFactory.stopSourceNode(audioNode, nodeType)
-                console.log('STORE: Factory cleanup completed')
-              } catch (error) {
-                console.error('Factory cleanup error (non-critical):', error)
-              }
+          // For source nodes, try to stop them manually
+          if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+            try {
+              ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+            } catch {
+              // Node might already be stopped, ignore
             }
           }
 
           self.audioNodes.delete(nodeId)
-          console.log(`STORE: Audio node removed from map, new size: ${self.audioNodes.size}`)
         } else if (customNode) {
           //console.log('Found custom node, cleaning up...')
 
@@ -1051,7 +1021,7 @@ export const AudioGraphStore = types
 
             if (isDestinationConnection) {
               // Audio is now playing through the destination, update play state
-              console.log('Audio connected to destination - setting play state to true')
+
               this.setUpdatingPlayState(true)
               self.isPlaying = true
               this.setUpdatingPlayState(false)
@@ -1623,7 +1593,6 @@ export const AudioGraphStore = types
             }
           }
         })
-
         //console.log(`Cut ${selectedNodeIds.length} nodes`)
       },
 
@@ -1775,8 +1744,6 @@ export const AudioGraphStore = types
           self.initializeAudioContext()
         }
 
-        console.log('STORE: createAudioNode', nodeId, nodeType)
-
         if (!self.audioContext || !self.audioNodeFactory || !self.customNodeFactory) {
           console.error('Failed to initialize audio context or factories')
           return
@@ -1841,7 +1808,6 @@ export const AudioGraphStore = types
             }
 
             self.customNodes.set(nodeId, customNode)
-            console.log('STORE: customNodes', self.customNodes)
 
             // Apply properties to the MobX node that was already created by the factory
             const mobxNode = customNodeStore.getNode(nodeId)
@@ -1897,11 +1863,132 @@ export const AudioGraphStore = types
         try {
           const audioNode = self.audioNodeFactory.createAudioNode(nodeType, metadata, properties)
           self.audioNodes.set(nodeId, audioNode)
-          console.log(
-            `STORE: Successfully created audio node: ${nodeType}, map size: ${self.audioNodes.size}`
-          )
         } catch (error) {
           console.error('STORE: Error creating audio node:', error)
+        }
+      },
+
+      // Initialize the store - sets up reactions for automatic audio node creation
+      init() {
+        // Clean up any existing reaction first
+        if (self.audioNodeCreationReactionDisposer) {
+          self.audioNodeCreationReactionDisposer()
+          self.audioNodeCreationReactionDisposer = null
+        }
+
+        // Set up a reaction that watches for visual nodes and creates audio nodes when needed
+        self.audioNodeCreationReactionDisposer = reaction(
+          // Observable: watch the visual nodes array
+          () => {
+            return self.visualNodes.map(node => ({
+              id: node.id,
+              nodeType: node.data.nodeType,
+              hasAudioNode: self.audioNodes.has(node.id) || self.customNodes.has(node.id),
+              isAttached: node.isAttached,
+            }))
+          },
+          // Effect: create audio nodes for nodes that don't have them yet
+          nodeStates => {
+            nodeStates.forEach(nodeState => {
+              if (!nodeState.hasAudioNode) {
+                try {
+                  this.createAudioNode(nodeState.id, nodeState.nodeType)
+
+                  // Mark the visual node as having an audio node created
+                  const visualNode = self.visualNodes.find(node => node.id === nodeState.id)
+                  if (visualNode && visualNode.markAudioNodeCreated) {
+                    visualNode.markAudioNodeCreated()
+                  }
+                } catch (error) {
+                  console.error(
+                    `[AudioGraphStore reaction] Error creating audio node for ${nodeState.id}:`,
+                    error
+                  )
+                }
+              }
+            })
+
+            // After creating all audio nodes, recreate audio connections
+            // For source nodes (like oscillators), we need to recreate them because
+            // they can only be started once in Web Audio API
+            self.audioNodes.forEach((audioNode, nodeId) => {
+              const visualNode = self.visualNodes.find(node => node.id === nodeId)
+              const nodeType = visualNode?.data.nodeType
+
+              if (nodeType && self.audioNodeFactory) {
+                // Check if this is a source node that needs to be recreated
+                const isSourceNode = ['OscillatorNode', 'AudioBufferSourceNode'].includes(nodeType)
+
+                if (isSourceNode) {
+                  try {
+                    // Stop and disconnect the old node
+                    audioNode.disconnect()
+
+                    // For source nodes, try to stop them manually
+                    if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+                      try {
+                        ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+                      } catch {
+                        // Node might already be stopped, ignore
+                      }
+                    }
+
+                    // Create a new node with the same properties
+                    const metadata = visualNode.data.metadata as NodeMetadata
+                    const properties = Object.fromEntries(visualNode.data.properties.entries())
+                    const newAudioNode = self.audioNodeFactory.createAudioNode(
+                      nodeType,
+                      metadata,
+                      properties
+                    )
+
+                    // Replace the old node with the new one
+                    self.audioNodes.set(nodeId, newAudioNode)
+                  } catch (error) {
+                    console.error(`Error recreating source node ${nodeType}:`, error)
+                  }
+                } else {
+                  // For non-source nodes, just disconnect
+                  try {
+                    audioNode.disconnect()
+                  } catch {
+                    // Ignore errors from already disconnected nodes
+                  }
+                }
+              }
+            })
+
+            // Recreate connections based on the audioConnections array
+            self.audioConnections.forEach(connection => {
+              try {
+                self.connectAudioNodes(
+                  connection.sourceNodeId,
+                  connection.targetNodeId,
+                  connection.sourceOutput,
+                  connection.targetInput
+                )
+              } catch (error) {
+                console.error(`Error recreating audio connection:`, error, connection)
+              }
+            })
+          },
+          {
+            name: 'AudioNodeCreationReaction',
+            fireImmediately: true,
+          }
+        )
+      },
+
+      // Set up automatic audio node creation reaction
+      afterCreate() {
+        this.init()
+      },
+
+      // Clean up the reaction when the store is destroyed
+      beforeDestroy() {
+        if (self.audioNodeCreationReactionDisposer) {
+          self.audioNodeCreationReactionDisposer()
+          self.audioNodeCreationReactionDisposer = null
         }
       },
     }

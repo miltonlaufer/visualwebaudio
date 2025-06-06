@@ -196,50 +196,51 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
         // Clear existing project
         store.clearAllNodes()
-        queueMicrotask(() => {
-          // Set flag to prevent marking as modified during loading
-          store.setLoadingProject(true)
 
-          try {
-            // Apply the imported data to AudioGraphStore
-            const newSnapshot = {
-              ...getSnapshot(store),
-              visualNodes: importData.visualNodes,
-              visualEdges: importData.visualEdges,
-              audioConnections: importData.audioConnections,
-            }
+        // Set flag to prevent marking as modified during loading
+        store.setLoadingProject(true)
 
-            applySnapshot(store, newSnapshot)
-
-            // Apply CustomNodeStore snapshot if available
-            if (importData.customNodes) {
-              const customNodeSnapshot = {
-                nodes: importData.customNodes,
-              }
-              applySnapshot(customNodeStore, customNodeSnapshot)
-            }
-
-            // CRITICAL: Manually trigger lifecycle hooks after snapshot loading
-            // applySnapshot doesn't trigger afterAttach, so we need to do it manually
-            store.triggerLifecycleHooksAfterLoad()
-
-            // Set current project info
-            setCurrentProjectId(project.id || null)
-            setCurrentProjectName(project.name)
-
-            setStorageSuccess(`Project "${project.name}" loaded successfully!`)
-            setTimeout(() => setStorageSuccess(null), 3000)
-
-            // Mark project as unmodified after successful load
-            store.setProjectModified(false)
-
-            // Close the modal after a successful load
-            onClose()
-          } finally {
-            // Always clear the loading flag
-            store.setLoadingProject(false)
+        try {
+          // Apply the imported data to AudioGraphStore
+          const newSnapshot = {
+            ...getSnapshot(store),
+            visualNodes: importData.visualNodes,
+            visualEdges: importData.visualEdges,
+            audioConnections: importData.audioConnections,
           }
-        })
+
+          applySnapshot(store, newSnapshot)
+
+          // Apply CustomNodeStore snapshot if available
+          if (importData.customNodes) {
+            const customNodeSnapshot = {
+              nodes: importData.customNodes,
+            }
+            applySnapshot(customNodeStore, customNodeSnapshot)
+          }
+
+          // Initialize reactions after applying snapshot
+          store.init()
+
+          // Force React re-render by incrementing graph change counter
+          store.forceRerender()
+
+          // Set current project info
+          setCurrentProjectId(project.id || null)
+          setCurrentProjectName(project.name)
+
+          setStorageSuccess(`Project "${project.name}" loaded successfully!`)
+          setTimeout(() => setStorageSuccess(null), 3000)
+
+          // Mark project as unmodified after successful load
+          store.setProjectModified(false)
+
+          // Close the modal after a successful load
+          onClose()
+        } finally {
+          // Always clear the loading flag
+          store.setLoadingProject(false)
+        }
       } catch (error) {
         setStorageError('Failed to load project: ' + (error as Error).message)
         // Clear the loading flag on error too
@@ -380,9 +381,11 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
             applySnapshot(customNodeStore, customNodeSnapshot)
           }
 
-          // CRITICAL: Manually trigger lifecycle hooks after snapshot loading
-          // applySnapshot doesn't trigger afterAttach, so we need to do it manually
-          store.triggerLifecycleHooksAfterLoad()
+          // Initialize reactions after applying snapshot
+          store.init()
+
+          // Force React re-render by incrementing graph change counter
+          store.forceRerender()
 
           // Clear current project info since this is an import
           setCurrentProjectId(null)

@@ -79,20 +79,16 @@ export const VisualNodeModel = types
   .actions(self => ({
     // Called after the node is attached to the tree
     afterAttach() {
-      console.log(`[VisualNode afterAttach] Node ${self.id} attached to tree`)
-
-      // Create the audio node immediately when attached to tree
-      this.ensureAudioNodeExists()
-
       // Set up property synchronization reaction
       this.setupPropertyReaction()
       self.isAttached = true
+
+      // Note: Audio node creation is now handled by store-level reactions
+      // instead of lifecycle hooks to support snapshot loading
     },
 
     // Called before the node is removed from the tree
     beforeDetach() {
-      console.log(`[VisualNode beforeDetach] Node ${self.id} being detached`)
-
       // Clean up property reaction first to prevent accessing detached nodes
       if (self.propertyReactionDisposer) {
         self.propertyReactionDisposer()
@@ -105,8 +101,6 @@ export const VisualNodeModel = types
 
     // Called before the node is destroyed
     beforeDestroy() {
-      console.log(`[VisualNode beforeDestroy] Node ${self.id} being destroyed`)
-
       // Final cleanup - ensure reaction is disposed
       if (self.propertyReactionDisposer) {
         self.propertyReactionDisposer()
@@ -119,18 +113,23 @@ export const VisualNodeModel = types
 
     // Ensure audio node exists (idempotent)
     ensureAudioNodeExists() {
-      if (self.audioNodeCreated) {
-        console.log(`[VisualNode] Audio node for ${self.id} already exists`)
+      // Check if audio node already exists in the store
+      if (self.audioNodeCreated || self.root.audioNodes.has(self.id)) {
+        self.audioNodeCreated = true
         return
       }
 
       try {
-        //console.log(`[VisualNode] Creating audio node for ${self.id}`)
         self.root.createAudioNode(self.id, self.data.nodeType)
         self.audioNodeCreated = true
       } catch (error) {
         console.error(`[VisualNode] Error creating audio node for ${self.id}:`, error)
       }
+    },
+
+    // Update the audioNodeCreated flag when audio node is created by reactions
+    markAudioNodeCreated() {
+      self.audioNodeCreated = true
     },
 
     // Clean up audio node

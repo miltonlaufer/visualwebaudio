@@ -21,7 +21,7 @@ const MidiInputNodeComponent: React.FC<MidiInputNodeComponentProps> = observer((
   // Check initial MIDI permission status
   useEffect(() => {
     checkMidiPermissionStatus()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // Monitor MIDI outputs to detect connection
   useEffect(() => {

@@ -1039,11 +1039,13 @@ export const useExamples = () => {
           const { applySnapshot } = await import('mobx-state-tree')
           applySnapshot(store, projectData)
 
-          // CRITICAL: Manually trigger lifecycle hooks after snapshot loading
-          // applySnapshot doesn't trigger afterAttach, so we need to do it manually
-          store.triggerLifecycleHooksAfterLoad()
+          // Initialize reactions after applying snapshot
+          store.init()
 
-          // Audio nodes will be created automatically by lifecycle hooks
+          // Force React re-render by incrementing graph change counter
+          store.forceRerender()
+
+          // Audio nodes will be created automatically by reactions
         } catch (error) {
           console.warn('Failed to apply snapshot, falling back to manual creation:', error)
           // Fallback: create a simpler version manually

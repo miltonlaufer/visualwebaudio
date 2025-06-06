@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { createAudioGraphStore } from './AudioGraphStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
-import { applySnapshot, onPatch } from 'mobx-state-tree'
+import { applySnapshot, getSnapshot, onPatch } from 'mobx-state-tree'
 import { waitFor } from '@testing-library/react'
 
 // Create mock audio nodes
@@ -25,13 +25,7 @@ vi.mock('~/services/AudioNodeFactory', () => ({
     constructor(public audioContext: AudioContext) {}
 
     createAudioNode(nodeType: string, metadata: any, properties: any) {
-      console.log(`Mock AudioNodeFactory.createAudioNode called with:`, {
-        nodeType,
-        metadata,
-        properties,
-      })
       const mockNode = createMockAudioNode()
-      console.log(`Mock AudioNodeFactory created node:`, mockNode)
       // Apply initial properties
       if (properties) {
         Object.entries(properties).forEach(([key, value]) => {
@@ -42,7 +36,6 @@ vi.mock('~/services/AudioNodeFactory', () => ({
           }
         })
       }
-      console.log(`Mock AudioNodeFactory returning node:`, mockNode)
       return mockNode
     }
 
@@ -282,7 +275,6 @@ describe('AudioGraphStore', () => {
       const audioNode = store.audioNodes.get(nodeId) as any
       expect(audioNode).toBeDefined()
       expect(audioNode?.frequency).toBeDefined()
-      //console.log('TEST END: should create audio node')
     })
 
     it('should remove a node', async () => {
@@ -291,15 +283,6 @@ describe('AudioGraphStore', () => {
       // Wait for lifecycle hooks to complete
       await waitFor(
         () => {
-          const visualNode = store.visualNodes.find(n => n.id === nodeId)
-          console.log('TEST: Checking node state:', {
-            nodeId,
-            visualNodeExists: !!visualNode,
-            isAttached: visualNode?.isAttached,
-            audioNodeCreated: (visualNode as any)?.audioNodeCreated,
-            mapSize: store.audioNodes.size,
-            hasNode: store.audioNodes.has(nodeId),
-          })
           expect(store.audioNodes.has(nodeId)).toBe(true)
         },
         { timeout: 2000 }
@@ -312,14 +295,6 @@ describe('AudioGraphStore', () => {
       // Wait for cleanup to complete
       await waitFor(
         () => {
-          const visualNode = store.visualNodes.find(n => n.id === nodeId)
-          console.log('TEST: Checking cleanup state:', {
-            nodeId,
-            visualNodeExists: !!visualNode,
-            visualNodesLength: store.visualNodes.length,
-            mapSize: store.audioNodes.size,
-            hasNode: store.audioNodes.has(nodeId),
-          })
           expect(store.audioNodes.has(nodeId)).toBe(false)
         },
         { timeout: 2000 }
@@ -871,6 +846,44 @@ describe('AudioGraphStore', () => {
           expect(store.visualNodes[0].data.metadata.category).toBe('utility')
           expect(store.visualNodes[1].data.metadata.category).toBe('misc')
         })
+    })
+
+    it('should properly display visual nodes when loading a project after another project', async () => {
+      // First, create and save a project
+      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addNode('GainNode', { x: 200, y: 200 })
+
+      expect(store.visualNodes.length).toBe(2)
+      expect(store.audioNodes.size).toBe(2)
+
+      // Get the snapshot of the first project
+      const firstProjectSnapshot = getSnapshot(store)
+
+      // Clear and load a different project
+      store.clearAllNodes()
+      store.addNode('BiquadFilterNode', { x: 300, y: 300 })
+
+      expect(store.visualNodes.length).toBe(1)
+      expect(store.audioNodes.size).toBe(1)
+
+      // Now load the first project again (simulating loading after loading)
+      applySnapshot(store, firstProjectSnapshot)
+      store.init()
+
+      // Check that visual nodes are properly restored and visible
+      expect(store.visualNodes.length).toBe(2)
+      expect(store.audioNodes.size).toBe(2)
+
+      // Check that the nodes have the correct types
+      const nodeTypes = store.visualNodes.map(node => node.data.nodeType).sort()
+      expect(nodeTypes).toEqual(['GainNode', 'OscillatorNode'])
+
+      // Check that visual nodes have proper positions (indicating they're properly loaded)
+      const oscillatorNode = store.visualNodes.find(node => node.data.nodeType === 'OscillatorNode')
+      const gainNode = store.visualNodes.find(node => node.data.nodeType === 'GainNode')
+
+      expect(oscillatorNode?.position).toEqual({ x: 100, y: 100 })
+      expect(gainNode?.position).toEqual({ x: 200, y: 200 })
     })
   })
 })

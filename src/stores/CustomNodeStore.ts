@@ -414,20 +414,30 @@ const CustomNodeState = types
       fireTimerTrigger(count: number): void {
         if (self.nodeType !== 'TimerNode') return
 
-        this.setOutput('trigger', 1)
-        this.setOutput('count', count)
-        this.setProperty('count', count)
+        try {
+          this.setOutput('trigger', 1)
+          this.setOutput('count', count)
+          this.setProperty('count', count)
 
-        //console.log(`MST TimerNode ${self.id}: Trigger fired (count: ${count})`)
+          //console.log(`MST TimerNode ${self.id}: Trigger fired (count: ${count})`)
 
-        // Reset trigger output immediately
-        this.resetTimerTrigger()
+          // Reset trigger output immediately
+          this.resetTimerTrigger()
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[TimerNode] Node ${self.id} detached, cannot fire trigger:`, error)
+        }
       },
 
       resetTimerTrigger(): void {
         if (self.nodeType !== 'TimerNode') return
 
-        this.setOutput('trigger', 0)
+        try {
+          this.setOutput('trigger', 0)
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[TimerNode] Node ${self.id} detached, cannot reset trigger:`, error)
+        }
       },
 
       resetTimerCount(): void {
@@ -457,31 +467,44 @@ const CustomNodeState = types
 
         // Start with initial delay
         const timeoutId = window.setTimeout(() => {
-          // Check if timer is still running (might have been stopped)
-          if ((self.properties.get('isRunning') || 'false') === 'true') {
-            const currentCount = (self.properties.get('count') || 0) + 1
-            this.fireTimerTrigger(currentCount)
+          // CRITICAL: Check if node is still attached to MST tree before accessing properties
+          try {
+            // Check if timer is still running (might have been stopped)
+            if ((self.properties.get('isRunning') || 'false') === 'true') {
+              const currentCount = (self.properties.get('count') || 0) + 1
+              this.fireTimerTrigger(currentCount)
 
-            // If loop mode, start interval
-            if (mode === 'loop' && (self.properties.get('isRunning') || 'false') === 'true') {
-              const interval = self.properties.get('interval') || 1000
-              const intervalId = window.setInterval(() => {
-                // Check if timer is still running
-                if ((self.properties.get('isRunning') || 'false') === 'true') {
-                  const currentCount = (self.properties.get('count') || 0) + 1
-                  this.fireTimerTrigger(currentCount)
-                } else {
-                  // Timer was stopped, clear interval
-                  clearInterval(intervalId)
-                }
-              }, interval)
+              // If loop mode, start interval
+              if (mode === 'loop' && (self.properties.get('isRunning') || 'false') === 'true') {
+                const interval = self.properties.get('interval') || 1000
+                const intervalId = window.setInterval(() => {
+                  // CRITICAL: Check if node is still attached to MST tree
+                  try {
+                    // Check if timer is still running
+                    if ((self.properties.get('isRunning') || 'false') === 'true') {
+                      const currentCount = (self.properties.get('count') || 0) + 1
+                      this.fireTimerTrigger(currentCount)
+                    } else {
+                      // Timer was stopped, clear interval
+                      clearInterval(intervalId)
+                    }
+                  } catch (error) {
+                    // Node was detached from MST tree, clear interval
+                    console.error(`[TimerNode] Node ${self.id} detached, clearing interval:`, error)
+                    clearInterval(intervalId)
+                  }
+                }, interval)
 
-              // Store interval ID for cleanup
-              this.setProperty('_intervalId', intervalId)
-            } else {
-              // One-shot mode, stop after first trigger
-              this.setProperty('isRunning', 'false')
+                // Store interval ID for cleanup
+                this.setProperty('_intervalId', intervalId)
+              } else {
+                // One-shot mode, stop after first trigger
+                this.setProperty('isRunning', 'false')
+              }
             }
+          } catch (error) {
+            // Node was detached from MST tree, ignore
+            console.error(`[TimerNode] Node ${self.id} detached, ignoring timeout:`, error)
           }
         }, delay)
 
@@ -566,27 +589,35 @@ const CustomNodeState = types
             if (messageChannel === channel) {
               const messageType = status & 0xf0
 
-              switch (messageType) {
-                case 0x90: // Note on
-                  this.setOutput('note', data1)
-                  this.setOutput('velocity', data2)
-                  break
+              try {
+                switch (messageType) {
+                  case 0x90: // Note on
+                    this.setOutput('note', data1)
+                    this.setOutput('velocity', data2)
+                    break
 
-                case 0x80: // Note off
-                  this.setOutput('note', data1)
-                  this.setOutput('velocity', 0)
-                  break
+                  case 0x80: // Note off
+                    this.setOutput('note', data1)
+                    this.setOutput('velocity', 0)
+                    break
 
-                case 0xb0: // Control change
-                  this.setOutput('cc', data2)
-                  break
+                  case 0xb0: // Control change
+                    this.setOutput('cc', data2)
+                    break
 
-                case 0xe0: {
-                  // Pitch bend
-                  const pitchValue = (data2 << 7) | data1
-                  this.setOutput('pitch', pitchValue)
-                  break
+                  case 0xe0: {
+                    // Pitch bend
+                    const pitchValue = (data2 << 7) | data1
+                    this.setOutput('pitch', pitchValue)
+                    break
+                  }
                 }
+              } catch (error) {
+                // Node was detached from MST tree, ignore MIDI message
+                console.error(
+                  `[MidiInputNode] Node ${self.id} detached, ignoring MIDI message:`,
+                  error
+                )
               }
             }
           }
@@ -749,7 +780,6 @@ const CustomNodeStore = types
 
       removeNode(id: string): void {
         //console.log(`MST CustomNodeStore: removeNode called for ${id}`)
-        console.trace('removeNode call stack')
 
         const node = self.nodes.get(id)
         if (node) {
