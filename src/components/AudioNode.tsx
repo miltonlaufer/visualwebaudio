@@ -10,8 +10,6 @@ interface AudioNodeProps {
 }
 
 const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
-  //console.log('AudioNode rendering:', data.nodeType)
-
   const nodeId = useNodeId() // Get the node ID from React Flow
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)

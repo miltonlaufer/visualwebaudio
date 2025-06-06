@@ -76,14 +76,12 @@ export const useExamples = () => {
         const filterCutoffSliderId = store.addNode('SliderNode', { x: 50, y: 350 })
         const filterResSliderId = store.addNode('SliderNode', { x: 50, y: 500 })
 
-        //console.log('Vintage Analog Synth: Setting up timer...')
         // Timer settings for automatic note triggering
         store.updateNodeProperty(timerId, 'mode', 'loop')
         store.updateNodeProperty(timerId, 'delay', 500)
         store.updateNodeProperty(timerId, 'interval', 2000)
         store.updateNodeProperty(timerId, 'startMode', 'auto')
 
-        //console.log('Vintage Analog Synth: Setting up note control...')
         // Note slider (MIDI note range)
         store.updateNodeProperty(noteSlider, 'min', 36) // C2
         store.updateNodeProperty(noteSlider, 'max', 84) // C6
@@ -95,11 +93,9 @@ export const useExamples = () => {
         store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
         store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
 
-        //console.log('Vintage Analog Synth: Setting up envelope...')
         // Envelope gain - this will be modulated by timer but needs a base level for sound
         store.updateNodeProperty(envelopeGainId, 'gain', 0.8)
 
-        //console.log('Vintage Analog Synth: Setting up oscillators...')
         // Oscillator 1: Fundamental frequency (sawtooth for vintage character)
         store.updateNodeProperty(osc1Id, 'frequency', 110) // Will be controlled by note slider
         store.updateNodeProperty(osc1Id, 'type', 'sawtooth')
@@ -118,19 +114,16 @@ export const useExamples = () => {
         // Mixer
         store.updateNodeProperty(mixerId, 'gain', 1)
 
-        //console.log('Vintage Analog Synth: Setting up resonant filter...')
         // Resonant lowpass filter (classic analog sound!)
         store.updateNodeProperty(filterId, 'type', 'lowpass')
         store.updateNodeProperty(filterId, 'frequency', 800)
         store.updateNodeProperty(filterId, 'Q', 15) // High resonance for vintage character
 
-        //console.log('Vintage Analog Synth: Setting up LFO modulation...')
         // LFO for filter sweep
         store.updateNodeProperty(lfoId, 'frequency', 0.3) // Slow sweep
         store.updateNodeProperty(lfoId, 'type', 'sine')
         store.updateNodeProperty(lfoGainId, 'gain', 400) // Modulation depth
 
-        //console.log('Vintage Analog Synth: Setting up delay effect...')
         // Vintage delay
         store.updateNodeProperty(delayId, 'delayTime', 0.25) // 250ms
         store.updateNodeProperty(feedbackId, 'gain', 0.4) // Moderate feedback
@@ -138,7 +131,6 @@ export const useExamples = () => {
         // Output gain
         store.updateNodeProperty(outputGainId, 'gain', 0.6)
 
-        //console.log('Vintage Analog Synth: Setting up user controls...')
         // User control sliders with proper labels
         store.updateNodeProperty(filterCutoffSliderId, 'min', 200)
         store.updateNodeProperty(filterCutoffSliderId, 'max', 4000)
@@ -150,18 +142,15 @@ export const useExamples = () => {
         store.updateNodeProperty(filterResSliderId, 'value', 15)
         store.updateNodeProperty(filterResSliderId, 'label', 'Resonance')
 
-        //console.log('Vintage Analog Synth: Connecting note control...')
         // Connect note control chain
         store.addEdge(noteSlider, midiToFreqId, 'value', 'midiNote')
         store.addEdge(midiToFreqId, osc1Id, 'frequency', 'frequency')
         store.addEdge(midiToFreqId, osc2Id, 'frequency', 'frequency') // Will add slight detune
         store.addEdge(midiToFreqId, osc3Id, 'frequency', 'frequency') // Will be doubled for octave
 
-        //console.log('Vintage Analog Synth: Connecting timer automation...')
         // Connect timer to create rhythmic filter sweeps - timer triggers will add to the LFO modulation
         store.addEdge(timerId, filterId, 'trigger', 'frequency')
 
-        //console.log('Vintage Analog Synth: Connecting audio chain...')
         // Connect oscillators to their gain nodes
         store.addEdge(osc1Id, osc1GainId, 'output', 'input')
         store.addEdge(osc2Id, osc2GainId, 'output', 'input')
@@ -1088,9 +1077,7 @@ export const useExamples = () => {
         const gainId = store.addNode('GainNode', { x: 350, y: 150 })
         const destId = store.addNode('AudioDestinationNode', { x: 600, y: 150 })
 
-        //console.log('Basic Oscillator: Setting gain value...')
         store.updateNodeProperty(gainId, 'gain', 0.5)
-        //console.log('Basic Oscillator: Connecting to destination...')
         store.addEdge(oscId, gainId, 'output', 'input')
         store.addEdge(gainId, destId, 'output', 'input')
       }),
@@ -1108,7 +1095,6 @@ export const useExamples = () => {
           const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
           const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
 
-          //console.log('Microphone Input: Setting up delay effect...')
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
           // Set delay time and feedback gain
@@ -1116,12 +1102,10 @@ export const useExamples = () => {
           store.updateNodeProperty(feedbackId, 'gain', 0.7)
 
           // Connect the nodes
-          //console.log('Microphone Input: Connecting main audio chain...')
           store.addEdge(micId, micGainId, 'output', 'input')
           store.addEdge(micGainId, delayId, 'output', 'input')
           store.addEdge(delayId, destId, 'output', 'input')
 
-          //console.log('Microphone Input: Connecting feedback loop...')
           store.addEdge(delayId, feedbackId, 'output', 'input')
           store.addEdge(feedbackId, delayId, 'output', 'input')
         } catch (error) {
@@ -1142,11 +1126,9 @@ export const useExamples = () => {
         const buttonId = store.addNode('ButtonNode', { x: 350, y: 100 })
         const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
 
-        //console.log('Sound File Player: Setting up button...')
         store.updateNodeProperty(buttonId, 'label', 'Play Sound')
         store.updateNodeProperty(buttonId, 'outputValue', 1)
 
-        //console.log('Sound File Player: Setting up sound file node...')
         store.updateNodeProperty(soundFileId, 'gain', 1)
         store.updateNodeProperty(soundFileId, 'loop', false)
         store.updateNodeProperty(soundFileId, 'playbackRate', 1)
@@ -1154,15 +1136,12 @@ export const useExamples = () => {
         store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
 
         // Connect the nodes
-        //console.log('Sound File Player: Connecting button to sound file...')
         store.addEdge(buttonId, soundFileId, 'trigger', 'trigger')
 
-        //console.log('Sound File Player: Connecting sound file to destination...')
         store.addEdge(soundFileId, destId, 'output', 'input')
 
         // Load the sample audio file
         try {
-          //console.log('Sound File Player: Loading sample audio...')
           const response = await fetch('./samples/test-sound.wav')
           if (!response.ok) {
             throw new Error(`Failed to load sample: ${response.statusText}`)
@@ -1175,11 +1154,9 @@ export const useExamples = () => {
           const customNode = store.customNodes.get(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
-            //console.log('Sound File Player: Sample audio loaded successfully')
           }
         } catch (error) {
           console.error('Sound File Player: Failed to load sample audio:', error)
-          //console.log('You can still upload your own audio file using the file input')
         }
       }),
     },
@@ -1192,14 +1169,12 @@ export const useExamples = () => {
         const timerId = store.addNode('TimerNode', { x: 350, y: 100 })
         const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
 
-        //console.log('Auto File Player: Setting up timer...')
         store.updateNodeProperty(timerId, 'mode', 'loop')
         store.updateNodeProperty(timerId, 'delay', 1000) // 1 second initial delay
         store.updateNodeProperty(timerId, 'interval', 3000) // Play every 3 seconds
         store.updateNodeProperty(timerId, 'startMode', 'auto')
         store.updateNodeProperty(timerId, 'enabled', 'true')
 
-        //console.log('Auto File Player: Setting up sound file node...')
         store.updateNodeProperty(soundFileId, 'gain', 1)
         store.updateNodeProperty(soundFileId, 'loop', false)
         store.updateNodeProperty(soundFileId, 'playbackRate', 1)
@@ -1207,15 +1182,12 @@ export const useExamples = () => {
         store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
 
         // Connect the nodes
-        //console.log('Auto File Player: Connecting timer to sound file...')
         store.addEdge(timerId, soundFileId, 'trigger', 'trigger')
 
-        //console.log('Auto File Player: Connecting sound file to destination...')
         store.addEdge(soundFileId, destId, 'output', 'input')
 
         // Load the sample audio file
         try {
-          //console.log('Auto File Player: Loading sample audio...')
           const response = await fetch('./samples/test-sound.wav')
           if (!response.ok) {
             throw new Error(`Failed to load sample: ${response.statusText}`)
@@ -1228,11 +1200,9 @@ export const useExamples = () => {
           const customNode = store.customNodes.get(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
-            //console.log('Auto File Player: Sample audio loaded successfully')
           }
         } catch (error) {
           console.error('Auto File Player: Failed to load sample audio:', error)
-          //console.log('You can still upload your own audio file using the file input')
         }
       }),
     },
@@ -1254,12 +1224,10 @@ export const useExamples = () => {
         store.updateNodeProperty(feedbackId, 'gain', 1)
 
         // Connect the nodes
-        //console.log('Delay Effect: Connecting main audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, delayId, 'output', 'input')
         store.addEdge(delayId, destId, 'output', 'input')
 
-        //console.log('Delay Effect: Connecting feedback loop...')
         store.addEdge(delayId, feedbackId, 'output', 'input')
         store.addEdge(feedbackId, delayId, 'output', 'input')
       }),
@@ -1292,13 +1260,11 @@ export const useExamples = () => {
         store.updateNodeProperty(lfoGainId, 'gain', 1)
 
         // Connect the audio chain
-        //console.log('Filter Sweep: Connecting main audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, filterId, 'output', 'input')
         store.addEdge(filterId, destId, 'output', 'input')
 
         // Connect the LFO to modulate filter frequency
-        //console.log('Filter Sweep: Connecting LFO modulation...')
         store.addEdge(lfoId, lfoGainId, 'output', 'input')
         store.addEdge(lfoGainId, filterId, 'output', 'frequency')
       }),
@@ -1329,13 +1295,11 @@ export const useExamples = () => {
         store.updateNodeProperty(pannerId, 'pan', 0)
 
         // Connect the audio chain
-        //console.log('Stereo Panning: Connecting main audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, pannerId, 'output', 'input')
         store.addEdge(pannerId, destId, 'output', 'input')
 
         // Connect the LFO for panning modulation
-        //console.log('Stereo Panning: Connecting LFO modulation...')
         store.addEdge(lfoId, lfoGainId, 'output', 'input')
         store.addEdge(lfoGainId, pannerId, 'output', 'pan')
       }),
@@ -1364,7 +1328,6 @@ export const useExamples = () => {
         store.updateNodeProperty(compressorId, 'release', 0.25)
 
         // Connect the nodes
-        //console.log('Compressor Effect: Connecting audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, compressorId, 'output', 'input')
         store.addEdge(compressorId, destId, 'output', 'input')
@@ -1396,13 +1359,11 @@ export const useExamples = () => {
         store.updateNodeProperty(lfoGainId, 'gain', 0.3)
 
         // Connect the audio chain
-        //console.log('Tremolo Effect: Connecting main audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, gainId, 'output', 'input')
         store.addEdge(gainId, destId, 'output', 'input')
 
         // Connect the LFO for tremolo effect
-        //console.log('Tremolo Effect: Connecting LFO modulation...')
         store.addEdge(lfoId, lfoGainId, 'output', 'input')
         store.addEdge(lfoGainId, gainId, 'output', 'gain')
       }),
@@ -1435,7 +1396,6 @@ export const useExamples = () => {
         store.updateNodeProperty(gainId, 'gain', 0.5)
 
         // Connect for ring modulation
-        //console.log('Ring Modulation: Connecting audio chain...')
         store.addEdge(osc1Id, osc1GainId, 'output', 'input')
         store.addEdge(osc1GainId, gainId, 'output', 'input')
         store.addEdge(osc2Id, osc2GainId, 'output', 'input')
@@ -1476,7 +1436,6 @@ export const useExamples = () => {
         store.updateNodeProperty(mixerId, 'gain', 1)
 
         // Connect the chord
-        //console.log('Chord Synthesis: Connecting audio chain...')
         store.addEdge(osc1Id, gain1Id, 'output', 'input')
         store.addEdge(osc2Id, gain2Id, 'output', 'input')
         store.addEdge(osc3Id, gain3Id, 'output', 'input')
@@ -1511,7 +1470,6 @@ export const useExamples = () => {
         store.updateNodeProperty(outputGainId, 'gain', 0.3)
 
         // Connect the audio chain
-        //console.log('Waveshaper Distortion: Connecting audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, gainId, 'output', 'input')
         store.addEdge(gainId, waveshaperId, 'output', 'input')
@@ -1556,7 +1514,6 @@ export const useExamples = () => {
         store.updateNodeProperty(mixerId, 'gain', 0.5)
 
         // Connect the audio chain
-        //console.log('Phaser Effect: Connecting main audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, filter1Id, 'output', 'input')
         store.addEdge(filter1Id, filter2Id, 'output', 'input')
@@ -1564,7 +1521,6 @@ export const useExamples = () => {
         store.addEdge(mixerId, destId, 'output', 'input')
 
         // Connect the LFO for phasing modulation
-        //console.log('Phaser Effect: Connecting LFO modulation...')
         store.addEdge(lfoId, lfoGainId, 'output', 'input')
         store.addEdge(lfoGainId, filter1Id, 'output', 'frequency')
         store.addEdge(lfoGainId, filter2Id, 'output', 'frequency')
@@ -1594,7 +1550,6 @@ export const useExamples = () => {
         store.updateNodeProperty(gainId, 'gain', 0.3)
 
         // Connect the audio chain
-        //console.log('Simple Noise: Connecting audio chain...')
         store.addEdge(noiseId, noiseGainId, 'output', 'input')
         store.addEdge(noiseGainId, filterId, 'output', 'input')
         store.addEdge(filterId, gainId, 'output', 'input')
@@ -1627,13 +1582,11 @@ export const useExamples = () => {
         store.updateNodeProperty(lfoGainId, 'gain', 0.3) // Modulation depth
 
         // Connect the audio chain
-        //console.log('Amplitude Envelope: Connecting audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, envelopeId, 'output', 'input')
         store.addEdge(envelopeId, destId, 'output', 'input')
 
         // Connect the LFO for envelope modulation
-        //console.log('Amplitude Envelope: Connecting LFO envelope...')
         store.addEdge(lfoId, lfoGainId, 'output', 'input')
         store.addEdge(lfoGainId, envelopeId, 'output', 'gain')
       }),
@@ -1666,7 +1619,6 @@ export const useExamples = () => {
         store.updateNodeProperty(mixerId, 'gain', 1)
 
         // Connect the audio chain
-        //console.log('Beat Frequency: Connecting audio chain...')
         store.addEdge(osc1Id, gain1Id, 'output', 'input')
         store.addEdge(osc2Id, gain2Id, 'output', 'input')
         store.addEdge(gain1Id, mixerId, 'output', 'input')
@@ -1705,7 +1657,6 @@ export const useExamples = () => {
         store.updateNodeProperty(mixerId, 'gain', 1)
 
         // Connect the audio chain
-        //console.log('Convolution Reverb: Connecting audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, gainId, 'output', 'input')
 
@@ -1752,7 +1703,6 @@ export const useExamples = () => {
           store.updateNodeProperty(mixerId, 'gain', 0.7)
 
           // Connect the audio chain
-          //console.log('Microphone Reverb: Connecting audio chain...')
           store.addEdge(micId, micGainId, 'output', 'input')
           store.addEdge(micGainId, gainId, 'output', 'input')
 
@@ -1800,7 +1750,6 @@ export const useExamples = () => {
         store.updateNodeProperty(rightGainId, 'gain', 0.4) // Right channel (quieter)
 
         // Connect the audio chain
-        //console.log('Stereo Effects: Connecting audio chain...')
         store.addEdge(oscId, oscGainId, 'output', 'input')
         store.addEdge(oscGainId, splitterId, 'output', 'input')
 
@@ -1849,7 +1798,6 @@ export const useExamples = () => {
           store.updateNodeProperty(outputGainId, 'gain', 0.6)
 
           // Connect the audio chain for ring modulation
-          //console.log('Robot Voice (Ring Mod): Connecting audio chain...')
           store.addEdge(micId, micGainId, 'output', 'input')
           store.addEdge(micGainId, ringModId, 'output', 'input')
           store.addEdge(carrierOscId, carrierGainId, 'output', 'input')
@@ -1936,7 +1884,6 @@ export const useExamples = () => {
           store.updateNodeProperty(mixerId, 'gain', 0.3)
 
           // Connect the vocoder chain
-          //console.log('Vocoder Voice: Connecting audio chain...')
 
           // Voice input to filters
           store.addEdge(micId, micGainId, 'output', 'input')
@@ -2018,7 +1965,6 @@ export const useExamples = () => {
           store.updateNodeProperty(mixerId, 'gain', 0.8)
 
           // Connect the harmonizer chain (no redundant gains)
-          //console.log('Voice Harmonizer: Connecting audio chain...')
 
           // Voice path
           store.addEdge(micId, micGainId, 'output', 'input')
@@ -2079,7 +2025,6 @@ export const useExamples = () => {
           store.updateNodeProperty(mixerId, 'gain', 0.8)
 
           // Connect the pitch shifter chain
-          //console.log('Voice Pitch Shifter: Connecting audio chain...')
           store.addEdge(micId, micGainId, 'output', 'input')
           store.addEdge(micGainId, dryGainId, 'output', 'input')
           store.addEdge(micGainId, delayId, 'output', 'input')
@@ -2091,7 +2036,6 @@ export const useExamples = () => {
           store.addEdge(mixerId, destId, 'output', 'input')
 
           // Connect LFO modulation to delay time
-          //console.log('Voice Pitch Shifter: Connecting LFO modulation...')
           store.addEdge(lfoId, lfoGainId, 'output', 'input')
           store.addEdge(lfoGainId, delayId, 'output', 'delayTime')
         } catch (error) {

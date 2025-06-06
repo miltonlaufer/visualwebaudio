@@ -37,7 +37,6 @@ const AutoFitHandler: React.FC = observer(() => {
     // 2. The node count increased significantly (likely from loading)
     // 3. We're not just adding one node (manual addition)
     if (currentNodeCount > 0 && currentNodeCount > previousNodeCount + 1) {
-      //console.log('Auto-fitting view after loading nodes:', currentNodeCount)
       // Small delay to ensure nodes are rendered
       setTimeout(() => {
         fitView({
@@ -55,7 +54,6 @@ const AutoFitHandler: React.FC = observer(() => {
   useEffect(() => {
     // When loading finishes and we have nodes, auto-fit the view
     if (!store.isLoadingProject && store.visualNodes.length > 0) {
-      //console.log('Auto-fitting view after project loading finished')
       // Small delay to ensure nodes are rendered
       setTimeout(() => {
         fitView({
@@ -113,27 +111,20 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
       // Delete: Delete key
       if (event.key === 'Delete' || event.key === 'Backspace') {
-        //console.log('DELETE KEY PRESSED')
-        //console.log('Selected nodes:', selectedNodeIds.length)
-        //console.log('Selected edges:', selectedEdgeIds.length)
-
         if (selectedNodeIds.length > 0) {
           event.preventDefault()
           event.stopPropagation()
           selectedNodeIds.forEach(nodeId => {
             store.removeNode(nodeId)
           })
-          //console.log(`Deleted ${selectedNodeIds.length} nodes`)
         }
 
         if (selectedEdgeIds.length > 0) {
           event.preventDefault()
           event.stopPropagation()
           selectedEdgeIds.forEach(edgeId => {
-            //console.log('DELETING EDGE VIA KEYBOARD:', edgeId)
             store.removeEdge(edgeId)
           })
-          //console.log(`Deleted ${selectedEdgeIds.length} edges`)
         }
         return
       }
@@ -144,7 +135,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
           event.preventDefault()
           event.stopPropagation()
           store.copySelectedNodes(selectedNodeIds)
-          //console.log(`Copied ${selectedNodeIds.length} nodes`)
 
           // Check clipboard permission after copy attempt
           setTimeout(() => {
@@ -160,7 +150,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
           event.preventDefault()
           event.stopPropagation()
           store.cutSelectedNodes(selectedNodeIds)
-          //console.log(`Cut ${selectedNodeIds.length} nodes`)
         }
         return
       }
@@ -172,9 +161,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
           event.stopPropagation()
           store
             .pasteNodes()
-            .then(() => {
-              //console.log(`Pasted nodes`)
-            })
+            .then(() => {})
             .catch(error => {
               console.error('Error pasting nodes:', error)
             })
@@ -194,21 +181,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   useEffect(() => {
     // Prevent concurrent syncing
     if (syncingRef.current) {
-      //console.log('Sync already in progress, skipping...')
       return
     }
-
-    //console.log('=== SYNC EFFECT TRIGGERED ===')
-    //console.log('Store visualNodes length:', store.visualNodes.length)
-    //console.log('Current React Flow nodes length:', nodes.length)
-    //console.log('Last synced nodes length:', lastSyncedNodesLength.current)
 
     // Skip if we've already synced this exact state
     if (
       store.visualNodes.length === lastSyncedNodesLength.current &&
       nodes.length === store.visualNodes.length
     ) {
-      //console.log('No changes detected, skipping sync')
       return
     }
 
@@ -216,7 +196,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
     try {
       if (store.visualNodes.length === 0) {
-        //console.log('No nodes in store, clearing React Flow nodes')
         if (nodes.length > 0) {
           setNodes([])
         }
@@ -225,12 +204,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       }
 
       const storeNodes: Node[] = store.visualNodes.map(node => {
-        //console.log(`=== Processing store node ${index} ===`)
-        //console.log('Node ID:', node.id)
-        //console.log('Node type:', node.type)
-        //console.log('Node position:', node.position)
-        //console.log('Node data nodeType:', node.data.nodeType)
-
         // Create a simple, clean React Flow node
         const reactFlowNode: Node = {
           id: node.id,
@@ -255,18 +228,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
           selected: store.selectedNodeId === node.id,
         }
 
-        //console.log('Created React Flow node:', JSON.stringify(reactFlowNode, null, 2))
         return reactFlowNode
       })
-
-      //console.log('=== FINAL NODES TO SET ===')
-      //console.log('Number of nodes:', storeNodes.length)
-      //console.log('Nodes array:', storeNodes)
 
       // Force React Flow to update by always setting new array
       setNodes([...storeNodes])
       lastSyncedNodesLength.current = storeNodes.length
-      //console.log('setNodes called with', storeNodes.length, 'nodes')
     } catch (error) {
       console.error('Error in sync effect:', error)
       console.error('Error stack:', (error as Error).stack)
@@ -288,13 +255,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   ])
 
   useEffect(() => {
-    //console.log('=== EDGE SYNC EFFECT TRIGGERED ===')
-    //console.log('Store visualEdges length:', store.visualEdges.length)
-    //console.log('Store visualEdges:', store.visualEdges)
-
     const storeEdges: Edge[] = store.visualEdges.map(edge => {
-      //console.log(`Processing edge ${index}:`, edge)
-
       // Determine connection type by looking at the source and target handles
       const sourceNode = store.visualNodes.find(node => node.id === edge.source)
       const targetNode = store.visualNodes.find(node => node.id === edge.target)
@@ -343,10 +304,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       }
     })
 
-    //console.log('Converted storeEdges:', storeEdges)
-    //console.log('About to call setEdges with:', storeEdges)
     setEdges(storeEdges)
-    //console.log('setEdges called')
   }, [
     store.visualEdges.length,
     forceUpdate,
@@ -358,9 +316,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   const onConnect = useCallback(
     (params: Connection) => {
-      //console.log('=== CONNECTION ATTEMPT ===')
-      //console.log('Connection params:', params)
-
       if (params.source && params.target) {
         // Check if connection is valid before adding
         const isValid = store.isValidConnection(
@@ -371,12 +326,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         )
 
         if (!isValid) {
-          //console.log('Connection rejected - incompatible types')
           // You could show a toast notification here
           return
         }
-
-        //console.log('Valid connection - calling store.addEdge')
 
         try {
           store.addEdge(
@@ -385,15 +337,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
             params.sourceHandle || undefined,
             params.targetHandle || undefined
           )
-          //console.log('Store.addEdge completed')
         } catch (error) {
           console.error('Error in store.addEdge:', error)
         }
-      } else {
-        //console.log('Invalid connection - missing source or target')
       }
-
-      //console.log('=== CONNECTION ATTEMPT END ===')
     },
     [store]
   )
@@ -471,18 +418,14 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      //console.log('Nodes changed:', changes)
-
       // Update React Flow state
       onNodesChange(changes)
 
       // Handle different types of changes
       changes.forEach(change => {
         if (change.type === 'position' && change.position) {
-          //console.log('Updating store position for node:', change.id, change.position)
           store.updateNodePosition(change.id, change.position)
         } else if (change.type === 'remove') {
-          //console.log('Removing node from store:', change.id)
           store.removeNode(change.id)
           handleForceUpdate() // Force update after removal
         }
@@ -493,26 +436,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      //console.log('=== EDGES CHANGE EVENT ===')
-      //console.log('Edges changed:', changes)
-      //console.log('Current edges before change:', store.visualEdges.length)
-
       // Update React Flow state
       onEdgesChange(changes)
 
       // Handle different types of changes
       changes.forEach(change => {
         if (change.type === 'remove') {
-          //console.log('REMOVING EDGE FROM STORE:', change.id)
           /* console.log(
-            'Edge details:',
-            store.visualEdges.find(e => e.id === change.id)
-          ) */
+  'Edge details:',
+  store.visualEdges.find(e => e.id === change.id)
+) */
 
           store.removeEdge(change.id)
-
-          //console.log('Edges after removal:', store.visualEdges.length)
-          //console.log('=== EDGE REMOVAL COMPLETE ===')
 
           handleForceUpdate() // Force update after removal
         }
@@ -524,7 +459,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   // Create a proper useCallback for the ReactFlow onNodesChange prop
   const reactFlowOnNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      //console.log('React Flow onNodesChange called with:', changes)
       handleNodesChange(changes)
     },
     [handleNodesChange]
@@ -532,7 +466,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   const reactFlowOnEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      //console.log('React Flow onEdgesChange called with:', changes)
       handleEdgesChange(changes)
     },
     [handleEdgesChange]
@@ -548,13 +481,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   // Handle selection changes for multinode selection
   const onSelectionChange = useCallback(
     (params: OnSelectionChangeParams) => {
-      //console.log('SELECTION CHANGE:', params)
-
       const nodeIds = params.nodes.map(node => node.id)
       const edgeIds = params.edges.map(edge => edge.id)
-
-      //console.log('Selected nodes:', nodeIds)
-      //console.log('Selected edges:', edgeIds)
 
       setSelectedNodeIds(nodeIds)
       setSelectedEdgeIds(edgeIds)

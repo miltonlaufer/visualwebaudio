@@ -161,33 +161,23 @@ export function getModeName(mode: Mode): string {
  * Example usage and testing function
  */
 export function exampleUsage() {
-  //console.log('=== Scale to MIDI Examples ===')
-
   // C Major scale
-  //console.log('\nC Major scale (degrees 0-7):')
   for (let i = 0; i <= 7; i++) {
     scaleToMidi(i, 'C', 'major')
-    //console.log(`Degree ${i}: MIDI ${midi}, ${freq.toFixed(2)} Hz`)
   }
 
   // B Major scale (closest to middle C)
-  //console.log('\nB Major scale (degrees 0-7):')
   for (let i = 0; i <= 7; i++) {
     scaleToMidi(i, 'B', 'major')
-    //console.log(`Degree ${i}: MIDI ${midi}, ${freq.toFixed(2)} Hz`)
   }
 
   // C Pentatonic Minor with negative degrees
-  //console.log('\nC Pentatonic Minor (degrees -2 to 7):')
   for (let i = -2; i <= 7; i++) {
     scaleToMidi(i, 'C', 'pentatonic_minor')
-    //console.log(`Degree ${i}: MIDI ${midi}, ${freq.toFixed(2)} Hz`)
   }
 
   // Show closest notes to middle C for different keys
-  //console.log('\nClosest notes to middle C (60) for each key:')
   getAvailableKeys().forEach(key => {
     getClosestToMiddleC(key)
-    //console.log(`${key}: MIDI ${closest}`)
   })
 }

@@ -41,7 +41,6 @@ const RandomNodeComponent: React.FC<RandomNodeComponentProps> = observer(({ node
   const handleRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {
       const newRate = parseFloat(e.target.value)
-      //console.log(`RandomNode ${nodeId}: Rate changed to ${newRate}`)
       node.setProperty('rate', newRate)
     }
   }

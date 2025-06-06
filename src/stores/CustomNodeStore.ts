@@ -45,7 +45,6 @@ const CustomNodeState = types
   .actions(self => {
     return {
       setProperty(name: string, value: any): void {
-        //console.log(`CustomNode ${self.id}: Setting property ${name} = ${value}`)
         self.properties.set(name, value)
 
         // For certain node types, also update outputs when properties change
@@ -57,7 +56,6 @@ const CustomNodeState = types
       },
 
       setOutput(name: string, value: any): void {
-        //console.log(`📤 CustomNode ${self.id}: Setting output ${name} = ${value}`)
         self.outputs.set(name, value)
       },
 
@@ -69,7 +67,6 @@ const CustomNodeState = types
       },
 
       trigger(): void {
-        //console.log(`⚡ CustomNode ${self.id}: Triggered`)
         this.setOutput('trigger', Date.now())
       },
 
@@ -143,7 +140,6 @@ const CustomNodeState = types
       },
 
       clearInputConnections(): void {
-        //console.log(`🧹 CustomNode ${self.id}: Clearing all input connections`)
         self.inputConnections.forEach(conn => {
           conn.dispose()
         })
@@ -164,7 +160,6 @@ const CustomNodeState = types
           this.setProperty('scaleDegree', scaleDegree)
           this.updateScaleToMidiOutput()
         } else if (self.nodeType === 'SoundFileNode' && targetInput === 'trigger' && value > 0) {
-          //console.log(`MST SoundFileNode ${self.id}: Trigger received with value ${value}`)
           this.performSoundFileTrigger()
         }
       },
@@ -265,7 +260,6 @@ const CustomNodeState = types
           self.audioContext = audioContext
           this.setupAudioNodes()
           this.restoreAudioBufferFromProperties()
-          //console.log(`MST SoundFileNode: Audio context updated and nodes recreated`)
         }
       },
 
@@ -282,11 +276,6 @@ const CustomNodeState = types
 
           // Update state in a synchronous action
           this.updateAudioFileState(audioBuffer, arrayBuffer, file.name, file.size)
-
-          //console.log(`MST SoundFileNode: Successfully loaded ${file.name}`)
-          //console.log(`   - Duration: ${audioBuffer.duration.toFixed(2)}s`)
-          //console.log(`   - Sample rate: ${audioBuffer.sampleRate}Hz`)
-          //console.log(`   - Channels: ${audioBuffer.numberOfChannels}`)
         } catch (error) {
           console.error('🚨 MST SoundFileNode: Error loading audio file:', error)
           this.setOutput('loaded', 0)
@@ -315,8 +304,6 @@ const CustomNodeState = types
 
         self.gainNode = self.audioContext.createGain()
         self.gainNode.gain.value = self.properties.get('gain') || 1
-
-        //console.log(`🔧 MST SoundFileNode: Audio nodes created`)
       },
 
       async restoreAudioBufferFromProperties(): Promise<void> {
@@ -327,8 +314,6 @@ const CustomNodeState = types
 
         if (audioBufferData && fileName) {
           try {
-            //console.log(`MST SoundFileNode: Restoring audio buffer for ${fileName}`)
-
             if (typeof audioBufferData !== 'string') {
               console.error('🚨 audioBufferData is not a string:', typeof audioBufferData)
               throw new Error('Invalid audioBufferData format - expected base64 string')
@@ -339,14 +324,11 @@ const CustomNodeState = types
 
             // Update state in a synchronous action
             this.restoreAudioBufferState(audioBuffer)
-
-            //console.log(`MST SoundFileNode: Successfully restored audio buffer for ${fileName}`)
           } catch (error) {
             console.error('🚨 MST SoundFileNode: Error restoring audio buffer:', error)
             this.setOutput('loaded', 0)
           }
         } else {
-          //console.log(`MST SoundFileNode: No stored audio data found`)
           this.setOutput('loaded', 0)
         }
       },
@@ -395,7 +377,7 @@ const CustomNodeState = types
             self.bufferSource.stop()
             self.bufferSource.disconnect()
           } catch {
-            //console.log('MST SoundFileNode: Previous buffer source already stopped')
+            console.error('MST SoundFileNode: Error stopping previous buffer source')
           }
         }
 
@@ -407,7 +389,6 @@ const CustomNodeState = types
         self.gainNode.gain.value = self.properties.get('gain') || 1
         self.bufferSource.connect(self.gainNode)
         self.bufferSource.start()
-        //console.log('MST SoundFileNode: Audio playback started')
       },
 
       // Timer-specific actions
@@ -418,8 +399,6 @@ const CustomNodeState = types
           this.setOutput('trigger', 1)
           this.setOutput('count', count)
           this.setProperty('count', count)
-
-          //console.log(`MST TimerNode ${self.id}: Trigger fired (count: ${count})`)
 
           // Reset trigger output immediately
           this.resetTimerTrigger()
@@ -446,7 +425,6 @@ const CustomNodeState = types
         this.setOutput('count', 0)
         this.setProperty('count', 0)
         this.setProperty('isRunning', 'false')
-        //console.log(`MST TimerNode ${self.id}: Timer reset`)
       },
 
       startTimer(): void {
@@ -463,7 +441,6 @@ const CustomNodeState = types
         const mode = self.properties.get('mode') || 'loop'
 
         this.setProperty('isRunning', 'true')
-        //console.log(`MST TimerNode ${self.id}: Starting timer with ${delay}ms delay, mode: ${mode}`)
 
         // Start with initial delay
         const timeoutId = window.setTimeout(() => {
@@ -515,8 +492,6 @@ const CustomNodeState = types
       stopTimer(): void {
         if (self.nodeType !== 'TimerNode') return
 
-        //console.log(`MST TimerNode ${self.id}: Stopping timer`)
-
         // Clear any running timers
         const timeoutId = self.properties.get('_timeoutId')
         const intervalId = self.properties.get('_intervalId')
@@ -540,14 +515,12 @@ const CustomNodeState = types
         this.stopTimer()
         this.setOutput('count', 0)
         this.setProperty('count', 0)
-        //console.log(`MST TimerNode ${self.id}: Timer reset`)
       },
 
       // MIDI Input Node functionality
       setMidiAccess(midiAccess: MIDIAccess): void {
         if (self.nodeType !== 'MidiInputNode') return
 
-        //console.log(`🎹 MidiInputNode ${self.id}: Setting MIDI access`)
         self.midiAccess = midiAccess
         this.setupMidiListeners()
       },
@@ -555,7 +528,6 @@ const CustomNodeState = types
       setSelectedMidiDevice(deviceId: string): void {
         if (self.nodeType !== 'MidiInputNode') return
 
-        //console.log(`🎹 MidiInputNode ${self.id}: Setting selected device to ${deviceId}`)
         self.selectedMidiDevice = deviceId
         this.setProperty('selectedDeviceId', deviceId)
 
@@ -569,7 +541,6 @@ const CustomNodeState = types
         if (self.nodeType !== 'MidiInputNode' || !self.midiAccess) return
 
         const channel = self.properties.get('channel') || 1
-        //console.log(`🎹 MidiInputNode ${self.id}: Setting up MIDI listeners for channel ${channel}`)
 
         self.midiAccess.inputs.forEach((input: MIDIInput) => {
           // Only listen to selected device if one is specified
@@ -627,7 +598,6 @@ const CustomNodeState = types
       clearMidiListeners(): void {
         if (self.nodeType !== 'MidiInputNode' || !self.midiAccess) return
 
-        //console.log(`🎹 MidiInputNode ${self.id}: Clearing MIDI listeners`)
         self.midiAccess.inputs.forEach((input: MIDIInput) => {
           input.onmidimessage = null
         })
@@ -672,10 +642,8 @@ const CustomNodeStore = types
           const initialValue = propertiesObj['currentValue'] || 0
           outputsObj['output'] = initialValue
         } else if (nodeType === 'SoundFileNode') {
-          //console.log(`Creating MST SoundFileNode ${id}`)
           outputsObj['loaded'] = 0
         } else if (nodeType === 'TimerNode') {
-          //console.log(`Creating MST TimerNode ${id}`)
           // Initialize timer-specific properties
           propertiesObj['isRunning'] = 'false'
           propertiesObj['_timeoutId'] = undefined
@@ -686,7 +654,6 @@ const CustomNodeStore = types
           const enabled = (propertiesObj['enabled'] || 'true') === 'true'
 
           if (startMode !== 'manual' && enabled) {
-            //console.log(`MST TimerNode ${id}: Auto-starting timer (startMode: ${startMode})`)
             // Auto-start immediately after the node is fully created
             const node = self.nodes.get(id)
             if (node && node.nodeType === 'TimerNode') {
@@ -694,7 +661,6 @@ const CustomNodeStore = types
             }
           }
         } else if (nodeType === 'ScaleToMidiNode') {
-          //console.log(`Creating MST ScaleToMidiNode ${id}`)
           // Initialize with default values if not set
           if (!propertiesObj['scaleDegree']) propertiesObj['scaleDegree'] = 0
           if (!propertiesObj['key']) propertiesObj['key'] = 'C'
@@ -767,7 +733,6 @@ const CustomNodeStore = types
           (outputs: Array<[string, any]>) => {
             outputs.forEach(([outputName, value]) => {
               if (self.bridgeUpdateCallback && typeof value === 'number') {
-                //console.log(`🌉 MST reaction: Bridge update for ${id} ${outputName}: ${value}`)
                 self.bridgeUpdateCallback(id, outputName, value)
               }
             })
@@ -779,15 +744,10 @@ const CustomNodeStore = types
       },
 
       removeNode(id: string): void {
-        //console.log(`MST CustomNodeStore: removeNode called for ${id}`)
-
         const node = self.nodes.get(id)
         if (node) {
-          //console.log(`MST CustomNodeStore: Found node ${id} of type ${node.nodeType}`)
-
           // Special cleanup for TimerNode
           if (node.nodeType === 'TimerNode') {
-            //console.log(`MST TimerNode ${id}: Cleaning up timer`)
             node.stopTimer()
           }
 
@@ -811,9 +771,6 @@ const CustomNodeStore = types
           })
 
           self.nodes.delete(id)
-          //console.log(`CustomNode ${id}: Removed from store`)
-        } else {
-          //console.log(`MST CustomNodeStore: Node ${id} not found in store`)
         }
       },
 
@@ -862,14 +819,15 @@ const CustomNodeStore = types
           node.clearInputConnections()
         })
         self.nodes.clear()
-        //console.log('🧹 CustomNodeStore: All nodes cleared')
       },
     }
   })
 
 // MST Interfaces
 export interface ICustomNodeConnection extends Instance<typeof CustomNodeConnection> {}
+
 export interface ICustomNodeState extends Instance<typeof CustomNodeState> {}
+
 export interface ICustomNodeStore extends Instance<typeof CustomNodeStore> {}
 
 // Create and export the singleton store instance

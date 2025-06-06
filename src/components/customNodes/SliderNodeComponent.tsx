@@ -44,7 +44,6 @@ const SliderNodeComponent: React.FC<SliderNodeComponentProps> = observer(({ node
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {
       const newValue = parseFloat(e.target.value)
-      //console.log(`SliderNode ${nodeId}: Value changed to ${newValue}`)
 
       // Update both stores to keep them in sync
       // 1. Update the CustomNodeStore (for reactive connections)

@@ -397,8 +397,6 @@ describe('AudioParam Connection Tests', () => {
 
   describe('Visual verification test', () => {
     it('should create a complete working example for manual testing', async () => {
-      //console.log('\nCREATING MANUAL TEST EXAMPLE:')
-
       // Create nodes
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
       const oscId = store.addNode('OscillatorNode', { x: 300, y: 100 })
@@ -438,39 +436,24 @@ describe('AudioParam Connection Tests', () => {
         { timeout: 3000 }
       )
 
-      //console.log(`1. Created SliderNode: ${sliderId}`)
-      //console.log(`2. Created OscillatorNode: ${oscId}`)
-      //console.log(`3. Created AudioDestinationNode: ${destId}`)
-
       // Connect slider to oscillator frequency
       store.addEdge(sliderId, oscId, 'value', 'frequency')
-      //console.log('4. Connected SliderNode → OscillatorNode frequency')
 
       // Connect oscillator to destination
       store.addEdge(oscId, destId, 'output', 'input')
-      //console.log('5. Connected OscillatorNode → AudioDestinationNode')
 
       // Verify the connections
       const oscAudioNode = store.audioNodes.get(oscId) as any
-      //console.log(`6. Oscillator frequency base value: ${oscAudioNode.frequency.value} Hz`)
-      //console.log('   Should be 0 for direct slider control')
 
       // Simulate slider changes
-      //console.log('\nSIMULATING SLIDER CHANGES:')
       store.updateNodeProperty(sliderId, 'value', 220)
-      //console.log('   Set slider to 220 → Should control frequency directly')
 
       store.updateNodeProperty(sliderId, 'value', 440)
-      //console.log('   Set slider to 440 → Should control frequency directly')
 
       store.updateNodeProperty(sliderId, 'value', 880)
-      //console.log('   Set slider to 880 → Should control frequency directly')
 
-      //console.log('\nExample created successfully!')
-      //console.log(
       //  '💡 In the browser: Create SliderNode → connect to OscillatorNode frequency → connect to output'
       //)
-      //console.log('Move the slider and the frequency should change directly!')
 
       // Verify all nodes exist
       expect(store.visualNodes.length).toBe(3)

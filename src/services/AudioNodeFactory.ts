@@ -12,8 +12,6 @@ export class AudioNodeFactory {
     metadata: NodeMetadata,
     properties: Record<string, unknown> = {}
   ): AudioNode {
-    //console.log(`Creating ${nodeType} with metadata-driven approach`)
-
     let audioNode: AudioNode
 
     // Handle special cases that require specific parameters or different creation methods
@@ -86,11 +84,9 @@ export class AudioNodeFactory {
             return
           }
           audioParam.value = numValue
-          //console.log(`Set AudioParam ${propertyName} to ${numValue}`)
         }
       } else {
         nodeWithProperty[propertyName] = value
-        //console.log(`Set property ${propertyName} to ${value}`)
       }
     } else {
       console.warn(`Property ${propertyName} not found on audio node`)
@@ -110,11 +106,9 @@ export class AudioNodeFactory {
     try {
       if (nodeType === 'OscillatorNode') {
         ;(audioNode as OscillatorNode).start()
-        //console.log(`Started ${nodeType}`)
       } else if (nodeType === 'AudioBufferSourceNode') {
         // AudioBufferSourceNode now has a buffer, so we can start it
         ;(audioNode as AudioBufferSourceNode).start()
-        //console.log(`Started ${nodeType} with white noise buffer`)
       }
     } catch (error) {
       console.error(`Failed to start ${nodeType}:`, error)
@@ -126,7 +120,6 @@ export class AudioNodeFactory {
       if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
         const sourceNode = audioNode as OscillatorNode | AudioBufferSourceNode
         sourceNode.stop()
-        //console.log(`Stopped ${nodeType}`)
       }
     } catch (error) {
       console.error(`${nodeType} was already stopped or stopping failed:`, error)
@@ -142,7 +135,6 @@ export class AudioNodeFactory {
   ): boolean {
     // Check if this property requires node recreation
     if (this.requiresRecreation(nodeType, propertyName)) {
-      //console.log(`Property ${propertyName} change requires node recreation`)
       return false // Indicate that recreation is needed
     }
 

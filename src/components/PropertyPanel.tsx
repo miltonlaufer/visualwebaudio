@@ -31,7 +31,6 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     (propertyName: string, value: string | number) => {
       if (!selectedNode) return
 
-      //console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
       store.updateNodeProperty(selectedNode.id, propertyName, value)
     },
     [selectedNode, store]

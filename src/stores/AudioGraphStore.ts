@@ -257,7 +257,6 @@ export const AudioGraphStore = types
           self.globalAnalyzer = self.audioContext.createAnalyser()
           self.globalAnalyzer.fftSize = 1024
           self.globalAnalyzer.smoothingTimeConstant = 0.8
-          //console.log('Global analyzer created for frequency analysis')
         }
       },
 
@@ -306,7 +305,6 @@ export const AudioGraphStore = types
         // Add the visual node to the store
         try {
           self.visualNodes.push(visualNode)
-          //console.log(`STORE: Added visual node ${nodeId}`)
 
           // Audio node will be created by afterAttach lifecycle hook
         } catch (error) {
@@ -321,11 +319,8 @@ export const AudioGraphStore = types
       },
 
       removeNode(nodeId: string) {
-        //console.log(`=== REMOVING NODE: ${nodeId} ===`)
-
         const visualNode = self.visualNodes.find(node => node.id === nodeId)
         if (!visualNode) {
-          //console.log('Visual node not found')
           return
         }
 
@@ -335,7 +330,6 @@ export const AudioGraphStore = types
         const connectedEdges = self.visualEdges.filter(
           edge => edge.source === nodeId || edge.target === nodeId
         )
-        //console.log('Removing', connectedEdges.length, 'connected edges')
         connectedEdges.forEach(edge => {
           this.removeEdge(edge.id)
         })
@@ -349,8 +343,6 @@ export const AudioGraphStore = types
 
         // Increment graph change counter to force React re-render
         self.graphChangeCounter += 1
-
-        //console.log('=== NODE REMOVAL COMPLETE ===')
       },
 
       // New method to handle audio node cleanup (called by VisualNode beforeDestroy)
@@ -386,13 +378,10 @@ export const AudioGraphStore = types
 
           self.audioNodes.delete(nodeId)
         } else if (customNode) {
-          //console.log('Found custom node, cleaning up...')
-
           // Clean up custom node
           if ('stop' in customNode && typeof customNode.stop === 'function') {
             try {
               ;(customNode as any).stop()
-              //console.log('Custom node stopped')
             } catch (error) {
               console.error('Error stopping custom node:', error)
             }
@@ -401,27 +390,22 @@ export const AudioGraphStore = types
           if ('disconnect' in customNode && typeof customNode.disconnect === 'function') {
             try {
               customNode.disconnect()
-              //console.log('Custom node disconnected')
             } catch (error) {
               console.error('Error disconnecting custom node:', error)
             }
           }
 
           self.customNodes.delete(nodeId)
-          //console.log('Custom node removed from map')
 
           // Also remove from CustomNodeStore
           const customNodeStore = getEnv(self).customNodeStore
           if (customNodeStore && customNodeStore.removeNode) {
             try {
               customNodeStore.removeNode(nodeId)
-              //console.log('Custom node removed from CustomNodeStore')
             } catch (error) {
               console.error('Error removing from CustomNodeStore:', error)
             }
           }
-        } else {
-          //console.log('No audio or custom node found')
         }
 
         // Clean up any media streams
@@ -429,7 +413,6 @@ export const AudioGraphStore = types
         if (mediaStream) {
           mediaStream.getTracks().forEach(track => {
             track.stop()
-            //console.log('Media track stopped')
           })
           self.mediaStreams.delete(nodeId)
         }
@@ -443,7 +426,6 @@ export const AudioGraphStore = types
                 bridge.stop()
                 bridge.disconnect()
                 bridgesToRemove.push(key)
-                //console.log(`Cleaned up bridge: ${key}`)
               } catch (error) {
                 console.error(`Error cleaning up bridge ${key}:`, error)
               }
@@ -486,8 +468,9 @@ export const AudioGraphStore = types
                 propertyName,
                 value
               )
-              if (success) {
-                //console.log(`Updated audio property ${propertyName} to ${value}`)
+
+              if (!success) {
+                console.warn(`Property ${propertyName} not found on node ${nodeId}`)
               }
             } catch (error) {
               console.error(`Error updating audio property ${propertyName}:`, error)
@@ -516,14 +499,11 @@ export const AudioGraphStore = types
       },
 
       clearAllNodes() {
-        //console.log('=== CLEARING ALL NODES ===')
-
         // Set flag to prevent recording this operation in undo history
         this.setClearingAllNodes(true)
 
         // Get all node IDs first to avoid modifying array while iterating
         const nodeIds = self.visualNodes.map(node => node.id)
-        //console.log('Clearing', nodeIds.length, 'nodes:', nodeIds)
 
         // Remove each node properly
         nodeIds.forEach(nodeId => {
@@ -549,12 +529,9 @@ export const AudioGraphStore = types
           self.audioConnections.clear()
         }
 
-        //console.log('=== ALL NODES CLEARED ===')
-
         // Clear undo/redo history since there's nothing left to undo to
         self.undoStack.clear()
         self.redoStack.clear()
-        //console.log('Undo/redo history cleared')
 
         // Reset play state since no audio is playing
         this.setUpdatingPlayState(true)
@@ -573,12 +550,8 @@ export const AudioGraphStore = types
       },
 
       performComprehensiveAudioCleanup() {
-        //console.log('=== PERFORMING COMPREHENSIVE AUDIO CLEANUP ===')
-
         // Stop and disconnect all remaining audio nodes
         if (self.audioNodes.size > 0) {
-          //console.log(`Cleaning up ${self.audioNodes.size} remaining audio nodes...`)
-
           self.audioNodes.forEach((audioNode, nodeId) => {
             try {
               // Disconnect all connections
@@ -600,7 +573,6 @@ export const AudioGraphStore = types
                 if (mediaNode.mediaStream) {
                   mediaNode.mediaStream.getTracks().forEach(track => {
                     track.stop()
-                    //console.log(`Stopped media track for node ${nodeId}`)
                   })
                 }
               }
@@ -616,7 +588,6 @@ export const AudioGraphStore = types
         if (self.globalAnalyzer) {
           try {
             self.globalAnalyzer.disconnect()
-            //console.log('Global analyzer disconnected')
           } catch (error) {
             console.error('Error disconnecting global analyzer:', error)
           }
@@ -625,25 +596,20 @@ export const AudioGraphStore = types
 
         // Clean up all stored media streams
         if (self.mediaStreams.size > 0) {
-          //console.log(`Cleaning up ${self.mediaStreams.size} stored media streams...`)
           self.mediaStreams.forEach((stream, nodeId) => {
             try {
               stream.getTracks().forEach(track => {
                 track.stop()
-                //console.log(`Stopped media track for node ${nodeId}`)
               })
             } catch (error) {
               console.error(`Error stopping media stream for node ${nodeId}:`, error)
             }
           })
           self.mediaStreams.clear()
-          //console.log('All media streams cleaned up')
         }
 
         // Reinitialize audio context for a fresh start
         if (self.audioContext) {
-          //console.log('Reinitializing audio context for clean state...')
-
           try {
             // Close the current audio context
             if (self.audioContext.state !== 'closed') {
@@ -660,16 +626,10 @@ export const AudioGraphStore = types
 
           // Create new audio context
           this.initializeAudioContext()
-
-          //console.log('Audio context reinitialized')
         }
-
-        //console.log('=== COMPREHENSIVE AUDIO CLEANUP COMPLETE ===')
       },
 
       forceAudioCleanup() {
-        //console.log('=== FORCING AUDIO CLEANUP ===')
-
         // Suspend audio context first to stop all processing
         if (self.audioContext && self.audioContext.state === 'running') {
           self.audioContext.suspend()
@@ -677,13 +637,9 @@ export const AudioGraphStore = types
 
         // Perform comprehensive cleanup
         this.performComprehensiveAudioCleanup()
-
-        //console.log('=== FORCED AUDIO CLEANUP COMPLETE ===')
       },
 
       addEdge(source: string, target: string, sourceHandle?: string, targetHandle?: string) {
-        //console.log('=== STORE: addEdge called ===')
-
         // Validate connection before creating
         if (!this.isValidConnection(source, target, sourceHandle, targetHandle)) {
           console.warn('Invalid connection attempted:', {
@@ -706,7 +662,6 @@ export const AudioGraphStore = types
 
         try {
           self.visualEdges.push(edge)
-          //console.log('Successfully added edge to visualEdges')
         } catch (error) {
           console.error('Error adding edge to visualEdges:', error)
           return
@@ -715,7 +670,6 @@ export const AudioGraphStore = types
         // Create audio connection
         try {
           this.connectAudioNodes(source, target, sourceHandle || 'output', targetHandle || 'input')
-          //console.log('Audio connection created successfully')
         } catch (error) {
           console.error('Error creating audio connection:', error)
         }
@@ -805,8 +759,6 @@ export const AudioGraphStore = types
               sourceOutput,
               targetInput,
             })
-
-            //console.log(`Connected custom node ${sourceId} to custom node ${targetId}`)
           } catch (error) {
             console.error('Failed to connect custom node to custom node:', error)
           }
@@ -843,7 +795,6 @@ export const AudioGraphStore = types
                   // Connect through analyzer for destination
                   audioOutput.connect(self.globalAnalyzer)
                   self.globalAnalyzer.connect(targetNode)
-                  //console.log('Connected custom node audio through global analyzer to destination')
                 } else {
                   // Direct audio connection
                   audioOutput.connect(targetNode)
@@ -914,7 +865,6 @@ export const AudioGraphStore = types
                   const latestValue = sourceCustomNode.outputs.get(sourceOutput)
                   if (latestValue !== undefined && latestValue !== currentValue) {
                     constantSource.offset.value = latestValue
-                    //console.log(`🔄 Updated bridge immediately after connection: ${latestValue}`)
                   }
                 }, 1)
               } else {
@@ -935,13 +885,10 @@ export const AudioGraphStore = types
 
             if (isDestinationConnection) {
               // Audio is now playing through the destination, update play state
-              //console.log('Audio connected to destination - setting play state to true')
               this.setUpdatingPlayState(true)
               self.isPlaying = true
               this.setUpdatingPlayState(false)
             }
-
-            //console.log(`Connected custom node ${sourceId} to audio node ${targetId}`)
           } catch (error) {
             console.error('Failed to connect custom node to audio node:', error)
           }
@@ -996,7 +943,6 @@ export const AudioGraphStore = types
                 } else {
                   // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
                   audioParam.value = 0
-                  //console.log(`Connected to AudioParam: ${targetInput}, set base value to 0`)
                 }
               } else {
                 console.error(`AudioParam ${targetInput} not found on target node`)
@@ -1006,7 +952,6 @@ export const AudioGraphStore = types
               // Connect through the analyzer: source -> analyzer -> destination
               sourceNode.connect(self.globalAnalyzer)
               self.globalAnalyzer.connect(targetNode)
-              //console.log('Connected audio through global analyzer for frequency analysis')
             } else {
               // Normal audio connection
               sourceNode.connect(targetNode)
@@ -1050,8 +995,6 @@ export const AudioGraphStore = types
             if (connectionIndex !== -1) {
               self.audioConnections.splice(connectionIndex, 1)
             }
-
-            //console.log(`Disconnected custom node ${sourceId} from custom node ${targetId}`)
           } catch (error) {
             console.error('Failed to disconnect custom node from custom node:', error)
           }
@@ -1069,7 +1012,6 @@ export const AudioGraphStore = types
                 bridge.stop()
                 bridge.disconnect()
                 self.customNodeBridges.delete(bridgeKey)
-                //console.log(`Cleaned up bridge for custom node ${sourceId}`)
               }
             }
 
@@ -1104,8 +1046,6 @@ export const AudioGraphStore = types
             if (connectionIndex !== -1) {
               self.audioConnections.splice(connectionIndex, 1)
             }
-
-            //console.log(`Disconnected custom node ${sourceId} from audio node ${targetId}`)
           } catch (error) {
             console.error('Failed to disconnect custom node from audio node:', error)
           }
@@ -1150,8 +1090,6 @@ export const AudioGraphStore = types
                     /* console.log(
                       `Disconnected from AudioParam: ${connection.targetInput}, restored default value: ${paramMetadata.defaultValue}`
                     ) */
-                  } else {
-                    //console.log(`Disconnected from AudioParam: ${connection.targetInput}`)
                   }
                 } else {
                   console.error(`AudioParam ${connection.targetInput} not found on target node`)
@@ -1160,7 +1098,6 @@ export const AudioGraphStore = types
                 // Disconnect from analyzer: source -> analyzer -> destination
                 sourceNode.disconnect(self.globalAnalyzer)
                 // Note: We don't disconnect analyzer from destination as other sources might still be connected
-                //console.log('Disconnected audio from global analyzer')
               } else {
                 // Normal disconnection
                 sourceNode.disconnect(targetNode)
@@ -1182,7 +1119,6 @@ export const AudioGraphStore = types
               })
 
               if (remainingDestinationConnections.length === 0) {
-                //console.log('No audio connected to destination - setting play state to false')
                 this.setUpdatingPlayState(true)
                 self.isPlaying = false
                 this.setUpdatingPlayState(false)
@@ -1191,7 +1127,6 @@ export const AudioGraphStore = types
                 if (self.globalAnalyzer) {
                   try {
                     self.globalAnalyzer.disconnect(targetNode)
-                    //console.log('Disconnected global analyzer from destination')
                   } catch (error) {
                     console.warn('Error disconnecting analyzer from destination:', error)
                   }
@@ -1221,7 +1156,6 @@ export const AudioGraphStore = types
 
             if (connection) {
               bridge.offset.value = value
-              //console.log(`🌉 Updated bridge for ${nodeId} output ${outputName}: ${value}`)
             }
           }
         })
@@ -1245,12 +1179,10 @@ export const AudioGraphStore = types
       togglePlayback: flow(function* (): Generator<Promise<unknown>, void, unknown> {
         if (self.isPlaying) {
           // STOP: Close the audio context
-          //console.log('=== STOPPING PLAYBACK ===')
 
           if (self.audioContext) {
             try {
               yield self.audioContext.close()
-              //console.log('Audio context closed')
             } catch (error) {
               console.error('Error closing audio context:', error)
             }
@@ -1265,10 +1197,8 @@ export const AudioGraphStore = types
           // Don't clear customNodes - we'll update them with fresh context
 
           self.isPlaying = false
-          //console.log('Playback stopped')
         } else {
           // START: Create fresh audio context and rebuild everything
-          //console.log('=== STARTING PLAYBACK ===')
 
           // Create brand new audio context
           self.initializeAudioContext()
@@ -1286,17 +1216,13 @@ export const AudioGraphStore = types
               typeof customNode.updateAudioContext === 'function'
             ) {
               ;(customNode as any).updateAudioContext(self.audioContext)
-              //console.log(`Updated audio context for custom node ${nodeId}`)
             }
           })
 
           self.isPlaying = true
-          //console.log('Playback started')
         }
       }),
       addMicrophoneInput: flow(function* (position: { x: number; y: number }) {
-        //console.log('=== ADDING MICROPHONE INPUT ===')
-
         try {
           // Request microphone access
           const stream = yield navigator.mediaDevices.getUserMedia({
@@ -1361,7 +1287,6 @@ export const AudioGraphStore = types
           // Store the media stream
           self.mediaStreams.set(nodeId, stream)
 
-          //console.log('Microphone input added successfully with ID:', nodeId)
           return nodeId
         } catch (error) {
           console.error('Error adding microphone input:', error)
@@ -1371,8 +1296,6 @@ export const AudioGraphStore = types
 
       // Copy selected nodes to clipboard
       copySelectedNodes: flow(function* (selectedNodeIds: string[]) {
-        //console.log('=== COPYING NODES ===', selectedNodeIds)
-
         // Clear any previous clipboard errors
         self.clipboardError = null
 
@@ -1380,7 +1303,6 @@ export const AudioGraphStore = types
         const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
 
         if (nodesToCopy.length === 0) {
-          //console.log('No nodes to copy')
           return
         }
 
@@ -1427,7 +1349,6 @@ export const AudioGraphStore = types
             yield navigator.clipboard.writeText(clipboardText)
             self.clipboardPermissionState = 'granted'
             self.clipboardError = null
-            //console.log('Successfully wrote to system clipboard')
           } catch (error) {
             console.warn('Failed to write to system clipboard:', error)
             self.clipboardPermissionState = 'denied'
@@ -1447,13 +1368,10 @@ export const AudioGraphStore = types
 
       // Cut selected nodes (copy + delete)
       cutSelectedNodes(selectedNodeIds: string[]) {
-        //console.log('=== CUTTING NODES ===', selectedNodeIds)
-
         // Get the selected nodes for copying
         const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
 
         if (nodesToCopy.length === 0) {
-          //console.log('No nodes to cut')
           return
         }
 
@@ -1500,7 +1418,6 @@ export const AudioGraphStore = types
             .then(() => {
               self.clipboardPermissionState = 'granted'
               self.clipboardError = null
-              //console.log('Successfully wrote to system clipboard')
             })
             .catch(error => {
               console.warn('Failed to write to system clipboard:', error)
@@ -1593,13 +1510,10 @@ export const AudioGraphStore = types
             }
           }
         })
-        //console.log(`Cut ${selectedNodeIds.length} nodes`)
       },
 
       // Paste nodes from clipboard
       pasteNodes: flow(function* (pastePosition?: { x: number; y: number }) {
-        //console.log('=== PASTING NODES ===')
-
         // Clear any previous clipboard errors
         self.clipboardError = null
 
@@ -1614,16 +1528,13 @@ export const AudioGraphStore = types
             if (parsed.type === 'visualwebaudio-nodes' && parsed.data) {
               clipboardData = parsed.data
               self.clipboardPermissionState = 'granted'
-              //console.log('Using data from system clipboard')
             }
           } catch (error) {
-            //console.log('Could not read from system clipboard:', error)
             if (error instanceof Error && error.name === 'NotAllowedError') {
               self.clipboardPermissionState = 'denied'
               self.clipboardError = 'Clipboard access denied. Using internal clipboard only.'
             } else {
               // Could be a JSON parse error or other issue, not necessarily a permission error
-              //console.log('System clipboard does not contain valid Visual Web Audio data')
             }
           }
         } else {
@@ -1644,11 +1555,9 @@ export const AudioGraphStore = types
             })),
             edges: self.clipboardEdges.map(edge => ({ ...edge })),
           }
-          //console.log('Using data from internal clipboard')
         }
 
         if (!clipboardData || clipboardData.nodes.length === 0) {
-          //console.log('No nodes in clipboard to paste')
           if (!self.clipboardError) {
             self.clipboardError = 'No nodes in clipboard to paste'
           }
@@ -1757,10 +1666,8 @@ export const AudioGraphStore = types
         let metadata: NodeMetadata
         if (visualNode && visualNode.data.metadata) {
           metadata = visualNode.data.metadata as NodeMetadata
-          //console.log(`Using metadata from visual node for ${nodeType}:`, metadata.category)
         } else {
           metadata = self.webAudioMetadata[nodeType]
-          //console.log(`Using global metadata for ${nodeType}:`, metadata?.category)
         }
 
         if (!metadata) {
@@ -1832,8 +1739,6 @@ export const AudioGraphStore = types
                 console.error(`Error applying properties to MobX node ${nodeId}:`, error)
               }
             }
-
-            //console.log(`Successfully created custom node: ${nodeType}`)
           } catch (error) {
             console.error('STORE: Error creating custom node:', error)
           }
@@ -1847,7 +1752,6 @@ export const AudioGraphStore = types
             try {
               const micSource = self.audioContext.createMediaStreamSource(mediaStream)
               self.audioNodes.set(nodeId, micSource)
-              //console.log(`Successfully recreated MediaStreamAudioSourceNode: ${nodeId}`)
               return
             } catch (error) {
               console.error('Error recreating MediaStreamAudioSourceNode:', error)
@@ -2038,8 +1942,6 @@ export const AudioGraphStore = types
   .actions(self => {
     return {
       updateNodeProperty(nodeId: string, propertyName: string, value: unknown) {
-        //console.log('=== UPDATING NODE PROPERTY ===', nodeId, propertyName, value)
-
         const visualNode = self.visualNodes.find(node => node.id === nodeId)
         const audioNode = self.audioNodes.get(nodeId)
         // Use the MST-based custom node store instead of legacy map
@@ -2048,7 +1950,6 @@ export const AudioGraphStore = types
         if (visualNode) {
           // Update the property using MST map API
           visualNode.data.properties.set(propertyName, value)
-          //console.log('Updated visual node property')
 
           // Increment the property change counter to trigger React re-renders
           self.propertyChangeCounter += 1
@@ -2079,8 +1980,6 @@ export const AudioGraphStore = types
             self.updateCustomNodeBridges(nodeId, 'value', value as number)
           }
 
-          //console.log('Updated custom node property')
-          //console.log('=== PROPERTY UPDATE COMPLETE ===')
           return
         }
 
@@ -2101,7 +2000,6 @@ export const AudioGraphStore = types
                 /*  console.log(
                    `⚠️ Skipping direct AudioParam update for ${propertyName} - control connection active`
                  ) */
-                //console.log('=== PROPERTY UPDATE COMPLETE (SKIPPED) ===')
                 return
               }
             }
@@ -2116,8 +2014,6 @@ export const AudioGraphStore = types
             )
 
             if (!success) {
-              //console.log('Property update failed, recreating node...')
-
               // Store current connections
               const incomingConnections = self.audioConnections.filter(
                 conn => conn.targetNodeId === nodeId
@@ -2156,8 +2052,6 @@ export const AudioGraphStore = types
             }
           }
         }
-
-        //console.log('=== PROPERTY UPDATE COMPLETE ===')
       },
     }
   })

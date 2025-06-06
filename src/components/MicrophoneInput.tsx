@@ -25,8 +25,6 @@ const MicrophoneInput: React.FC = observer(() => {
 
       // Use the store action to add microphone input
       await store.addMicrophoneInput({ x: 50, y: 100 })
-
-      //console.log('Microphone input started successfully')
     } catch (err) {
       console.error('Error accessing microphone:', err)
       if (err instanceof Error) {
@@ -50,7 +48,6 @@ const MicrophoneInput: React.FC = observer(() => {
     })
 
     setError(null)
-    //console.log('Microphone input stopped')
   }, [store, microphoneNodes])
 
   return (

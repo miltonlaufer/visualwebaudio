@@ -13,7 +13,6 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
   useEffect(() => {
     // Check for service worker support
     if (!('serviceWorker' in navigator)) {
-      //console.log('Service worker not supported')
       return
     }
 
@@ -21,7 +20,6 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
 
     // Function to show update notification
     const showUpdateNotification = (updateFunction?: () => Promise<void>) => {
-      //console.log('Showing update notification')
       setIsVisible(true)
       if (updateFunction) {
         setUpdateSW(() => updateFunction)
@@ -31,7 +29,6 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
     // Listen for the Vite PWA update event
     const handleVitePwaUpdate = (event: Event) => {
       const customEvent = event as CustomEvent
-      //console.log('Vite PWA update event received:', customEvent.detail)
       if (customEvent.detail && customEvent.detail.type === 'UPDATE_AVAILABLE') {
         showUpdateNotification(customEvent.detail.updateSW)
       }
@@ -42,17 +39,13 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
       try {
         registration = (await navigator.serviceWorker.getRegistration()) || null
         if (registration) {
-          //console.log('Service worker registration found:', registration)
-
           // Check if there's already a waiting service worker
           if (registration.waiting) {
-            //console.log('Service worker is waiting, showing update notification')
             showUpdateNotification(async () => {
               if (registration?.waiting) {
                 registration.waiting.postMessage({ type: 'SKIP_WAITING' })
                 // Wait for controller change and reload
                 navigator.serviceWorker.addEventListener('controllerchange', () => {
-                  //console.log('Controller changed, reloading page')
                   window.location.reload()
                 })
               }
@@ -61,18 +54,14 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
 
           // Listen for new service worker installations
           registration.addEventListener('updatefound', () => {
-            //console.log('Update found, new service worker installing')
             const newWorker = registration!.installing
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
-                //console.log('New service worker state:', newWorker.state)
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  //console.log('New service worker installed, showing update notification')
                   showUpdateNotification(async () => {
                     if (registration?.waiting) {
                       registration.waiting.postMessage({ type: 'SKIP_WAITING' })
                       navigator.serviceWorker.addEventListener('controllerchange', () => {
-                        //console.log('Controller changed, reloading page')
                         window.location.reload()
                       })
                     } else {
@@ -99,7 +88,6 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
       try {
         const reg = await navigator.serviceWorker.getRegistration()
         if (reg) {
-          //console.log('Checking for updates...')
           await reg.update()
         }
       } catch (error) {
@@ -115,25 +103,19 @@ const UpdateNotification: React.FC<UpdateNotificationProps> = ({ onClose }) => {
 
   const handleUpdate = async () => {
     setIsUpdating(true)
-    //console.log('Update button clicked')
 
     try {
       if (updateSW) {
-        //console.log('Calling updateSW function')
         await updateSW()
       } else {
-        //console.log('No updateSW function, trying manual update')
         // Fallback: try to update manually
         const registration = await navigator.serviceWorker.getRegistration()
         if (registration && registration.waiting) {
-          //console.log('Found waiting service worker, activating it')
           registration.waiting.postMessage({ type: 'SKIP_WAITING' })
           navigator.serviceWorker.addEventListener('controllerchange', () => {
-            //console.log('Controller changed, reloading page')
             window.location.reload()
           })
         } else {
-          //console.log('No waiting service worker, just reloading')
           window.location.reload()
         }
       }

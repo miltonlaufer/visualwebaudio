@@ -141,7 +141,6 @@ export const VisualNodeModel = types
       try {
         const root = getRoot(self) as any
         if (root && root.cleanupAudioNode) {
-          //console.log(`[VisualNode] Cleaning up audio node for ${self.id}`)
           root.cleanupAudioNode(self.id)
           self.audioNodeCreated = false
         }
@@ -185,7 +184,6 @@ export const VisualNodeModel = types
           try {
             const root = getRoot(self) as any
             if (root && root.syncAudioNodeProperties && self.audioNodeCreated) {
-              //console.log(`[VisualNode reaction] Syncing properties for ${self.id}:`, props)
               root.syncAudioNodeProperties(self.id, props)
             }
           } catch (error) {

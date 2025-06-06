@@ -88,9 +88,7 @@ const AppContent: React.FC = observer(() => {
 
   // Load metadata on mount
   useEffect(() => {
-    //console.log('=== LOADING METADATA ===')
     store.loadMetadata()
-    //console.log('Metadata loaded. Available node types:', Object.keys(store.webAudioMetadata))
   }, [store])
 
   const handleNodeClick = useCallback(() => {

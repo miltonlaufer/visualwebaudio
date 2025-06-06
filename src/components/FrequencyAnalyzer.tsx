@@ -19,10 +19,8 @@ const FrequencyAnalyzer: React.FC = observer(() => {
       store.isPlaying && destinationConnections.length > 0 && store.frequencyAnalyzer
 
     if (hasActiveAudio) {
-      //console.log('Frequency analyzer is active - audio flowing through destination')
       setIsActive(true)
     } else {
-      //console.log('Frequency analyzer inactive - no audio to destination')
       setIsActive(false)
     }
   }, [store.audioConnections, store.visualNodes, store.isPlaying, store.frequencyAnalyzer])
