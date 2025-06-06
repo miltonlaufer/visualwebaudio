@@ -219,6 +219,10 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
               applySnapshot(customNodeStore, customNodeSnapshot)
             }
 
+            // CRITICAL: Manually trigger lifecycle hooks after snapshot loading
+            // applySnapshot doesn't trigger afterAttach, so we need to do it manually
+            store.triggerLifecycleHooksAfterLoad()
+
             // Set current project info
             setCurrentProjectId(project.id || null)
             setCurrentProjectName(project.name)
@@ -375,6 +379,10 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
             }
             applySnapshot(customNodeStore, customNodeSnapshot)
           }
+
+          // CRITICAL: Manually trigger lifecycle hooks after snapshot loading
+          // applySnapshot doesn't trigger afterAttach, so we need to do it manually
+          store.triggerLifecycleHooksAfterLoad()
 
           // Clear current project info since this is an import
           setCurrentProjectId(null)

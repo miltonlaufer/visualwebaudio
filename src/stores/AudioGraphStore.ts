@@ -148,6 +148,28 @@ export const AudioGraphStore = types
         self.isLoadingProject = value
       },
 
+      // Manually trigger lifecycle hooks for all nodes after project loading
+      // This is needed because applySnapshot doesn't trigger afterAttach hooks
+      triggerLifecycleHooksAfterLoad() {
+        console.log('[AudioGraphStore] Triggering lifecycle hooks for all nodes after project load')
+
+        // Trigger afterAttach for all visual nodes
+        self.visualNodes.forEach(node => {
+          try {
+            // Manually call afterAttach if it exists
+            if (node.afterAttach && typeof node.afterAttach === 'function') {
+              console.log(`[AudioGraphStore] Triggering afterAttach for node ${node.id}`)
+              node.afterAttach()
+            }
+          } catch (error) {
+            console.error(
+              `[AudioGraphStore] Error triggering afterAttach for node ${node.id}:`,
+              error
+            )
+          }
+        })
+      },
+
       // Action to set project modified state
       setProjectModified(value: boolean) {
         self.isProjectModified = value
