@@ -45,18 +45,28 @@ const CustomNodeState = types
   .actions(self => {
     return {
       setProperty(name: string, value: any): void {
-        self.properties.set(name, value)
+        try {
+          self.properties.set(name, value)
 
-        // For certain node types, also update outputs when properties change
-        if (self.nodeType === 'SliderNode' && name === 'value') {
-          this.setOutput('value', value)
-        } else if (self.nodeType === 'DisplayNode' && name === 'currentValue') {
-          this.setOutput('output', value)
+          // For certain node types, also update outputs when properties change
+          if (self.nodeType === 'SliderNode' && name === 'value') {
+            this.setOutput('value', value)
+          } else if (self.nodeType === 'DisplayNode' && name === 'currentValue') {
+            this.setOutput('output', value)
+          }
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[${self.nodeType}] Node ${self.id} detached, cannot set property:`, error)
         }
       },
 
       setOutput(name: string, value: any): void {
-        self.outputs.set(name, value)
+        try {
+          self.outputs.set(name, value)
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[${self.nodeType}] Node ${self.id} detached, cannot set output:`, error)
+        }
       },
 
       setValue(value: any): void {
@@ -422,9 +432,14 @@ const CustomNodeState = types
       resetTimerCount(): void {
         if (self.nodeType !== 'TimerNode') return
 
-        this.setOutput('count', 0)
-        this.setProperty('count', 0)
-        this.setProperty('isRunning', 'false')
+        try {
+          this.setOutput('count', 0)
+          this.setProperty('count', 0)
+          this.setProperty('isRunning', 'false')
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[TimerNode] Node ${self.id} detached, cannot reset timer count:`, error)
+        }
       },
 
       startTimer(): void {
@@ -492,29 +507,39 @@ const CustomNodeState = types
       stopTimer(): void {
         if (self.nodeType !== 'TimerNode') return
 
-        // Clear any running timers
-        const timeoutId = self.properties.get('_timeoutId')
-        const intervalId = self.properties.get('_intervalId')
+        try {
+          // Clear any running timers
+          const timeoutId = self.properties.get('_timeoutId')
+          const intervalId = self.properties.get('_intervalId')
 
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          this.setProperty('_timeoutId', undefined)
+          if (timeoutId) {
+            clearTimeout(timeoutId)
+            this.setProperty('_timeoutId', undefined)
+          }
+
+          if (intervalId) {
+            clearInterval(intervalId)
+            this.setProperty('_intervalId', undefined)
+          }
+
+          this.setProperty('isRunning', 'false')
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[TimerNode] Node ${self.id} detached, cannot stop timer:`, error)
         }
-
-        if (intervalId) {
-          clearInterval(intervalId)
-          this.setProperty('_intervalId', undefined)
-        }
-
-        this.setProperty('isRunning', 'false')
       },
 
       resetTimer(): void {
         if (self.nodeType !== 'TimerNode') return
 
-        this.stopTimer()
-        this.setOutput('count', 0)
-        this.setProperty('count', 0)
+        try {
+          this.stopTimer()
+          this.setOutput('count', 0)
+          this.setProperty('count', 0)
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[TimerNode] Node ${self.id} detached, cannot reset timer:`, error)
+        }
       },
 
       // MIDI Input Node functionality
@@ -528,12 +553,17 @@ const CustomNodeState = types
       setSelectedMidiDevice(deviceId: string): void {
         if (self.nodeType !== 'MidiInputNode') return
 
-        self.selectedMidiDevice = deviceId
-        this.setProperty('selectedDeviceId', deviceId)
+        try {
+          self.selectedMidiDevice = deviceId
+          this.setProperty('selectedDeviceId', deviceId)
 
-        // Re-setup listeners with new device selection
-        if (self.midiAccess) {
-          this.setupMidiListeners()
+          // Re-setup listeners with new device selection
+          if (self.midiAccess) {
+            this.setupMidiListeners()
+          }
+        } catch (error) {
+          // Node was detached from MST tree, ignore
+          console.error(`[MidiInputNode] Node ${self.id} detached, cannot set MIDI device:`, error)
         }
       },
 
