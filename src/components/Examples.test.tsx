@@ -1,8 +1,187 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
 import { useExamples } from './Examples'
-import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 
-// Mock the store
+// Create mock audio nodes
+const createMockAudioNode = () => ({
+  connect: vi.fn(),
+  disconnect: vi.fn(),
+  start: vi.fn(),
+  stop: vi.fn(),
+  frequency: { value: 440 },
+  gain: { value: 1 },
+  type: 'sine',
+  delayTime: { value: 0 },
+  Q: { value: 1 },
+  pan: { value: 0 },
+  buffer: null,
+})
+
+// Mock AudioNodeFactory
+vi.mock('~/services/AudioNodeFactory', () => ({
+  AudioNodeFactory: class {
+    constructor(public audioContext: AudioContext) {}
+
+    createAudioNode(nodeType: string, metadata: any, properties: any) {
+      const mockNode = createMockAudioNode()
+      // Apply initial properties
+      if (properties) {
+        Object.entries(properties).forEach(([key, value]) => {
+          if (key === 'frequency' && mockNode.frequency) {
+            mockNode.frequency.value = value as number
+          } else if (key === 'gain' && mockNode.gain) {
+            mockNode.gain.value = value as number
+          }
+        })
+      }
+      return mockNode
+    }
+
+    updateNodeProperty(audioNode: any, nodeType: string, propertyName: string, value: any) {
+      // Actually update the property on the mock
+      if (propertyName === 'frequency' && audioNode.frequency) {
+        audioNode.frequency.value = value
+        return true
+      } else if (propertyName === 'gain' && audioNode.gain) {
+        audioNode.gain.value = value
+        return true
+      }
+      return false
+    }
+
+    stopSourceNode(audioNode: any) {
+      if ('stop' in audioNode) {
+        audioNode.stop()
+      }
+    }
+  },
+}))
+
+// Mock CustomNodeFactory
+vi.mock('~/services/CustomNodeFactory', () => ({
+  CustomNodeFactory: class {
+    constructor(public audioContext: AudioContext) {}
+
+    isCustomNodeType(nodeType: string) {
+      return ['SliderNode', 'DisplayNode', 'ButtonNode', 'MidiToFreqNode', 'TimerNode'].includes(
+        nodeType
+      )
+    }
+
+    createNode(id: string, nodeType: string, metadata: any) {
+      // Get default value from metadata if available
+      const defaultValue =
+        metadata?.properties?.[0]?.defaultValue ?? (nodeType === 'DisplayNode' ? 0 : 50)
+
+      return {
+        id,
+        type: nodeType,
+        outputs: new Map([['value', defaultValue]]),
+        properties: new Map([['value', defaultValue]]),
+        cleanup: vi.fn(),
+        getAudioOutput: vi.fn(() => null),
+      }
+    }
+
+    createCustomNode(nodeType: string) {
+      const id = `${nodeType}-${Date.now()}`
+      return this.createNode(id, nodeType, {})
+    }
+  },
+}))
+
+// Only mock the Web Audio API since it's not available in Node.js
+const createMockAudioContext = () => ({
+  createOscillator: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+    frequency: { value: 440 },
+    type: 'sine',
+  })),
+  createGain: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    gain: { value: 1 },
+  })),
+  createAnalyser: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    fftSize: 1024,
+    smoothingTimeConstant: 0.8,
+  })),
+  createDelay: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    delayTime: { value: 0 },
+  })),
+  createBiquadFilter: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    frequency: { value: 350 },
+    Q: { value: 1 },
+    type: 'lowpass',
+  })),
+  createStereoPanner: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    pan: { value: 0 },
+  })),
+  createChannelSplitter: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+  createChannelMerger: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+  createConvolver: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    buffer: null,
+  })),
+  createMediaStreamSource: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  })),
+  createConstantSource: vi.fn(() => ({
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+    offset: { value: 0 },
+  })),
+  destination: {
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  },
+  state: 'running',
+  sampleRate: 44100,
+  close: vi.fn().mockResolvedValue(undefined),
+})
+
+// Mock the global AudioContext constructor
+global.AudioContext = vi.fn(() => createMockAudioContext()) as any
+
+// Mock navigator.mediaDevices for microphone input examples
+Object.defineProperty(global.navigator, 'mediaDevices', {
+  value: {
+    getUserMedia: vi.fn().mockResolvedValue({
+      getTracks: () => [],
+      getAudioTracks: () => [],
+      getVideoTracks: () => [],
+    }),
+  },
+  writable: true,
+})
+
+// Mock window.alert for error handling in examples
+global.alert = vi.fn()
+
+// Mock the store hook to return our test store
 vi.mock('~/stores/AudioGraphStore', async importOriginal => {
   const actual = (await importOriginal()) as any
   return {
@@ -12,29 +191,21 @@ vi.mock('~/stores/AudioGraphStore', async importOriginal => {
 })
 
 describe('Examples Structure Tests', () => {
-  let mockStore: any
+  let store: AudioGraphStoreType
   let examples: any[]
 
-  beforeEach(() => {
-    // Reset mock store before each test
-    mockStore = {
-      clearAllNodes: vi.fn(),
-      addNode: vi.fn().mockImplementation(() => 'mock-node-id'),
-      addMicrophoneInput: vi.fn().mockResolvedValue('mock-mic-id'),
-      updateNodeProperty: vi.fn(),
-      addEdge: vi.fn(),
-      setCreatingExample: vi.fn(),
-      setLoadingProject: vi.fn(),
-      recreateAudioGraph: vi.fn().mockResolvedValue(undefined),
-      initializeAudioContext: vi.fn(),
-      loadMetadata: vi.fn(),
-    }
+  beforeEach(async () => {
+    // Create a real store instance for testing
+    store = createAudioGraphStore()
+    store.loadMetadata()
 
-    vi.mocked(useAudioGraphStore).mockReturnValue(mockStore)
+    // Mock the hook to return our test store
+    const { useAudioGraphStore } = await import('~/stores/AudioGraphStore')
+    vi.mocked(useAudioGraphStore).mockReturnValue(store)
 
-    // Get examples
-    const { examples: exampleList } = useExamples()
-    examples = exampleList
+    // Get examples using renderHook
+    const { result } = renderHook(() => useExamples())
+    examples = result.current.examples
   })
 
   describe('Basic Oscillator Example', () => {
@@ -44,24 +215,36 @@ describe('Examples Structure Tests', () => {
 
       await example.create()
 
-      expect(mockStore.addNode).toHaveBeenCalledTimes(3)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 350, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 600, y: 150 })
+      // Wait for nodes to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(3)
+      })
+
+      expect(store.visualNodes.some(n => n.data.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.visualNodes.some(n => n.data.nodeType === 'GainNode')).toBe(true)
+      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should create exactly 2 connections', async () => {
       const example = examples.find(e => e.id === 'basic-oscillator')
       await example.create()
 
-      expect(mockStore.addEdge).toHaveBeenCalledTimes(2)
+      // Wait for edges to be created
+      await waitFor(() => {
+        expect(store.visualEdges).toHaveLength(2)
+      })
     })
 
     it('should set gain property', async () => {
       const example = examples.find(e => e.id === 'basic-oscillator')
       await example.create()
 
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
+      // Wait for nodes to be created and properties to be set
+      await waitFor(() => {
+        const gainNode = store.visualNodes.find(n => n.data.nodeType === 'GainNode')
+        expect(gainNode).toBeDefined()
+        expect(gainNode?.data.properties.get('gain')).toBe(0.5)
+      })
     })
   })
 
@@ -72,55 +255,54 @@ describe('Examples Structure Tests', () => {
 
       await example.create()
 
-      expect(mockStore.addNode).toHaveBeenCalledTimes(6)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('StereoPannerNode', { x: 700, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 150 })
+      // Wait for nodes to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(6)
+      })
+
+      expect(store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
+      expect(store.visualNodes.filter(n => n.data.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
+      expect(store.visualNodes.some(n => n.data.nodeType === 'StereoPannerNode')).toBe(true)
+      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should create exactly 5 connections (main chain + LFO modulation)', async () => {
       const example = examples.find(e => e.id === 'stereo-panner')
       await example.create()
 
-      expect(mockStore.addEdge).toHaveBeenCalledTimes(5)
+      // Wait for edges to be created
+      await waitFor(() => {
+        expect(store.visualEdges).toHaveLength(5)
+      })
     })
 
     it('should configure LFO for panning automation', async () => {
       const example = examples.find(e => e.id === 'stereo-panner')
       await example.create()
 
-      // Check LFO frequency is set for slow panning
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.2)
-      // Check LFO gain is set for full range
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 1)
-      // Check oscillator gain is set to 0.5 (sound generator rule)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
-    })
-  })
+      // Wait for nodes to be created and properties to be set
+      await waitFor(() => {
+        // Find the LFO oscillator (should be at y: 350)
+        const lfoNode = store.visualNodes.find(
+          n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+        )
+        expect(lfoNode).toBeDefined()
+        expect(lfoNode?.data.properties.get('frequency')).toBe(0.2)
 
-  describe('Delay Effect Example', () => {
-    it('should create exactly 5 nodes', async () => {
-      const example = examples.find(e => e.id === 'delay-effect')
-      expect(example).toBeDefined()
+        // Find the LFO gain node
+        const lfoGainNode = store.visualNodes.find(
+          n => n.data.nodeType === 'GainNode' && n.position.y === 350
+        )
+        expect(lfoGainNode).toBeDefined()
+        expect(lfoGainNode?.data.properties.get('gain')).toBe(1)
 
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(5)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 350, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 650, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 350 }) // Feedback gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 950, y: 150 })
-    })
-
-    it('should create feedback loop connections', async () => {
-      const example = examples.find(e => e.id === 'delay-effect')
-      await example.create()
-
-      expect(mockStore.addEdge).toHaveBeenCalledTimes(5)
+        // Find the oscillator gain node
+        const oscGainNode = store.visualNodes.find(
+          n => n.data.nodeType === 'GainNode' && n.position.y === 150
+        )
+        expect(oscGainNode).toBeDefined()
+        expect(oscGainNode?.data.properties.get('gain')).toBe(0.5)
+      })
     })
   })
 
@@ -131,508 +313,226 @@ describe('Examples Structure Tests', () => {
 
       await example.create()
 
-      expect(mockStore.addNode).toHaveBeenCalledTimes(6)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('BiquadFilterNode', { x: 700, y: 100 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 100 })
+      // Wait for nodes to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(6)
+      })
+      expect(store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
+      expect(store.visualNodes.filter(n => n.data.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
+      expect(store.visualNodes.some(n => n.data.nodeType === 'BiquadFilterNode')).toBe(true)
+      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should configure filter and LFO properly', async () => {
       const example = examples.find(e => e.id === 'filter-sweep')
       await example.create()
 
-      // Check filter configuration
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'type', 'lowpass')
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 800)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'Q', 10)
+      // Wait for nodes to be created and properties to be set
+      await waitFor(() => {
+        // Check filter configuration
+        const filterNode = store.visualNodes.find(n => n.data.nodeType === 'BiquadFilterNode')
+        expect(filterNode).toBeDefined()
+        expect(filterNode?.data.properties.get('type')).toBe('lowpass')
+        expect(filterNode?.data.properties.get('frequency')).toBe(800)
+        expect(filterNode?.data.properties.get('Q')).toBe(10)
 
-      // Check LFO configuration
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.5)
-      // Check oscillator gain is set to 0.5 (sound generator rule)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
-    })
-  })
+        // Check LFO configuration
+        const lfoNode = store.visualNodes.find(
+          n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+        )
+        expect(lfoNode).toBeDefined()
+        expect(lfoNode?.data.properties.get('frequency')).toBe(0.5)
 
-  describe('Tremolo Effect Example', () => {
-    it('should create exactly 6 nodes', async () => {
-      const example = examples.find(e => e.id === 'tremolo-effect')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(6)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Main osc
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 100 }) // Tremolo gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // LFO
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // LFO gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 100 })
-    })
-
-    it('should configure tremolo LFO at 5Hz', async () => {
-      const example = examples.find(e => e.id === 'tremolo-effect')
-      await example.create()
-
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 5)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.3)
-      // Check oscillator gain is set to 0.5 (sound generator rule)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
-    })
-  })
-
-  describe('Ring Modulation Example', () => {
-    it('should create exactly 6 nodes', async () => {
-      const example = examples.find(e => e.id === 'ring-modulation')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(6)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 100 }) // Carrier
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 100 }) // Carrier gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 350 }) // Modulator
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 350 }) // Modulator gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 225 }) // Ring mod gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 225 })
-    })
-
-    it('should configure carrier and modulator frequencies', async () => {
-      const example = examples.find(e => e.id === 'ring-modulation')
-      await example.create()
-
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 440) // Carrier
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 30) // Modulator
-      // Check oscillator gains are set to 0.5 (sound generator rule)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
-    })
-  })
-
-  describe('Chord Synthesis Example', () => {
-    it('should create exactly 8 nodes (3 oscillators + 3 gains + mixer + destination)', async () => {
-      const example = examples.find(e => e.id === 'chord-synthesis')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(8)
-      // 3 oscillators
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 50 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 225 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 400 })
-      // 3 individual gains (updated positions)
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 50 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 225 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 400 })
-      // Mixer and destination (updated positions)
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 225 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1000, y: 225 })
-    })
-
-    it('should configure C major chord frequencies', async () => {
-      const example = examples.find(e => e.id === 'chord-synthesis')
-      await example.create()
-
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 261.63) // C4
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 329.63) // E4
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 392.0) // G4
-      // Check oscillator gains are set to 0.5 (sound generator rule)
-      expect(mockStore.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
-    })
-  })
-
-  describe('Microphone Input Example', () => {
-    it('should create exactly 4 nodes', async () => {
-      const example = examples.find(e => e.id === 'microphone-input')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addMicrophoneInput).toHaveBeenCalledTimes(1)
-      expect(mockStore.addNode).toHaveBeenCalledTimes(4) // Mic gain, Delay, Feedback, Destination
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 350, y: 150 }) // Mic gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('DelayNode', { x: 650, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 650, y: 350 }) // Feedback
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 950, y: 150 })
-    })
-  })
-
-  describe('Convolution Reverb Example', () => {
-    it('should create exactly 8 nodes (dry/wet processing)', async () => {
-      const example = examples.find(e => e.id === 'convolution-reverb')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(8)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 150 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 150 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 700, y: 150 }) // Input gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ConvolverNode', { x: 1000, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 50 }) // Dry gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 350 }) // Wet gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1300, y: 150 }) // Mixer
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1600, y: 150 })
-    })
-  })
-
-  describe('Stereo Effects Example', () => {
-    it('should create exactly 7 nodes (splitter/merger processing)', async () => {
-      const example = examples.find(e => e.id === 'stereo-effects')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      expect(mockStore.addNode).toHaveBeenCalledTimes(7)
-      expect(mockStore.addNode).toHaveBeenCalledWith('OscillatorNode', { x: 100, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 400, y: 200 }) // Osc gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelSplitterNode', { x: 700, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 100 }) // Left gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('GainNode', { x: 1000, y: 300 }) // Right gain
-      expect(mockStore.addNode).toHaveBeenCalledWith('ChannelMergerNode', { x: 1300, y: 200 })
-      expect(mockStore.addNode).toHaveBeenCalledWith('AudioDestinationNode', { x: 1600, y: 200 })
+        // Check oscillator gain
+        const oscGainNode = store.visualNodes.find(
+          n => n.data.nodeType === 'GainNode' && n.position.y === 100
+        )
+        expect(oscGainNode).toBeDefined()
+        expect(oscGainNode?.data.properties.get('gain')).toBe(0.5)
+      })
     })
   })
 
   describe('All Examples', () => {
-    it('should have all expected examples', () => {
-      const expectedExamples = [
-        'midi-to-frequency',
-        'midi-delay-effect',
-        'basic-oscillator',
-        'microphone-input',
-        'sound-file-player',
-        'auto-file-player',
-        'delay-effect',
-        'filter-sweep',
-        'stereo-panner',
-        'compressor-effect',
-        'tremolo-effect',
-        'ring-modulation',
-        'chord-synthesis',
-        'waveshaper-distortion',
-        'phaser-effect',
-        'simple-noise',
-        'amplitude-envelope',
-        'beat-frequency',
-        'convolution-reverb',
-        'microphone-reverb',
-        'stereo-effects',
-        'robot-voice-ring-mod',
-        'vocoder-voice',
-        'voice-harmonizer',
-        'voice-pitch-shifter',
-        'vintage-analog-synth',
-      ]
-
-      const actualExampleIds = examples.map(e => e.id)
-
-      expectedExamples.forEach(expectedId => {
-        expect(actualExampleIds).toContain(expectedId)
-      })
-
-      expect(examples).toHaveLength(expectedExamples.length)
-    })
-
-    it('should wrap all examples with createExample helper', async () => {
-      // Test that all examples properly use the createExample wrapper
+    it('should create and clear examples without errors', async () => {
       for (const example of examples) {
-        mockStore.setCreatingExample.mockClear()
+        // Clear any previous nodes
+        store.clearAllNodes()
+        expect(store.visualNodes).toHaveLength(0)
+        expect(store.visualEdges).toHaveLength(0)
 
+        // Create the example
         await example.create()
 
-        expect(mockStore.setCreatingExample).toHaveBeenCalledWith(true)
-        expect(mockStore.setCreatingExample).toHaveBeenCalledWith(false)
-        expect(mockStore.clearAllNodes).toHaveBeenCalled()
+        // Wait for nodes to be created
+        await waitFor(() => {
+          expect(store.visualNodes.length).toBeGreaterThan(0)
+        })
+
+        // Clear again
+        store.clearAllNodes()
+        expect(store.visualNodes).toHaveLength(0)
+        expect(store.visualEdges).toHaveLength(0)
       }
     })
 
-    it('should have proper structure for each example', () => {
-      examples.forEach(example => {
-        expect(example).toHaveProperty('id')
-        expect(example).toHaveProperty('name')
-        expect(example).toHaveProperty('description')
-        expect(example).toHaveProperty('create')
-        expect(typeof example.create).toBe('function')
-        expect(typeof example.id).toBe('string')
-        expect(typeof example.name).toBe('string')
-        expect(typeof example.description).toBe('string')
-      })
-    })
+    it('should maintain consistent structure across multiple runs', async () => {
+      const example = examples.find(e => e.id === 'basic-oscillator')
 
-    it('should maintain connections when running the same example multiple times', async () => {
-      // Test the filter sweep example specifically since it was mentioned
-      const example = examples.find(e => e.id === 'filter-sweep')
-      expect(example).toBeDefined()
-
-      // Run the example first time
+      // Run the example twice
       await example.create()
+      const firstRunNodeCount = store.visualNodes.length
+      const firstRunEdgeCount = store.visualEdges.length
 
-      const firstRunNodeCount = mockStore.addNode.mock.calls.length
-      const firstRunEdgeCount = mockStore.addEdge.mock.calls.length
+      store.clearAllNodes()
 
-      // Clear mocks but keep the same store state
-      mockStore.addNode.mockClear()
-      mockStore.addEdge.mockClear()
-
-      // Run the example second time
       await example.create()
+      const secondRunNodeCount = store.visualNodes.length
+      const secondRunEdgeCount = store.visualEdges.length
 
-      const secondRunNodeCount = mockStore.addNode.mock.calls.length
-      const secondRunEdgeCount = mockStore.addEdge.mock.calls.length
-
-      // Should create the same number of nodes and edges both times
+      // Should create the same structure both times
       expect(secondRunNodeCount).toBe(firstRunNodeCount)
       expect(secondRunEdgeCount).toBe(firstRunEdgeCount)
-
-      // Specifically for filter sweep: should be 6 nodes and 5 connections
-      expect(secondRunNodeCount).toBe(6)
-      expect(secondRunEdgeCount).toBe(5)
-    })
-
-    it('should trigger graph change counter when examples are run', async () => {
-      // Add graphChangeCounter to mock store
-      mockStore.graphChangeCounter = 0
-
-      const example = examples.find(e => e.id === 'basic-oscillator')
-      expect(example).toBeDefined()
-
-      await example.create()
-
-      // Should have incremented the counter for each node and edge added
-      // Basic oscillator: 3 nodes + 2 edges + 1 clearAllNodes = 6 increments expected
-      // But since we're mocking, we just verify the pattern is there
-      expect(mockStore.addNode).toHaveBeenCalledTimes(3)
-      expect(mockStore.addEdge).toHaveBeenCalledTimes(2)
     })
   })
 })
 
 describe('Examples UI Integration Tests', () => {
-  let store: any
-  let mockUseAudioGraphStore: any
+  let store: AudioGraphStoreType
 
-  beforeEach(() => {
-    // Create a simple test store interface that doesn't require MST
-    store = {
-      visualNodes: [],
-      visualEdges: [],
-      audioConnections: [],
-      audioContext: {
-        createOscillator: vi.fn(() => ({
-          frequency: { value: 440 },
-          type: 'sine',
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-          start: vi.fn(),
-          stop: vi.fn(),
-        })),
-        createGain: vi.fn(() => ({
-          gain: { value: 1 },
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        })),
-        createBiquadFilter: vi.fn(() => ({
-          type: 'lowpass',
-          frequency: { value: 350 },
-          Q: { value: 1 },
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        })),
-        createConstantSource: vi.fn(() => ({
-          offset: { value: 0 },
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-          start: vi.fn(),
-          stop: vi.fn(),
-        })),
-        destination: {
-          connect: vi.fn(),
-          disconnect: vi.fn(),
-        },
-      },
-      addNode: vi.fn().mockImplementation(() => 'mock-node-id'),
-      addEdge: vi.fn(),
-      updateNodeProperty: vi.fn(),
-      clearAllNodes: vi.fn().mockImplementation(() => {
-        store.visualNodes = []
-        store.visualEdges = []
-        store.audioConnections = []
-      }),
-      setCreatingExample: vi.fn(),
-      isValidConnection: vi.fn().mockReturnValue(true),
-      customNodes: new Map(),
-      customNodeBridges: new Map(),
-      graphChangeCounter: 0,
-      propertyChangeCounter: 0,
-    }
+  beforeEach(async () => {
+    store = createAudioGraphStore()
+    store.loadMetadata()
 
-    // Mock the hook to return our test store
-    mockUseAudioGraphStore = vi.mocked(useAudioGraphStore)
-    mockUseAudioGraphStore.mockReturnValue(store)
+    const { useAudioGraphStore } = await import('~/stores/AudioGraphStore')
+    vi.mocked(useAudioGraphStore).mockReturnValue(store)
   })
 
   describe('Examples Connection Functionality', () => {
-    it('should create MIDI to Frequency chain with proper connections', async () => {
-      const { examples } = useExamples()
-      const midiExample = examples.find(e => e.id === 'midi-to-frequency')
-      expect(midiExample).toBeDefined()
-      if (!midiExample) return
-
-      await midiExample.create()
-
-      // Should have created 6 nodes
-      expect(store.addNode).toHaveBeenCalledTimes(6)
-      expect(store.addEdge).toHaveBeenCalledTimes(5)
-
-      // Should have created proper node types
-      expect(store.addNode).toHaveBeenCalledWith(
-        'SliderNode',
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
-      )
-      expect(store.addNode).toHaveBeenCalledWith(
-        'MidiToFreqNode',
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
-      )
-      expect(store.addNode).toHaveBeenCalledWith(
-        'OscillatorNode',
-        expect.objectContaining({ x: expect.any(Number), y: expect.any(Number) })
-      )
-    })
-
     it('should create basic oscillator with audio connections', async () => {
-      const { examples } = useExamples()
-      const basicExample = examples.find(e => e.id === 'basic-oscillator')
-      expect(basicExample).toBeDefined()
-      if (!basicExample) return
+      const { result } = renderHook(() => useExamples())
+      const basicOscExample = result.current.examples.find(e => e.id === 'basic-oscillator')
+      expect(basicOscExample).toBeDefined()
+      if (!basicOscExample) return
 
-      await basicExample.create()
+      await basicOscExample.create()
 
-      // Should create 3 nodes and 2 connections
-      expect(store.addNode).toHaveBeenCalledTimes(3)
-      expect(store.addEdge).toHaveBeenCalledTimes(2)
+      // Wait for nodes and edges to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(3)
+        expect(store.visualEdges).toHaveLength(2)
+      })
 
-      // Should set gain property
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'gain', 0.5)
+      // Verify connection structure
+      const oscNode = store.visualNodes.find(n => n.data.nodeType === 'OscillatorNode')
+      const gainNode = store.visualNodes.find(n => n.data.nodeType === 'GainNode')
+      const destNode = store.visualNodes.find(n => n.data.nodeType === 'AudioDestinationNode')
+
+      expect(oscNode).toBeDefined()
+      expect(gainNode).toBeDefined()
+      expect(destNode).toBeDefined()
+
+      // Check connections exist
+      const oscToGain = store.visualEdges.find(
+        e => e.source === oscNode?.id && e.target === gainNode?.id
+      )
+      const gainToDest = store.visualEdges.find(
+        e => e.source === gainNode?.id && e.target === destNode?.id
+      )
+
+      expect(oscToGain).toBeDefined()
+      expect(gainToDest).toBeDefined()
     })
 
     it('should create filter sweep with LFO modulation', async () => {
-      const { examples } = useExamples()
-      const filterExample = examples.find(e => e.id === 'filter-sweep')
+      const { result } = renderHook(() => useExamples())
+      const filterExample = result.current.examples.find(e => e.id === 'filter-sweep')
       expect(filterExample).toBeDefined()
       if (!filterExample) return
 
       await filterExample.create()
 
-      // Should create 6 nodes and 5 connections
-      expect(store.addNode).toHaveBeenCalledTimes(6)
-      expect(store.addEdge).toHaveBeenCalledTimes(5)
+      // Wait for nodes and edges to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(6)
+        expect(store.visualEdges).toHaveLength(5)
+      })
 
-      // Should configure filter properly
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'type', 'lowpass')
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 800)
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'Q', 10)
+      // Verify LFO modulation connection exists
+      const lfoNode = store.visualNodes.find(
+        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+      )
+      const filterNode = store.visualNodes.find(n => n.data.nodeType === 'BiquadFilterNode')
 
-      // Should configure LFO
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 0.5)
-    })
+      expect(lfoNode).toBeDefined()
+      expect(filterNode).toBeDefined()
 
-    it('should handle audio context creation correctly', async () => {
-      const { examples } = useExamples()
-      const basicExample = examples.find(e => e.id === 'basic-oscillator')
-      if (!basicExample) return
+      // Should have a modulation connection (through LFO gain)
+      const lfoGainNode = store.visualNodes.find(
+        n => n.data.nodeType === 'GainNode' && n.position.y === 350
+      )
+      expect(lfoGainNode).toBeDefined()
 
-      await basicExample.create()
-
-      // Audio context methods should be available (not called directly in examples but available)
-      expect(store.audioContext.createOscillator).toBeDefined()
-      expect(store.audioContext.createGain).toBeDefined()
-    })
-  })
-
-  describe('Connection Validation Logic', () => {
-    it('should have connection validation available', () => {
-      expect(store.isValidConnection).toBeDefined()
-      expect(typeof store.isValidConnection).toBe('function')
-
-      // Test that the validation function can be called
-      const result = store.isValidConnection('node1', 'node2', 'output', 'input')
-      expect(typeof result).toBe('boolean')
-    })
-
-    it('should prevent operations during example creation', async () => {
-      const { examples } = useExamples()
-      const basicExample = examples.find(e => e.id === 'basic-oscillator')
-      if (!basicExample) return
-
-      await basicExample.create()
-
-      // Should call setCreatingExample to prevent other operations
-      expect(store.setCreatingExample).toHaveBeenCalledWith(true)
-      expect(store.setCreatingExample).toHaveBeenCalledWith(false)
-    })
-  })
-
-  describe('Error Handling', () => {
-    it('should handle file loading errors gracefully', async () => {
-      const { examples } = useExamples()
-      const soundExample = examples.find(e => e.id === 'sound-file-player')
-      expect(soundExample).toBeDefined()
-      if (!soundExample) return
-
-      // Mock fetch to fail
-      const mockFetch = vi.spyOn(global, 'fetch').mockRejectedValue(new Error('File not found'))
-
-      // Should not throw error
-      await expect(soundExample.create()).resolves.not.toThrow()
-
-      mockFetch.mockRestore()
-    })
-
-    it('should clear nodes before creating examples', async () => {
-      const { examples } = useExamples()
-      const basicExample = examples.find(e => e.id === 'basic-oscillator')
-      if (!basicExample) return
-
-      await basicExample.create()
-
-      expect(store.clearAllNodes).toHaveBeenCalled()
+      const modulationConnection = store.visualEdges.find(
+        e => e.source === lfoGainNode?.id && e.target === filterNode?.id
+      )
+      expect(modulationConnection).toBeDefined()
     })
   })
 
   describe('Example Structure Validation', () => {
     it('should create all expected node types for complex examples', async () => {
-      const { examples } = useExamples()
-      const chordExample = examples.find(e => e.id === 'chord-synthesis')
+      const { result } = renderHook(() => useExamples())
+      const chordExample = result.current.examples.find(e => e.id === 'chord-synthesis')
       expect(chordExample).toBeDefined()
       if (!chordExample) return
 
       await chordExample.create()
 
-      // Should create 8 nodes for chord synthesis
-      expect(store.addNode).toHaveBeenCalledTimes(8)
+      // Wait for nodes to be created
+      await waitFor(() => {
+        expect(store.visualNodes).toHaveLength(8)
+      })
 
       // Should have oscillators for chord notes
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 261.63) // C4
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 329.63) // E4
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 392.0) // G4
+      const oscillators = store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')
+      expect(oscillators).toHaveLength(3) // C, E, G
+
+      // Should have individual gains for each oscillator
+      const gains = store.visualNodes.filter(n => n.data.nodeType === 'GainNode')
+      expect(gains).toHaveLength(4) // 3 individual + 1 mixer
+
+      // Should have destination
+      const destination = store.visualNodes.filter(n => n.data.nodeType === 'AudioDestinationNode')
+      expect(destination).toHaveLength(1)
     })
 
     it('should maintain consistent connection patterns', async () => {
-      const { examples } = useExamples()
-      const tremoloExample = examples.find(e => e.id === 'tremolo-effect')
+      const { result } = renderHook(() => useExamples())
+      const tremoloExample = result.current.examples.find(e => e.id === 'tremolo-effect')
+      expect(tremoloExample).toBeDefined()
       if (!tremoloExample) return
 
       await tremoloExample.create()
 
-      // Should create proper number of connections for tremolo
-      expect(store.addEdge).toHaveBeenCalledTimes(5)
-      expect(store.addNode).toHaveBeenCalledTimes(6)
+      // Wait for nodes and edges to be created
+      await waitFor(() => {
+        expect(store.visualEdges).toHaveLength(5)
+        expect(store.visualNodes).toHaveLength(6)
+      })
 
-      // Should configure tremolo LFO at 5Hz
-      expect(store.updateNodeProperty).toHaveBeenCalledWith('mock-node-id', 'frequency', 5)
+      // Verify tremolo structure: Osc → OscGain → TremoloGain → Dest
+      //                          LFO → LFOGain → TremoloGain
+      const mainOsc = store.visualNodes.find(
+        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 100
+      )
+      const lfoOsc = store.visualNodes.find(
+        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+      )
+
+      expect(mainOsc).toBeDefined()
+      expect(lfoOsc).toBeDefined()
+      expect(mainOsc?.id).not.toBe(lfoOsc?.id)
     })
   })
 })

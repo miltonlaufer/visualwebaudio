@@ -28,9 +28,9 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
   }
 
   if (isValidNode) {
-    console.log(
+    /* console.log(
       `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, formattedValue=${formattedValue}, precision=${precision}`
-    )
+    ) */
   }
 
   // Single return with conditional rendering - NO early returns

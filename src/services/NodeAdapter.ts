@@ -88,7 +88,7 @@ export class WebAudioNodeAdapter implements UnifiedNode {
     } else {
       // Web Audio to Custom node connection
       // Custom nodes will handle this through their receiveInput method
-      console.log(`Connected Web Audio node ${this.id} to custom node ${targetNode.id}`)
+      //console.log(`Connected Web Audio node ${this.id} to custom node ${targetNode.id}`)
     }
   }
 
@@ -175,7 +175,7 @@ export class CustomNodeAdapter implements UnifiedNode {
 
     if (targetInternalNode instanceof AudioNode) {
       // Custom to Web Audio connection
-      console.log(`Connected custom node ${this.id} to Web Audio node ${targetNode.id}`)
+      //console.log(`Connected custom node ${this.id} to Web Audio node ${targetNode.id}`)
       // Custom nodes will notify their connections when values change
     } else {
       // Custom to Custom connection

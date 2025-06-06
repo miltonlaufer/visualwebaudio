@@ -1,4 +1,5 @@
 import React from 'react'
+import { observer } from 'mobx-react-lite'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 import SliderNodeComponent from './SliderNodeComponent'
 import ButtonNodeComponent from './ButtonNodeComponent'
@@ -13,7 +14,7 @@ interface CustomNodeRendererProps {
   nodeType: string
 }
 
-const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = ({ nodeId, nodeType }) => {
+const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = observer(({ nodeId, nodeType }) => {
   // Check if node exists in store
   const node = customNodeStore.getNode(nodeId)
 
@@ -51,7 +52,7 @@ const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = ({ nodeId, nodeTyp
     default:
       return <div className="text-red-500 text-xs p-2">Unknown custom node: {nodeType}</div>
   }
-}
+})
 
 export default CustomNodeRenderer
 

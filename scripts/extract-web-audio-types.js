@@ -51,7 +51,7 @@ const EXCLUDED_INTERFACES = [
 
 // Extract type information from TypeScript lib files
 function extractWebAudioTypes() {
-  console.log('Extracting Web Audio API types from TypeScript definitions...')
+  //console.log('Extracting Web Audio API types from TypeScript definitions...')
 
   // Create a TypeScript program to analyze the lib files
   const program = ts.createProgram(['node_modules/typescript/lib/lib.dom.d.ts'], {
@@ -71,14 +71,14 @@ function extractWebAudioTypes() {
   }
 
   // Dynamically discover audio nodes
-  console.log('Dynamically discovering Web Audio interfaces...')
+  //console.log('Dynamically discovering Web Audio interfaces...')
   const discoveredNodes = discoverWebAudioNodes(sourceFile, checker)
 
   // Combine hardcoded list with discovered nodes for maximum coverage
   const allNodes = [...new Set([...WEB_AUDIO_NODES, ...discoveredNodes])]
-  console.log(
+  /*console.log(
     `Processing ${allNodes.length} audio interfaces (${WEB_AUDIO_NODES.length} hardcoded + ${discoveredNodes.length - WEB_AUDIO_NODES.filter(n => discoveredNodes.includes(n)).length} discovered)`
-  )
+  )*/
 
   const nodeMetadata = {}
 
@@ -86,7 +86,7 @@ function extractWebAudioTypes() {
   function visit(node) {
     if (ts.isInterfaceDeclaration(node) && allNodes.includes(node.name.text)) {
       const nodeType = node.name.text
-      console.log(`Extracting ${nodeType}...`)
+      //console.log(`Extracting ${nodeType}...`)
 
       nodeMetadata[nodeType] = {
         name: nodeType,
@@ -108,7 +108,7 @@ function extractWebAudioTypes() {
   // Fill in any missing nodes with fallback data
   allNodes.forEach(nodeType => {
     if (!nodeMetadata[nodeType]) {
-      console.log(`${nodeType} not found in TS definitions, using fallback`)
+      //console.log(`${nodeType} not found in TS definitions, using fallback`)
       nodeMetadata[nodeType] = createFallbackNodeMetadata(nodeType)
     }
   })
@@ -273,7 +273,7 @@ function getAudioParamRange(propertyName) {
 }
 
 function createFallbackMetadata() {
-  console.log('Creating fallback metadata...')
+  //console.log('Creating fallback metadata...')
   const nodeMetadata = {}
 
   WEB_AUDIO_NODES.forEach(nodeType => {
@@ -537,7 +537,7 @@ function discoverWebAudioNodes(sourceFile, checker) {
 
       if (isAudioNode || isAudioInterface) {
         discoveredNodes.add(interfaceName)
-        console.log(`Discovered audio interface: ${interfaceName}`)
+        //console.log(`Discovered audio interface: ${interfaceName}`)
       }
     }
 
@@ -554,16 +554,16 @@ try {
   const outputPath = path.join(__dirname, '../src/types/web-audio-metadata.json')
 
   fs.writeFileSync(outputPath, JSON.stringify(metadata, null, 2))
-  console.log(`Web Audio API metadata extracted to ${outputPath}`)
-  console.log(`Extracted ${Object.keys(metadata).length} node types`)
+  //console.log(`Web Audio API metadata extracted to ${outputPath}`)
+  //console.log(`Extracted ${Object.keys(metadata).length} node types`)
 } catch (error) {
   console.error('❌ Error extracting types:', error.message)
-  console.log('Falling back to manual definitions...')
+  //console.log('Falling back to manual definitions...')
 
   const fallbackMetadata = createFallbackMetadata()
   const outputPath = path.join(__dirname, '../src/types/web-audio-metadata.json')
 
   fs.writeFileSync(outputPath, JSON.stringify(fallbackMetadata, null, 2))
-  console.log(`Fallback metadata created at ${outputPath}`)
-  console.log(`Created ${Object.keys(fallbackMetadata).length} node types`)
+  //console.log(`Fallback metadata created at ${outputPath}`)
+  //console.log(`Created ${Object.keys(fallbackMetadata).length} node types`)
 }

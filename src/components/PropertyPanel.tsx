@@ -31,7 +31,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     (propertyName: string, value: string | number) => {
       if (!selectedNode) return
 
-      console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
+      //console.log(`Updating property ${propertyName} to ${value} for node ${selectedNode.id}`)
       store.updateNodeProperty(selectedNode.id, propertyName, value)
     },
     [selectedNode, store]
@@ -39,12 +39,6 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
 
   const handleToggleDescription = () => {
     setIsDescriptionExpanded(!isDescriptionExpanded)
-  }
-
-  const handleMethodCall = (method: string) => {
-    if (!selectedNode) return
-    // Handle method calls - this would need to be implemented
-    console.log(`Calling ${method} on ${selectedNode.id}`)
   }
 
   const handleRemoveNode = () => {
@@ -428,7 +422,9 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
                   {selectedNode.data.metadata.methods.map(method => (
                     <button
                       key={method}
-                      onClick={() => handleMethodCall(method)}
+                      onClick={() => {
+                        /* Method calls not implemented yet */
+                      }}
                       className="w-full px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-600 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                     >
                       {method}()

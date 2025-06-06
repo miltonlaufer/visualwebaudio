@@ -659,7 +659,7 @@ Request: ${message}`
     }
 
     if (node) {
-      console.log(`Found node for identifier "${identifier}": ${node.data.nodeType} (${node.id})`)
+      //console.log(`Found node for identifier "${identifier}": ${node.data.nodeType} (${node.id})`)
     } else {
       console.warn(`Could not find node for identifier "${identifier}"`)
     }

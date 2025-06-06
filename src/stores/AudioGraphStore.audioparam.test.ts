@@ -1,98 +1,88 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createAudioGraphStore } from './AudioGraphStore'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { AudioGraphStore } from './AudioGraphStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
+import { onPatch } from 'mobx-state-tree'
+import { waitFor } from '@testing-library/react'
 
-// Mock AudioParam
-const createMockAudioParam = (defaultValue: number) => ({
-  value: defaultValue,
+// Mock the customNodeStore module to prevent singleton initialization
+vi.mock('~/stores/CustomNodeStore', () => ({
+  customNodeStore: {
+    getNode: vi.fn(),
+    addNode: vi.fn(),
+    removeNode: vi.fn(),
+    clear: vi.fn(),
+  },
+}))
+
+// Mock Web Audio API helper function (still needed for mocks)
+const createMockAudioNode = () => ({
   connect: vi.fn(),
   disconnect: vi.fn(),
-})
-
-// Mock AudioNodes
-const mockOscillatorNode = {
-  frequency: createMockAudioParam(440),
-  detune: createMockAudioParam(0),
-  type: 'sine',
-  connect: vi.fn(),
-  disconnect: vi.fn(),
+  frequency: { value: 440 },
+  gain: { value: 1 },
   start: vi.fn(),
   stop: vi.fn(),
-}
+})
 
-const mockGainNode = {
-  gain: createMockAudioParam(1),
-  connect: vi.fn(),
-  disconnect: vi.fn(),
-}
-
-const mockDestinationNode = {
-  connect: vi.fn(),
-  disconnect: vi.fn(),
-}
-
-const mockAudioContext = {
-  createOscillator: vi.fn(() => ({ ...mockOscillatorNode })),
-  createGain: vi.fn(() => ({ ...mockGainNode })),
-  createAnalyser: vi.fn(() => ({
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    fftSize: 1024,
-    smoothingTimeConstant: 0.8,
-  })),
-  createConstantSource: vi.fn(() => ({
-    offset: { value: 0 },
-    connect: vi.fn(),
-    disconnect: vi.fn(),
-    start: vi.fn(),
-    stop: vi.fn(),
-  })),
-  destination: mockDestinationNode,
-  state: 'running',
-  close: vi.fn(),
-  suspend: vi.fn(),
-} as unknown as AudioContext
-
-// Mock the services
+// Mock AudioNodeFactory
 vi.mock('~/services/AudioNodeFactory', () => ({
   AudioNodeFactory: class {
     constructor(public audioContext: AudioContext) {}
 
-    createAudioNode(nodeType: string) {
-      if (nodeType === 'OscillatorNode') {
-        return { ...mockOscillatorNode, frequency: createMockAudioParam(440) }
-      } else if (nodeType === 'GainNode') {
-        return { ...mockGainNode, gain: createMockAudioParam(1) }
-      } else if (nodeType === 'AudioDestinationNode') {
-        return mockDestinationNode
+    createAudioNode(nodeType: string, metadata: any, properties: any) {
+      const mockNode = createMockAudioNode()
+      // Apply initial properties
+      if (properties) {
+        Object.entries(properties).forEach(([key, value]) => {
+          if (key === 'frequency' && mockNode.frequency) {
+            mockNode.frequency.value = value as number
+          } else if (key === 'gain' && mockNode.gain) {
+            mockNode.gain.value = value as number
+          }
+        })
       }
-      return mockGainNode
+      return mockNode
     }
 
-    updateNodeProperty() {
-      return true
+    updateNodeProperty(audioNode: any, nodeType: string, propertyName: string, value: any) {
+      // Actually update the property on the mock
+      if (propertyName === 'frequency' && audioNode.frequency) {
+        audioNode.frequency.value = value
+        return true
+      } else if (propertyName === 'gain' && audioNode.gain) {
+        audioNode.gain.value = value
+        return true
+      }
+      return false
     }
-    stopSourceNode() {}
+
+    stopSourceNode(audioNode: any) {
+      if ('stop' in audioNode) {
+        audioNode.stop()
+      }
+    }
   },
 }))
 
+// Mock CustomNodeFactory
 vi.mock('~/services/CustomNodeFactory', () => ({
   CustomNodeFactory: class {
     constructor(public audioContext: AudioContext) {}
 
     isCustomNodeType(nodeType: string) {
-      return ['SliderNode', 'MidiToFreqNode', 'ButtonNode'].includes(nodeType)
+      return ['SliderNode', 'DisplayNode', 'ButtonNode', 'MidiToFreqNode'].includes(nodeType)
     }
 
-    createNode(id: string, nodeType: string) {
+    createNode(id: string, nodeType: string, metadata: any) {
+      // Get default value from metadata if available
+      const defaultValue =
+        metadata?.properties?.[0]?.defaultValue ?? (nodeType === 'DisplayNode' ? 0 : 50)
+
       return {
         id,
         type: nodeType,
-        outputs: new Map([
-          ['value', 100],
-          ['frequency', 440],
-        ]),
-        properties: new Map([['value', 100]]),
+        outputs: new Map([['value', defaultValue]]),
+        properties: new Map([['value', defaultValue]]),
         cleanup: vi.fn(),
         getAudioOutput: vi.fn(() => null),
       }
@@ -100,108 +90,294 @@ vi.mock('~/services/CustomNodeFactory', () => ({
 
     createCustomNode(nodeType: string) {
       const id = `${nodeType}-${Date.now()}`
-      return this.createNode(id, nodeType)
-    }
-
-    setBridgeUpdateCallback() {}
-    connectCustomNodes() {}
-    getCustomNode() {
-      return undefined
+      return this.createNode(id, nodeType, {})
     }
   },
 }))
 
-// Mock global AudioContext
-Object.defineProperty(global, 'AudioContext', {
-  writable: true,
-  value: vi.fn(() => mockAudioContext),
+// Create a mock customNodeStore outside of beforeEach
+const createMockCustomNodeStore = () => ({
+  getNode: vi.fn(() => {
+    // Return a mock node with the expected interface
+    return {
+      setProperty: vi.fn(),
+      setOutput: vi.fn(),
+    }
+  }),
+  addNode: vi.fn(),
+  removeNode: vi.fn(),
+  connectNodes: vi.fn(),
+  disconnectNodes: vi.fn(),
+  clear: vi.fn(),
+  setBridgeUpdateCallback: vi.fn(),
+  setAudioContext: vi.fn(),
 })
 
 describe('AudioParam Connection Tests', () => {
   let store: AudioGraphStoreType
+  let mockCustomNodeStore: ReturnType<typeof createMockCustomNodeStore>
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
-    store = createAudioGraphStore()
+
+    // Create a fresh mock for each test
+    mockCustomNodeStore = createMockCustomNodeStore()
+
+    // Create the store with customNodeStore in the environment
+    store = AudioGraphStore.create(
+      {
+        undoStack: [],
+        redoStack: [],
+      },
+      {
+        customNodeStore: mockCustomNodeStore,
+      }
+    )
+
+    // Set up patch middleware for automatic undo/redo tracking
+    let patchRecorder: { forward: any; inverse: any }[] = []
+    let isRecording = false
+
+    onPatch(store, (patch, reversePatch) => {
+      // Don't record patches when we're applying undo/redo
+      if (store.isApplyingPatch) return
+      if (store.isCreatingExample) return
+      if (store.isClearingAllNodes) return
+      if (store.isUpdatingPlayState) return
+      if (store.isLoadingProject) return
+
+      // Don't record patches to the history stacks themselves
+      if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {
+        return
+      }
+
+      // Don't record play/pause state changes in undo history
+      if (patch.path === '/isPlaying') return
+      if (patch.path === '/selectedNodeId') return
+      if (patch.path === '/propertyChangeCounter') return
+      if (patch.path === '/graphChangeCounter') return
+      if (patch.path === '/isProjectModified') return
+
+      // Mark project as modified for meaningful changes
+      if (!store.isProjectModified) {
+        store.markProjectModified()
+      }
+
+      // Start recording if not already
+      if (!isRecording) {
+        isRecording = true
+        patchRecorder = []
+
+        // Use microtask to batch patches that happen in the same tick
+        queueMicrotask(() => {
+          if (patchRecorder.length > 0) {
+            // Add to undo stack using store action
+            store.addToUndoStack({
+              forward: patchRecorder.map(p => p.forward),
+              inverse: patchRecorder.map(p => p.inverse).reverse(),
+            })
+          }
+
+          isRecording = false
+          patchRecorder = []
+        })
+      }
+
+      // Record the patch
+      patchRecorder.push({ forward: patch, inverse: reversePatch })
+    })
+
     store.loadMetadata()
   })
 
+  afterEach(() => {
+    // Clean up any nodes that might have been created
+    if (store && store.visualNodes.length > 0) {
+      store.clearAllNodes()
+    }
+    // Reset all mocks
+    vi.clearAllMocks()
+  })
+
   describe('Direct frequency control connections', () => {
-    it('should set frequency base to 0 when connecting SliderNode', () => {
+    it('should set frequency base to 0 when connecting SliderNode', async () => {
       // Create nodes
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
       const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
 
-      // Get the actual audio nodes
-      const oscAudioNode = store.audioNodes.get(oscId) as any
-      expect(oscAudioNode).toBeDefined()
-      expect(oscAudioNode.frequency.value).toBe(440) // Default frequency
+      // Check if visual nodes were added
+      expect(store.visualNodes).toHaveLength(2)
+      expect(store.visualNodes.find(n => n.id === sliderId)).toBeDefined()
+      expect(store.visualNodes.find(n => n.id === oscId)).toBeDefined()
 
-      // Connect SliderNode to frequency
+      // Wait for lifecycle hooks to complete - check preconditions first
+      await waitFor(
+        () => {
+          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
+          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          expect(sliderNode?.isAttached).toBe(true)
+          expect(oscNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.customNodes.has(sliderId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(oscId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      // Connect and verify base is set to 0
       store.addEdge(sliderId, oscId, 'value', 'frequency')
-
-      // After connection, frequency base should be 0 for direct control
+      const oscAudioNode = store.audioNodes.get(oscId) as any
       expect(oscAudioNode.frequency.value).toBe(0)
     })
 
-    it('should set frequency base to 0 when connecting MidiToFreqNode', () => {
+    it('should set frequency base to 0 when connecting MidiToFreqNode', async () => {
       // Create nodes
       const midiId = store.addNode('MidiToFreqNode', { x: 100, y: 100 })
       const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
 
-      // Get the actual audio nodes
-      const oscAudioNode = store.audioNodes.get(oscId) as any
-      expect(oscAudioNode.frequency.value).toBe(440) // Default frequency
+      // Wait for lifecycle hooks to complete - check preconditions first
+      await waitFor(
+        () => {
+          const midiNode = store.visualNodes.find(n => n.id === midiId)
+          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          expect(midiNode?.isAttached).toBe(true)
+          expect(oscNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
 
-      // Connect MidiToFreqNode to frequency
+      await waitFor(
+        () => {
+          expect(store.customNodes.has(midiId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(oscId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      // Connect and verify base is set to 0
       store.addEdge(midiId, oscId, 'frequency', 'frequency')
-
-      // After connection, frequency base should be 0 for direct control
+      const oscAudioNode = store.audioNodes.get(oscId) as any
       expect(oscAudioNode.frequency.value).toBe(0)
     })
   })
 
   describe('LFO modulation connections', () => {
-    it('should keep frequency base when connecting OscillatorNode for modulation', () => {
+    it('should keep frequency base when connecting OscillatorNode for modulation', async () => {
       // Create nodes
       const lfoId = store.addNode('OscillatorNode', { x: 100, y: 100 })
       const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
 
-      // Get the actual audio nodes
-      const oscAudioNode = store.audioNodes.get(oscId) as any
-      expect(oscAudioNode.frequency.value).toBe(440) // Default frequency
+      // Wait for lifecycle hooks to complete
+      await waitFor(
+        () => {
+          const lfoNode = store.visualNodes.find(n => n.id === lfoId)
+          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          expect(lfoNode?.isAttached).toBe(true)
+          expect(oscNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
 
-      // Connect LFO to frequency (modulation)
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(lfoId)).toBe(true)
+          expect(store.audioNodes.has(oscId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      // Connect for modulation and verify base stays at 440
       store.addEdge(lfoId, oscId, 'output', 'frequency')
-
-      // After connection, frequency base should remain 440 for modulation
+      const oscAudioNode = store.audioNodes.get(oscId) as any
       expect(oscAudioNode.frequency.value).toBe(440)
     })
   })
 
   describe('Other AudioParam connections', () => {
-    it('should set gain base to 0 when connecting control signal', () => {
+    it('should set gain base to 0 when connecting control signal', async () => {
       // Create nodes
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
       const gainId = store.addNode('GainNode', { x: 200, y: 100 })
 
-      // Get the actual audio nodes
-      const gainAudioNode = store.audioNodes.get(gainId) as any
-      expect(gainAudioNode.gain.value).toBe(1) // Default gain
+      // Wait for lifecycle hooks to complete - check preconditions first
+      await waitFor(
+        () => {
+          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
+          const gainNode = store.visualNodes.find(n => n.id === gainId)
+          expect(sliderNode?.isAttached).toBe(true)
+          expect(gainNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
 
-      // Connect SliderNode to gain
+      await waitFor(
+        () => {
+          expect(store.customNodes.has(sliderId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(gainId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      // Connect and verify base is set to 0
       store.addEdge(sliderId, gainId, 'value', 'gain')
-
-      // After connection, gain base should be 0 for direct control
+      const gainAudioNode = store.audioNodes.get(gainId) as any
       expect(gainAudioNode.gain.value).toBe(0)
     })
   })
 
   describe('Disconnection behavior', () => {
-    it('should restore default values when disconnecting', () => {
+    it('should restore default values when disconnecting', async () => {
       // Create nodes
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
       const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
+
+      // Wait for lifecycle hooks to complete - check preconditions first
+      await waitFor(
+        () => {
+          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
+          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          expect(sliderNode?.isAttached).toBe(true)
+          expect(oscNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.customNodes.has(sliderId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(oscId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
 
       // Connect and verify base is set to 0
       store.addEdge(sliderId, oscId, 'value', 'frequency')
@@ -220,47 +396,81 @@ describe('AudioParam Connection Tests', () => {
   })
 
   describe('Visual verification test', () => {
-    it('should create a complete working example for manual testing', () => {
-      console.log('\nCREATING MANUAL TEST EXAMPLE:')
+    it('should create a complete working example for manual testing', async () => {
+      //console.log('\nCREATING MANUAL TEST EXAMPLE:')
 
-      // Create a complete audio chain for testing
+      // Create nodes
       const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 250, y: 100 })
-      const destId = store.addNode('AudioDestinationNode', { x: 400, y: 100 })
+      const oscId = store.addNode('OscillatorNode', { x: 300, y: 100 })
+      const destId = store.addNode('AudioDestinationNode', { x: 500, y: 100 })
 
-      console.log(`1. Created SliderNode: ${sliderId}`)
-      console.log(`2. Created OscillatorNode: ${oscId}`)
-      console.log(`3. Created AudioDestinationNode: ${destId}`)
+      // Wait for lifecycle hooks to complete - check preconditions first
+      await waitFor(
+        () => {
+          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
+          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          const destNode = store.visualNodes.find(n => n.id === destId)
+          expect(sliderNode?.isAttached).toBe(true)
+          expect(oscNode?.isAttached).toBe(true)
+          expect(destNode?.isAttached).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.customNodes.has(sliderId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(oscId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      await waitFor(
+        () => {
+          expect(store.audioNodes.has(destId)).toBe(true)
+        },
+        { timeout: 3000 }
+      )
+
+      //console.log(`1. Created SliderNode: ${sliderId}`)
+      //console.log(`2. Created OscillatorNode: ${oscId}`)
+      //console.log(`3. Created AudioDestinationNode: ${destId}`)
 
       // Connect slider to oscillator frequency
       store.addEdge(sliderId, oscId, 'value', 'frequency')
-      console.log('4. Connected SliderNode → OscillatorNode frequency')
+      //console.log('4. Connected SliderNode → OscillatorNode frequency')
 
       // Connect oscillator to destination
       store.addEdge(oscId, destId, 'output', 'input')
-      console.log('5. Connected OscillatorNode → AudioDestinationNode')
+      //console.log('5. Connected OscillatorNode → AudioDestinationNode')
 
       // Verify the connections
       const oscAudioNode = store.audioNodes.get(oscId) as any
-      console.log(`6. Oscillator frequency base value: ${oscAudioNode.frequency.value} Hz`)
-      console.log('   Should be 0 for direct slider control')
+      //console.log(`6. Oscillator frequency base value: ${oscAudioNode.frequency.value} Hz`)
+      //console.log('   Should be 0 for direct slider control')
 
       // Simulate slider changes
-      console.log('\nSIMULATING SLIDER CHANGES:')
+      //console.log('\nSIMULATING SLIDER CHANGES:')
       store.updateNodeProperty(sliderId, 'value', 220)
-      console.log('   Set slider to 220 → Should control frequency directly')
+      //console.log('   Set slider to 220 → Should control frequency directly')
 
       store.updateNodeProperty(sliderId, 'value', 440)
-      console.log('   Set slider to 440 → Should control frequency directly')
+      //console.log('   Set slider to 440 → Should control frequency directly')
 
       store.updateNodeProperty(sliderId, 'value', 880)
-      console.log('   Set slider to 880 → Should control frequency directly')
+      //console.log('   Set slider to 880 → Should control frequency directly')
 
-      console.log('\nExample created successfully!')
-      console.log(
-        '💡 In the browser: Create SliderNode → connect to OscillatorNode frequency → connect to output'
-      )
-      console.log('Move the slider and the frequency should change directly!')
+      //console.log('\nExample created successfully!')
+      //console.log(
+      //  '💡 In the browser: Create SliderNode → connect to OscillatorNode frequency → connect to output'
+      //)
+      //console.log('Move the slider and the frequency should change directly!')
 
       // Verify all nodes exist
       expect(store.visualNodes.length).toBe(3)

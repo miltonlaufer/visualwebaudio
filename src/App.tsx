@@ -20,14 +20,6 @@ const App: React.FC = observer(() => {
   const store = useMemo(() => createAudioGraphStore(), [])
   const themeStore = useMemo(() => createThemeStore(), [])
 
-  // Make store available for debugging
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      ;(window as any).__STORE__ = store
-      ;(window as any).__THEME_STORE__ = themeStore
-    }
-  }, [store, themeStore])
-
   return (
     <ThemeStoreContext.Provider value={themeStore}>
       <AudioGraphStoreContext.Provider value={store}>
@@ -43,10 +35,6 @@ const AppContent: React.FC = observer(() => {
   // Mobile responsive state
   const [isNodePaletteOpen, setIsNodePaletteOpen] = useState(false)
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(false)
-
-  const handleForceUpdate = useCallback(() => {
-    // This function is passed to GraphCanvas to trigger force updates when needed
-  }, [])
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
@@ -76,7 +64,6 @@ const AppContent: React.FC = observer(() => {
         event.preventDefault()
         event.stopPropagation()
         store.undo()
-        handleForceUpdate()
         return
       }
 
@@ -85,7 +72,6 @@ const AppContent: React.FC = observer(() => {
         event.preventDefault()
         event.stopPropagation()
         store.redo()
-        handleForceUpdate()
         return
       }
     }
@@ -98,23 +84,14 @@ const AppContent: React.FC = observer(() => {
       document.removeEventListener('keydown', handleKeyDown, true)
       window.removeEventListener('keydown', handleKeyDown, true)
     }
-  }, [store, handleForceUpdate])
+  }, [store])
 
   // Load metadata on mount
   useEffect(() => {
-    console.log('=== LOADING METADATA ===')
+    //console.log('=== LOADING METADATA ===')
     store.loadMetadata()
-    console.log('Metadata loaded. Available node types:', Object.keys(store.webAudioMetadata))
+    //console.log('Metadata loaded. Available node types:', Object.keys(store.webAudioMetadata))
   }, [store])
-
-  // Debug store state
-  useEffect(() => {
-    console.log('Store state:', {
-      visualNodes: store.visualNodes.length,
-      visualEdges: store.visualEdges.length,
-      metadataKeys: Object.keys(store.webAudioMetadata),
-    })
-  }, [store.visualNodes.length, store.visualEdges.length, store.webAudioMetadata])
 
   const handleNodeClick = useCallback(() => {
     // Auto-open properties panel when a node is selected
@@ -177,7 +154,7 @@ const AppContent: React.FC = observer(() => {
 
         {/* Main Canvas */}
         <div className="flex-1 flex flex-col h-full">
-          <GraphCanvas onNodeClick={handleNodeClick} onForceUpdate={handleForceUpdate} />
+          <GraphCanvas onNodeClick={handleNodeClick} />
         </div>
 
         {/* Property Panel - Desktop: sidebar, Tablet/Mobile: overlay */}

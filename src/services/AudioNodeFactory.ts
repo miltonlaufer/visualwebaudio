@@ -1,4 +1,5 @@
 import type { NodeMetadata } from '~/types'
+import { INodeMetadata } from '~/models/NodeModels.ts'
 
 export class AudioNodeFactory {
   public audioContext: AudioContext
@@ -11,7 +12,7 @@ export class AudioNodeFactory {
     metadata: NodeMetadata,
     properties: Record<string, unknown> = {}
   ): AudioNode {
-    console.log(`Creating ${nodeType} with metadata-driven approach`)
+    //console.log(`Creating ${nodeType} with metadata-driven approach`)
 
     let audioNode: AudioNode
 
@@ -85,11 +86,11 @@ export class AudioNodeFactory {
             return
           }
           audioParam.value = numValue
-          console.log(`Set AudioParam ${propertyName} to ${numValue}`)
+          //console.log(`Set AudioParam ${propertyName} to ${numValue}`)
         }
       } else {
         nodeWithProperty[propertyName] = value
-        console.log(`Set property ${propertyName} to ${value}`)
+        //console.log(`Set property ${propertyName} to ${value}`)
       }
     } else {
       console.warn(`Property ${propertyName} not found on audio node`)
@@ -109,11 +110,11 @@ export class AudioNodeFactory {
     try {
       if (nodeType === 'OscillatorNode') {
         ;(audioNode as OscillatorNode).start()
-        console.log(`Started ${nodeType}`)
+        //console.log(`Started ${nodeType}`)
       } else if (nodeType === 'AudioBufferSourceNode') {
         // AudioBufferSourceNode now has a buffer, so we can start it
         ;(audioNode as AudioBufferSourceNode).start()
-        console.log(`Started ${nodeType} with white noise buffer`)
+        //console.log(`Started ${nodeType} with white noise buffer`)
       }
     } catch (error) {
       console.error(`Failed to start ${nodeType}:`, error)
@@ -125,7 +126,7 @@ export class AudioNodeFactory {
       if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
         const sourceNode = audioNode as OscillatorNode | AudioBufferSourceNode
         sourceNode.stop()
-        console.log(`Stopped ${nodeType}`)
+        //console.log(`Stopped ${nodeType}`)
       }
     } catch (error) {
       console.error(`${nodeType} was already stopped or stopping failed:`, error)
@@ -135,13 +136,13 @@ export class AudioNodeFactory {
   updateNodeProperty(
     audioNode: AudioNode,
     nodeType: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     propertyName: string,
     value: unknown
   ): boolean {
     // Check if this property requires node recreation
     if (this.requiresRecreation(nodeType, propertyName)) {
-      console.log(`Property ${propertyName} change requires node recreation`)
+      //console.log(`Property ${propertyName} change requires node recreation`)
       return false // Indicate that recreation is needed
     }
 

@@ -187,7 +187,7 @@ const AIChat: React.FC = observer(() => {
       if (response.actions && response.actions.length > 0) {
         await langChainService.current.executeActions(response.actions, store)
       } else {
-        console.log('[DEBUG] No actions to execute')
+        //console.log('[DEBUG] No actions to execute')
       }
     } catch (error) {
       console.error('💬 [DEBUG] Chat error:', error)

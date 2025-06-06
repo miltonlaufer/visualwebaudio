@@ -196,45 +196,46 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
         // Clear existing project
         store.clearAllNodes()
+        queueMicrotask(() => {
+          // Set flag to prevent marking as modified during loading
+          store.setLoadingProject(true)
 
-        // Set flag to prevent marking as modified during loading
-        store.setLoadingProject(true)
-
-        try {
-          // Apply the imported data
-          const newSnapshot = {
-            ...getSnapshot(store),
-            visualNodes: importData.visualNodes,
-            visualEdges: importData.visualEdges,
-            audioConnections: importData.audioConnections,
-          }
-
-          applySnapshot(store, newSnapshot)
-
-          // Restore CustomNodeStore state if available
-          if (importData.customNodes) {
-            const customNodeSnapshot = {
-              nodes: importData.customNodes,
+          try {
+            // Apply the imported data to AudioGraphStore
+            const newSnapshot = {
+              ...getSnapshot(store),
+              visualNodes: importData.visualNodes,
+              visualEdges: importData.visualEdges,
+              audioConnections: importData.audioConnections,
             }
-            applySnapshot(customNodeStore, customNodeSnapshot)
+
+            applySnapshot(store, newSnapshot)
+
+            // Apply CustomNodeStore snapshot if available
+            if (importData.customNodes) {
+              const customNodeSnapshot = {
+                nodes: importData.customNodes,
+              }
+              applySnapshot(customNodeStore, customNodeSnapshot)
+            }
+
+            // Set current project info
+            setCurrentProjectId(project.id || null)
+            setCurrentProjectName(project.name)
+
+            setStorageSuccess(`Project "${project.name}" loaded successfully!`)
+            setTimeout(() => setStorageSuccess(null), 3000)
+
+            // Mark project as unmodified after successful load
+            store.setProjectModified(false)
+
+            // Close the modal after a successful load
+            onClose()
+          } finally {
+            // Always clear the loading flag
+            store.setLoadingProject(false)
           }
-
-          // Set current project info
-          setCurrentProjectId(project.id || null)
-          setCurrentProjectName(project.name)
-
-          setStorageSuccess(`Project "${project.name}" loaded successfully!`)
-          setTimeout(() => setStorageSuccess(null), 3000)
-
-          // Mark project as unmodified after successful load
-          store.setProjectModified(false)
-
-          // Close the modal after successful load
-          onClose()
-        } finally {
-          // Always clear the loading flag
-          store.setLoadingProject(false)
-        }
+        })
       } catch (error) {
         setStorageError('Failed to load project: ' + (error as Error).message)
         // Clear the loading flag on error too
@@ -357,7 +358,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(true)
 
         try {
-          // Apply the imported data
+          // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
             visualNodes: importData.visualNodes,
@@ -367,7 +368,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
           applySnapshot(store, newSnapshot)
 
-          // Restore CustomNodeStore state if available
+          // Apply CustomNodeStore snapshot if available
           if (importData.customNodes) {
             const customNodeSnapshot = {
               nodes: importData.customNodes,

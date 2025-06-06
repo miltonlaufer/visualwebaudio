@@ -17,6 +17,14 @@ vi.mock('~/stores/AudioGraphStore', () => ({
   useAudioGraphStore: () => mockStore,
 }))
 
+// Mock CustomNodeStore
+vi.mock('~/stores/CustomNodeStore', () => ({
+  customNodeStore: {
+    getNode: vi.fn(),
+    removeNode: vi.fn(),
+  },
+}))
+
 // Mock database operations
 vi.mock('~/utils/database', () => ({
   projectOperations: {
@@ -32,6 +40,21 @@ vi.mock('~/utils/database', () => ({
 vi.mock('mobx-state-tree', () => ({
   getSnapshot: vi.fn(() => ({})),
   applySnapshot: vi.fn(),
+  types: {
+    model: vi.fn(() => ({
+      props: vi.fn(() => ({
+        actions: vi.fn(() => ({})),
+      })),
+      actions: vi.fn(() => ({})),
+    })),
+    string: 'string',
+    number: 'number',
+    boolean: 'boolean',
+    map: vi.fn(() => ({})),
+    array: vi.fn(() => ({})),
+    optional: vi.fn(() => ({})),
+    frozen: vi.fn(() => ({})),
+  },
 }))
 
 // Mock useOnClickOutside
