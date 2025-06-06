@@ -12,8 +12,8 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
   // All hooks called first, now prepare data for rendering
   const isValidNode = node && node.nodeType === 'DisplayNode'
   const currentValue = isValidNode ? node.properties.get('currentValue') : 0
-  const label = isValidNode ? node.properties.get('label') || 'Display' : ''
-  const precision = isValidNode ? node.properties.get('precision') || 2 : 2
+  const label = isValidNode ? (node.properties.get('label') ?? 'Display') : ''
+  const precision = isValidNode ? (node.properties.get('precision') ?? 2) : 2
 
   // Ensure we show a meaningful value - use 0 if currentValue is undefined, null, or NaN
   const rawValue =
@@ -28,9 +28,9 @@ const DisplayNodeComponent: React.FC<DisplayNodeComponentProps> = observer(({ no
   }
 
   if (isValidNode) {
-    console.log(
+    /* console.log(
       `📊 DisplayNode ${nodeId} rendering: currentValue=${currentValue}, formattedValue=${formattedValue}, precision=${precision}`
-    )
+    ) */
   }
 
   // Single return with conditional rendering - NO early returns

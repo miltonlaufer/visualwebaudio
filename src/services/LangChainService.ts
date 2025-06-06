@@ -658,9 +658,7 @@ Request: ${message}`
       }
     }
 
-    if (node) {
-      console.log(`Found node for identifier "${identifier}": ${node.data.nodeType} (${node.id})`)
-    } else {
+    if (!node) {
       console.warn(`Could not find node for identifier "${identifier}"`)
     }
 

@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-277%2F277%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-282%2F282%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![Coverage](https://img.shields.io/badge/Coverage-60.4%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -169,6 +169,21 @@ The application includes 21+ working audio examples:
 **Voice Effects** (NEW): **Robot Voice (Ring Mod)**, **Vocoder Voice**, **Voice Harmonizer**, **Voice Pitch Shifter** - Transform your voice with real-time microphone processing
 
 **Synthesizers**: **Vintage Analog Synth** - Classic analog synthesizer with oscillators, filters, and envelopes
+
+## Custom Nodes
+
+The application includes several custom nodes for enhanced functionality:
+
+- **Slider Node**: Interactive slider for controlling values
+- **Button Node**: Clickable button for triggering events
+- **Display Node**: Shows numeric values with customizable precision
+- **Random Node**: Generates random values at specified intervals
+- **Timer Node**: Generates periodic triggers with configurable timing
+- **Sound File Node**: Loads and plays audio files
+- **MIDI Input Node**: Receives MIDI messages from connected devices
+- **MIDI to Frequency Node**: Converts MIDI note numbers to frequencies
+- **Scale to MIDI Node**: Converts scale degrees to MIDI notes based on key and mode
+- **Logic Nodes**: Greater Than, Equals, and Select nodes for conditional logic
 
 ## Contributing
 

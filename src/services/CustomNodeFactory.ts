@@ -78,6 +78,10 @@ class MobXCustomNodeAdapter implements CustomNode {
     } else if (this.mobxNode.nodeType === 'DisplayNode' && inputName === 'input') {
       const numValue = Number(value) || 0
       this.mobxNode.setProperty('currentValue', numValue)
+    } else if (this.mobxNode.nodeType === 'ScaleToMidiNode' && inputName === 'scaleDegree') {
+      const scaleDegree = Number(value) || 0
+      this.mobxNode.setProperty('scaleDegree', scaleDegree)
+      this.mobxNode.updateScaleToMidiOutput()
     }
     // Add more node type handling as needed for testing
   }
@@ -161,15 +165,15 @@ class MobXCustomNodeAdapter implements CustomNode {
 
     const sliderElement = document.createElement('input')
     sliderElement.type = 'range'
-    sliderElement.min = String(this.mobxNode.properties.get('min') || 0)
-    sliderElement.max = String(this.mobxNode.properties.get('max') || 100)
-    sliderElement.step = String(this.mobxNode.properties.get('step') || 1)
-    sliderElement.value = String(this.mobxNode.properties.get('value') || 50)
+    sliderElement.min = String(this.mobxNode.properties.get('min') ?? 0)
+    sliderElement.max = String(this.mobxNode.properties.get('max') ?? 100)
+    sliderElement.step = String(this.mobxNode.properties.get('step') ?? 1)
+    sliderElement.value = String(this.mobxNode.properties.get('value') ?? 50)
     sliderElement.style.cssText = `width: 120px; margin: 0;`
 
     const updateLabel = (): void => {
-      const label = this.mobxNode.properties.get('label') || 'Slider'
-      const value = this.mobxNode.properties.get('value') || 0
+      const label = this.mobxNode.properties.get('label') ?? 'Slider'
+      const value = this.mobxNode.properties.get('value') ?? 0
       labelElement.textContent = `${label}: ${value}`
     }
 
@@ -499,10 +503,10 @@ export class SliderNode extends BaseCustomNode {
 
     this.sliderElement = document.createElement('input')
     this.sliderElement.type = 'range'
-    this.sliderElement.min = String(this.properties.get('min') || 0)
-    this.sliderElement.max = String(this.properties.get('max') || 100)
-    this.sliderElement.step = String(this.properties.get('step') || 1)
-    this.sliderElement.value = String(this.properties.get('value') || 50)
+    this.sliderElement.min = String(this.properties.get('min') ?? 0)
+    this.sliderElement.max = String(this.properties.get('max') ?? 100)
+    this.sliderElement.step = String(this.properties.get('step') ?? 1)
+    this.sliderElement.value = String(this.properties.get('value') ?? 50)
 
     this.sliderElement.style.cssText = `
       width: 120px;
@@ -549,8 +553,8 @@ export class SliderNode extends BaseCustomNode {
   }
 
   private updateLabel(): void {
-    const label = this.properties.get('label') || 'Slider'
-    const value = this.properties.get('value') || 0
+    const label = this.properties.get('label') ?? 'Slider'
+    const value = this.properties.get('value') ?? 0
     if (this.labelElement) {
       this.labelElement.textContent = `${label}: ${value}`
     }
@@ -732,6 +736,96 @@ export class MidiToFreqNode extends BaseCustomNode {
   }
 }
 
+// Scale to MIDI Node Implementation
+export class ScaleToMidiNode extends BaseCustomNode {
+  receiveInput(inputName: string, value: any): void {
+    if (inputName === 'scaleDegree') {
+      const scaleDegree = Number(value) || 0
+      this.properties.set('scaleDegree', scaleDegree)
+      this.updateOutput()
+    }
+  }
+
+  setProperty(name: string, value: any): void {
+    super.setProperty(name, value)
+    if (name === 'scaleDegree' || name === 'key' || name === 'mode') {
+      this.updateOutput()
+    }
+  }
+
+  private updateOutput(): void {
+    const scaleDegree = this.properties.get('scaleDegree') || 0
+    const key = this.properties.get('key') || 'C'
+    const mode = this.properties.get('mode') || 'major'
+
+    const midiNote = this.scaleToMidi(scaleDegree, key, mode)
+    const frequency = this.midiToFrequency(midiNote)
+
+    this.properties.set('midiNote', midiNote)
+    this.properties.set('frequency', frequency)
+    this.outputs.set('midiNote', midiNote)
+    this.outputs.set('frequency', frequency)
+
+    this.notifyConnections('midiNote', midiNote)
+    this.notifyConnections('frequency', frequency)
+  }
+
+  private scaleToMidi(scaleDegree: number, key: string, mode: string): number {
+    // Scale intervals for different modes
+    const SCALE_INTERVALS: Record<string, number[]> = {
+      major: [0, 2, 4, 5, 7, 9, 11],
+      minor: [0, 2, 3, 5, 7, 8, 10],
+      dorian: [0, 2, 3, 5, 7, 9, 10],
+      phrygian: [0, 1, 3, 5, 7, 8, 10],
+      lydian: [0, 2, 4, 6, 7, 9, 11],
+      mixolydian: [0, 2, 4, 5, 7, 9, 10],
+      locrian: [0, 1, 3, 5, 6, 8, 10],
+      pentatonic_major: [0, 2, 4, 7, 9],
+      pentatonic_minor: [0, 3, 5, 7, 10],
+      blues: [0, 3, 5, 6, 7, 10],
+      harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
+      melodic_minor: [0, 2, 3, 5, 7, 9, 11],
+    }
+
+    // MIDI note numbers for each key at octave 4
+    const KEY_TO_MIDI: Record<string, number> = {
+      C: 60,
+      'C#': 61,
+      D: 62,
+      'D#': 63,
+      E: 64,
+      F: 65,
+      'F#': 66,
+      G: 67,
+      'G#': 68,
+      A: 69,
+      'A#': 70,
+      B: 71,
+    }
+
+    const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major
+    const rootMidi = KEY_TO_MIDI[key] || 60
+
+    // Handle negative scale degrees
+    const octaveOffset = Math.floor(scaleDegree / intervals.length)
+    const normalizedDegree =
+      ((scaleDegree % intervals.length) + intervals.length) % intervals.length
+
+    // Get the interval for this scale degree
+    const interval = intervals[normalizedDegree]
+
+    // Calculate final MIDI note
+    const midiNote = rootMidi + interval + octaveOffset * 12
+
+    // Clamp to valid MIDI range (0-127)
+    return Math.max(0, Math.min(127, midiNote))
+  }
+
+  private midiToFrequency(midiNote: number): number {
+    return 440 * Math.pow(2, (midiNote - 69) / 12)
+  }
+}
+
 // Display Node Implementation
 export class DisplayNode extends BaseCustomNode {
   private displayElement?: HTMLDivElement
@@ -812,7 +906,6 @@ export class DisplayNode extends BaseCustomNode {
   }
 
   receiveInput(inputName: string, value: any): void {
-    console.log(`DisplayNode ${this.id} receiveInput: ${inputName} = ${value}`)
     if (inputName === 'input') {
       const numValue = Number(value) || 0
 
@@ -830,7 +923,6 @@ export class DisplayNode extends BaseCustomNode {
 
       // Update the display
       this.updateDisplay()
-      console.log(`DisplayNode ${this.id} updated display to: ${numValue}`)
     }
   }
 
@@ -873,7 +965,6 @@ export class DisplayNode extends BaseCustomNode {
 // Random Node Implementation
 export class RandomNode extends BaseCustomNode {
   private intervalId?: number
-  private displayElement?: HTMLDivElement
   private valueElement?: HTMLSpanElement
   private labelElement?: HTMLSpanElement
   private rateInputElement?: HTMLInputElement
@@ -1006,8 +1097,8 @@ export class RandomNode extends BaseCustomNode {
   }
 
   private generateRandomValue(): number {
-    const min = this.properties.get('min') || 0
-    const max = this.properties.get('max') || 100
+    const min = this.properties.get('min') ?? 0
+    const max = this.properties.get('max') ?? 100
     return Math.random() * (max - min) + min
   }
 
@@ -1021,7 +1112,6 @@ export class RandomNode extends BaseCustomNode {
       this.properties.set('currentValue', newValue)
       this.outputs.set('value', newValue)
       this.updateDisplay()
-      console.log(`RandomNode ${this.id} generated: ${newValue.toFixed(2)}`)
       this.notifyConnections('value', newValue)
     }, intervalMs)
   }
@@ -1069,9 +1159,7 @@ export class SoundFileNode extends BaseCustomNode {
 
     // Important: Restore audio buffer if data exists in properties during construction
     // This is crucial for when nodes are recreated after pause/resume
-    setTimeout(() => {
-      this.restoreAudioBufferFromProperties()
-    }, 50) // Small delay to ensure all properties are set
+    this.restoreAudioBufferFromProperties()
   }
 
   private setupAudioNodes(): void {
@@ -1083,17 +1171,11 @@ export class SoundFileNode extends BaseCustomNode {
     const audioBufferData = this.properties.get('audioBufferData')
     const fileName = this.properties.get('fileName')
 
-    console.log(`SoundFileNode: Attempting to restore audio data...`)
-    console.log(`audioBufferData exists: ${!!audioBufferData}, type: ${typeof audioBufferData}`)
-    console.log(`fileName: ${fileName}`)
-    console.log(`Properties keys: [${Array.from(this.properties.keys()).join(', ')}]`)
-
     if (audioBufferData && fileName) {
       try {
-        console.log(`SoundFileNode: Successfully restored audio buffer for ${fileName}`)
-        console.log(
+        /* console.log(
           `Data length: ${typeof audioBufferData === 'string' ? audioBufferData.length : 'not string'}`
-        )
+        ) */
 
         // Ensure audioBufferData is a string (base64)
         if (typeof audioBufferData !== 'string') {
@@ -1103,16 +1185,10 @@ export class SoundFileNode extends BaseCustomNode {
 
         // Convert base64 to ArrayBuffer and decode
         const arrayBuffer = this.base64ToArrayBuffer(audioBufferData)
-        console.log(`🔄 Converting array buffer of length ${arrayBuffer.byteLength}`)
 
         this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice())
         this.outputs.set('loaded', 1)
         this.notifyConnections('loaded', 1)
-
-        console.log(`SoundFileNode: Successfully restored audio buffer for ${fileName}`)
-        console.log(`   - Duration: ${this.audioBuffer.duration.toFixed(2)}s`)
-        console.log(`   - Sample rate: ${this.audioBuffer.sampleRate}Hz`)
-        console.log(`   - Channels: ${this.audioBuffer.numberOfChannels}`)
       } catch (error) {
         console.error('🚨 SoundFileNode: Error restoring audio buffer:', error)
         this.outputs.set('loaded', 0)
@@ -1123,9 +1199,6 @@ export class SoundFileNode extends BaseCustomNode {
         console.warn('🔄 SoundFileNode: Audio data preserved - user can try reloading')
       }
     } else {
-      console.log(`SoundFileNode: No stored audio data found`)
-      console.log(`   - audioBufferData missing: ${!audioBufferData}`)
-      console.log(`   - fileName missing: ${!fileName}`)
       this.outputs.set('loaded', 0)
       this.notifyConnections('loaded', 0)
     }
@@ -1201,8 +1274,6 @@ export class SoundFileNode extends BaseCustomNode {
       this.audioBuffer = await this.audioContext.decodeAudioData(arrayBuffer.slice())
       this.outputs.set('loaded', 1)
       this.notifyConnections('loaded', 1)
-
-      console.log(`SoundFileNode: Loaded and stored audio file: ${file.name}`)
     } catch (error) {
       console.error('Error loading audio file:', error)
       this.outputs.set('loaded', 0)
@@ -1220,11 +1291,6 @@ export class SoundFileNode extends BaseCustomNode {
   }
 
   trigger(): void {
-    console.log(`SoundFileNode trigger called:`)
-    console.log(`   - audioBuffer exists: ${!!this.audioBuffer}`)
-    console.log(`   - gainNode exists: ${!!this.gainNode}`)
-    console.log(`   - audioContext state: ${this.audioContext.state}`)
-
     if (!this.audioBuffer) {
       console.warn('SoundFileNode: No audio buffer loaded')
       return
@@ -1239,7 +1305,6 @@ export class SoundFileNode extends BaseCustomNode {
 
     // Ensure we have a valid gain node for the current context
     if (!this.gainNode || this.gainNode.context !== this.audioContext) {
-      console.log('SoundFileNode: Recreating gain node for current context')
       this.setupAudioNodes()
     }
 
@@ -1253,7 +1318,6 @@ export class SoundFileNode extends BaseCustomNode {
       this.audioContext
         .resume()
         .then(() => {
-          console.log('SoundFileNode: Audio context resumed, triggering playback')
           this.performTrigger()
         })
         .catch(error => {
@@ -1272,7 +1336,9 @@ export class SoundFileNode extends BaseCustomNode {
         this.bufferSource.stop()
         this.bufferSource.disconnect()
       } catch {
-        console.log('SoundFileNode: Previous buffer source already stopped')
+        console.error(
+          'SoundFileNode: Error stopping previous buffer source. It may not be playing.'
+        )
       }
     }
 
@@ -1290,7 +1356,6 @@ export class SoundFileNode extends BaseCustomNode {
 
     // Start playback
     this.bufferSource.start()
-    console.log('SoundFileNode: Audio playback started')
   }
 
   getAudioOutput(): AudioNode | null {
@@ -1310,15 +1375,13 @@ export class SoundFileNode extends BaseCustomNode {
 
   // Override to handle audio context updates
   updateAudioContext(newAudioContext: AudioContext): void {
-    console.log(
+    /* console.log(
       `🔄 SoundFileNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
-    )
+    ) */
     super.updateAudioContext(newAudioContext)
 
     // Recreate audio nodes with the new context
     this.setupAudioNodes()
-
-    console.log(`SoundFileNode: Audio context updated and nodes recreated`)
   }
 }
 
@@ -1492,8 +1555,6 @@ export class TimerNode extends BaseCustomNode {
     const delay = this.properties.get('delay') || 1000
     const mode = this.properties.get('mode')
 
-    console.log(`TimerNode ${this.id}: Starting timer with ${delay}ms delay, mode: ${mode}`)
-
     // Start with initial delay
     this.timeoutId = window.setTimeout(() => {
       this.fireTrigger()
@@ -1519,8 +1580,6 @@ export class TimerNode extends BaseCustomNode {
       return
     }
 
-    console.log(`TimerNode ${this.id}: Stopping timer`)
-
     if (this.timeoutId) {
       clearTimeout(this.timeoutId)
       this.timeoutId = undefined
@@ -1541,8 +1600,6 @@ export class TimerNode extends BaseCustomNode {
     this.properties.set('count', 0)
     this.outputs.set('count', 0)
 
-    console.log(`TimerNode ${this.id}: Timer reset`)
-
     this.updateDisplay()
 
     // Notify connections of count reset
@@ -1555,24 +1612,18 @@ export class TimerNode extends BaseCustomNode {
     this.outputs.set('trigger', 1)
     this.outputs.set('count', this.triggerCount)
 
-    console.log(`TimerNode ${this.id}: Trigger fired (count: ${this.triggerCount})`)
-
     // Notify connections
     this.notifyConnections('trigger', 1)
     this.notifyConnections('count', this.triggerCount)
 
     this.updateDisplay()
 
-    // Reset trigger output after a brief moment
-    setTimeout(() => {
-      this.outputs.set('trigger', 0)
-      this.notifyConnections('trigger', 0)
-    }, 10)
+    // Reset trigger output immediately
+    this.outputs.set('trigger', 0)
+    this.notifyConnections('trigger', 0)
   }
 
   receiveInput(inputName: string, value: any): void {
-    console.log(`TimerNode ${this.id}: Received input ${inputName} = ${value}`)
-
     if (inputName === 'trigger' && value > 0) {
       if (this.properties.get('startMode') === 'manual') {
         this.startTimer()
@@ -1604,25 +1655,20 @@ export class TimerNode extends BaseCustomNode {
   }
 
   cleanup(): void {
-    console.log(`TimerNode ${this.id}: Starting cleanup...`)
-
     // Only stop timer if we're actually being destroyed, not just recreated
     if (this.timeoutId || this.intervalId) {
-      console.log(`TimerNode ${this.id}: Stopping active timers during cleanup`)
       this.stopTimer()
     }
 
     super.cleanup()
-    console.log(`TimerNode ${this.id}: Cleanup completed`)
   }
 
   // Override to handle audio context updates
   updateAudioContext(newAudioContext: AudioContext): void {
-    console.log(
+    /* console.log(
       `🔄 TimerNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
-    )
+    ) */
     super.updateAudioContext(newAudioContext)
-    console.log(`TimerNode: Audio context updated`)
   }
 }
 
@@ -1642,8 +1688,6 @@ export class CustomNodeFactory {
 
   // Create a custom node using MobX store
   createNode(id: string, type: string, metadata: NodeMetadata): CustomNode {
-    console.log(`🏭 MobX CustomNodeFactory: Creating ${type} with id ${id}`)
-
     // Set audio context on the store for SoundFileNode functionality
     customNodeStore.setAudioContext(this.audioContext)
 
@@ -1664,6 +1708,7 @@ export class CustomNodeFactory {
       'SelectNode',
       'MidiInputNode',
       'MidiToFreqNode',
+      'ScaleToMidiNode',
       'DisplayNode',
       'RandomNode',
       'SoundFileNode',
@@ -1682,6 +1727,7 @@ export class CustomNodeFactory {
       'SelectNode',
       'MidiInputNode',
       'MidiToFreqNode',
+      'ScaleToMidiNode',
       'DisplayNode',
       'RandomNode',
       'SoundFileNode',

@@ -55,7 +55,6 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
     if (isValidNode) {
       const file = e.target.files?.[0]
       if (file && node.loadAudioFile) {
-        console.log(`SoundFileNode ${nodeId}: Loading file ${file.name}`)
         await node.loadAudioFile(file)
       }
     }
@@ -63,7 +62,6 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
 
   const handlePlay = () => {
     if (isValidNode) {
-      console.log(`SoundFileNode ${nodeId}: Playing`)
       node.performSoundFileTrigger()
     }
   }

@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { customNodeStore } from '~/stores/CustomNodeStore'
 import { projectOperations, type SavedProject } from '~/utils/database'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
@@ -94,12 +95,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
   const getCurrentProjectData = () => {
     const snapshot = getSnapshot(store)
+    const customNodeSnapshot = getSnapshot(customNodeStore) as any
     return JSON.stringify({
       version: '1.0.0',
       timestamp: new Date().toISOString(),
       visualNodes: snapshot.visualNodes,
       visualEdges: snapshot.visualEdges,
       audioConnections: snapshot.audioConnections,
+      customNodes: customNodeSnapshot.nodes,
     })
   }
 
@@ -198,7 +201,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(true)
 
         try {
-          // Apply the imported data
+          // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
             visualNodes: importData.visualNodes,
@@ -207,6 +210,20 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           }
 
           applySnapshot(store, newSnapshot)
+
+          // Apply CustomNodeStore snapshot if available
+          if (importData.customNodes) {
+            const customNodeSnapshot = {
+              nodes: importData.customNodes,
+            }
+            applySnapshot(customNodeStore, customNodeSnapshot)
+          }
+
+          // Initialize reactions after applying snapshot
+          store.init()
+
+          // Force React re-render by incrementing graph change counter
+          store.forceRerender()
 
           // Set current project info
           setCurrentProjectId(project.id || null)
@@ -218,7 +235,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           // Mark project as unmodified after successful load
           store.setProjectModified(false)
 
-          // Close the modal after successful load
+          // Close the modal after a successful load
           onClose()
         } finally {
           // Always clear the loading flag
@@ -346,7 +363,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(true)
 
         try {
-          // Apply the imported data
+          // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
             visualNodes: importData.visualNodes,
@@ -355,6 +372,20 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           }
 
           applySnapshot(store, newSnapshot)
+
+          // Apply CustomNodeStore snapshot if available
+          if (importData.customNodes) {
+            const customNodeSnapshot = {
+              nodes: importData.customNodes,
+            }
+            applySnapshot(customNodeStore, customNodeSnapshot)
+          }
+
+          // Initialize reactions after applying snapshot
+          store.init()
+
+          // Force React re-render by incrementing graph change counter
+          store.forceRerender()
 
           // Clear current project info since this is an import
           setCurrentProjectId(null)

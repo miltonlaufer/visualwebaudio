@@ -34,14 +34,13 @@ const RandomNodeComponent: React.FC<RandomNodeComponentProps> = observer(({ node
 
   // All hooks called first, now prepare data for rendering
   const isValidNode = node && node.nodeType === 'RandomNode'
-  const rate = isValidNode ? node.properties.get('rate') || 1 : 1
-  const min = isValidNode ? node.properties.get('min') || 0 : 0
-  const max = isValidNode ? node.properties.get('max') || 100 : 100
+  const rate = isValidNode ? (node.properties.get('rate') ?? 1) : 1
+  const min = isValidNode ? (node.properties.get('min') ?? 0) : 0
+  const max = isValidNode ? (node.properties.get('max') ?? 100) : 100
 
   const handleRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {
       const newRate = parseFloat(e.target.value)
-      console.log(`RandomNode ${nodeId}: Rate changed to ${newRate}`)
       node.setProperty('rate', newRate)
     }
   }

@@ -38,7 +38,6 @@ const ButtonNodeComponent: React.FC<ButtonNodeComponentProps> = observer(({ node
 
   const handleClick = () => {
     if (isValidNode) {
-      console.log(`🔘 ButtonNode ${nodeId}: Triggered`)
       node.trigger()
     }
   }
