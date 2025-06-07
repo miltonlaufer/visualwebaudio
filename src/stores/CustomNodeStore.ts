@@ -88,6 +88,21 @@ const CustomNodeState = types
           return
         }
 
+        // Check if connection already exists to prevent duplicates
+        const existingConnection = self.inputConnections.find(
+          conn =>
+            conn.sourceNodeId === sourceNodeId &&
+            conn.sourceOutput === sourceOutput &&
+            conn.targetInput === targetInput
+        )
+
+        if (existingConnection) {
+          /* console.log(
+            `🔗 Connection already exists: ${sourceNode.nodeType}(${sourceNodeId}).${sourceOutput} → ${self.nodeType}(${self.id}).${targetInput}`
+          ) */
+          return
+        }
+
         /* console.log(
           `🔗 Creating reactive connection: ${sourceNode.nodeType}(${sourceNodeId}).${sourceOutput} → ${self.nodeType}(${self.id}).${targetInput}`
         ) */

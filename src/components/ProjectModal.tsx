@@ -7,6 +7,44 @@ import { customNodeStore } from '~/stores/CustomNodeStore'
 import { projectOperations, type SavedProject } from '~/utils/database'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
+// Deduplication functions for cleaning up corrupted project files
+const deduplicateConnections = (connections: any[]) => {
+  if (!connections || !Array.isArray(connections)) return []
+
+  const seen = new Set<string>()
+  return connections.filter(conn => {
+    const key = `${conn.sourceNodeId}-${conn.targetNodeId}-${conn.sourceOutput}-${conn.targetInput}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
+}
+
+const deduplicateCustomNodeConnections = (customNodes: any) => {
+  if (!customNodes || typeof customNodes !== 'object') return customNodes
+
+  const deduplicatedNodes = { ...customNodes }
+
+  Object.keys(deduplicatedNodes).forEach(nodeId => {
+    const node = deduplicatedNodes[nodeId]
+    if (node.inputConnections && Array.isArray(node.inputConnections)) {
+      const seen = new Set<string>()
+      node.inputConnections = node.inputConnections.filter((conn: any) => {
+        const key = `${conn.sourceNodeId}-${conn.sourceOutput}-${conn.targetInput}`
+        if (seen.has(key)) {
+          return false
+        }
+        seen.add(key)
+        return true
+      })
+    }
+  })
+
+  return deduplicatedNodes
+}
+
 interface ProjectModalProps {
   isOpen: boolean
   onClose: () => void
@@ -201,20 +239,24 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(true)
 
         try {
+          // Deduplicate connections before applying to prevent audio corruption
+          const deduplicatedAudioConnections = deduplicateConnections(importData.audioConnections)
+          const deduplicatedCustomNodes = deduplicateCustomNodeConnections(importData.customNodes)
+
           // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
             visualNodes: importData.visualNodes,
             visualEdges: importData.visualEdges,
-            audioConnections: importData.audioConnections,
+            audioConnections: deduplicatedAudioConnections,
           }
 
           applySnapshot(store, newSnapshot)
 
           // Apply CustomNodeStore snapshot if available
-          if (importData.customNodes) {
+          if (deduplicatedCustomNodes) {
             const customNodeSnapshot = {
-              nodes: importData.customNodes,
+              nodes: deduplicatedCustomNodes,
             }
             applySnapshot(customNodeStore, customNodeSnapshot)
           }
@@ -363,20 +405,24 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         store.setLoadingProject(true)
 
         try {
+          // Deduplicate connections before applying to prevent audio corruption
+          const deduplicatedAudioConnections = deduplicateConnections(importData.audioConnections)
+          const deduplicatedCustomNodes = deduplicateCustomNodeConnections(importData.customNodes)
+
           // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
             visualNodes: importData.visualNodes,
             visualEdges: importData.visualEdges,
-            audioConnections: importData.audioConnections,
+            audioConnections: deduplicatedAudioConnections,
           }
 
           applySnapshot(store, newSnapshot)
 
           // Apply CustomNodeStore snapshot if available
-          if (importData.customNodes) {
+          if (deduplicatedCustomNodes) {
             const customNodeSnapshot = {
-              nodes: importData.customNodes,
+              nodes: deduplicatedCustomNodes,
             }
             applySnapshot(customNodeStore, customNodeSnapshot)
           }

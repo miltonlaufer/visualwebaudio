@@ -114,14 +114,16 @@ export const VisualNodeModel = types
     // Ensure audio node exists (idempotent)
     ensureAudioNodeExists() {
       // Check if audio node already exists in the store
-      if (self.audioNodeCreated || self.root.audioNodes.has(self.id)) {
+      if (self.audioNodeCreated || (self.root && self.root.audioNodes.has(self.id))) {
         self.audioNodeCreated = true
         return
       }
 
       try {
-        self.root.createAudioNode(self.id, self.data.nodeType)
-        self.audioNodeCreated = true
+        if (self.root && self.root.createAudioNode) {
+          self.root.createAudioNode(self.id, self.data.nodeType)
+          self.audioNodeCreated = true
+        }
       } catch (error) {
         console.error(`[VisualNode] Error creating audio node for ${self.id}:`, error)
       }
@@ -139,13 +141,23 @@ export const VisualNodeModel = types
       }
 
       try {
-        const root = getRoot(self) as any
-        if (root && root.cleanupAudioNode) {
-          root.cleanupAudioNode(self.id)
+        if (self.root && self.root.cleanupAudioNode) {
+          self.root.cleanupAudioNode(self.id)
           self.audioNodeCreated = false
         }
       } catch (error) {
-        console.error(`[VisualNode] Error cleaning up audio node ${self.id}:`, error)
+        // Check if the error is due to node being detached from MST tree
+        const errorMessage = error instanceof Error ? error.message : String(error)
+        if (
+          errorMessage.includes('Failed to find the environment') ||
+          errorMessage.includes('no longer part of a state tree')
+        ) {
+          // Node was detached from MST tree during cleanup, this is expected
+          // Just mark as cleaned up and continue
+          self.audioNodeCreated = false
+        } else {
+          console.error(`[VisualNode] Error cleaning up audio node ${self.id}:`, error)
+        }
       }
     },
 
@@ -182,9 +194,8 @@ export const VisualNodeModel = types
           if (!props) return
 
           try {
-            const root = getRoot(self) as any
-            if (root && root.syncAudioNodeProperties && self.audioNodeCreated) {
-              root.syncAudioNodeProperties(self.id, props)
+            if (self.root && self.root.syncAudioNodeProperties && self.audioNodeCreated) {
+              self.root.syncAudioNodeProperties(self.id, props)
             }
           } catch (error) {
             // Ignore errors if node is being detached

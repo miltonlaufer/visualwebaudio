@@ -1,5 +1,43 @@
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
+// Deduplication functions for cleaning up corrupted project files
+const deduplicateConnections = (connections: any[]) => {
+  if (!connections || !Array.isArray(connections)) return []
+
+  const seen = new Set<string>()
+  return connections.filter(conn => {
+    const key = `${conn.sourceNodeId}-${conn.targetNodeId}-${conn.sourceOutput}-${conn.targetInput}`
+    if (seen.has(key)) {
+      return false
+    }
+    seen.add(key)
+    return true
+  })
+}
+
+const deduplicateCustomNodeConnections = (customNodes: any) => {
+  if (!customNodes || typeof customNodes !== 'object') return customNodes
+
+  const deduplicatedNodes = { ...customNodes }
+
+  Object.keys(deduplicatedNodes).forEach(nodeId => {
+    const node = deduplicatedNodes[nodeId]
+    if (node.inputConnections && Array.isArray(node.inputConnections)) {
+      const seen = new Set<string>()
+      node.inputConnections = node.inputConnections.filter((conn: any) => {
+        const key = `${conn.sourceNodeId}-${conn.sourceOutput}-${conn.targetInput}`
+        if (seen.has(key)) {
+          return false
+        }
+        seen.add(key)
+        return true
+      })
+    }
+  })
+
+  return deduplicatedNodes
+}
+
 export interface Example {
   id: string
   name: string
@@ -249,9 +287,6 @@ export const useExamples = () => {
       name: 'MIDI Delay Effect',
       description: 'Complex delay effect with MIDI-controlled oscillator and feedback loops',
       create: createExample(async () => {
-        // Clear existing nodes first
-        store.clearAllNodes()
-
         // Load the complete project data
         const projectData = {
           version: '1.0.0',
@@ -1024,9 +1059,16 @@ export const useExamples = () => {
         // Apply the project snapshot to load all nodes and connections
         store.setLoadingProject(true)
         try {
+          // Deduplicate connections before applying to prevent audio corruption
+          const deduplicatedProjectData = {
+            ...projectData,
+            audioConnections: deduplicateConnections(projectData.audioConnections),
+            customNodes: deduplicateCustomNodeConnections(projectData.customNodes),
+          }
+
           // Apply the snapshot using MST's applySnapshot
           const { applySnapshot } = await import('mobx-state-tree')
-          applySnapshot(store, projectData)
+          applySnapshot(store, deduplicatedProjectData)
 
           // Initialize reactions after applying snapshot
           store.init()
@@ -1082,7 +1124,7 @@ export const useExamples = () => {
         store.addEdge(gainId, destId, 'output', 'input')
       }),
     },
-    {
+    /* {
       id: 'microphone-input',
       name: 'Microphone Input with Delay',
       description: 'Live microphone input with delay and feedback',
@@ -1116,7 +1158,7 @@ export const useExamples = () => {
           )
         }
       }),
-    },
+    }, */
     {
       id: 'sound-file-player',
       name: 'Sound File Player',
@@ -1160,7 +1202,7 @@ export const useExamples = () => {
         }
       }),
     },
-    {
+    /* {
       id: 'auto-file-player',
       name: 'Auto File Player',
       description: 'Timer-triggered automatic sound file playback with sample audio',
@@ -1205,7 +1247,7 @@ export const useExamples = () => {
           console.error('Auto File Player: Failed to load sample audio:', error)
         }
       }),
-    },
+    }, */
     {
       id: 'delay-effect',
       name: 'Delay Effect',
@@ -1673,7 +1715,7 @@ export const useExamples = () => {
         store.addEdge(mixerId, destId, 'output', 'input')
       }),
     },
-    {
+    /*  {
       id: 'microphone-reverb',
       name: 'Microphone Reverb',
       description: 'Live microphone input with convolution reverb effect',
@@ -1725,7 +1767,7 @@ export const useExamples = () => {
           )
         }
       }),
-    },
+    }, */
     {
       id: 'stereo-effects',
       name: 'Stereo Effects',
@@ -1767,7 +1809,7 @@ export const useExamples = () => {
         store.addEdge(mergerId, destId, 'output', 'input')
       }),
     },
-    {
+    /* {
       id: 'robot-voice-ring-mod',
       name: 'Robot Voice (Ring Mod)',
       description: 'Transform your voice into a robot using ring modulation',
@@ -2042,8 +2084,8 @@ export const useExamples = () => {
           console.error('Failed to create voice pitch shifter example:', error)
           alert('Microphone access denied. Please allow microphone access and try again.')
         }
-      }),
-    },
+      }), 
+    },*/
   ]
 
   return { examples }

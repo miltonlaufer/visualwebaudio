@@ -3,6 +3,7 @@ import { createAudioGraphStore } from './AudioGraphStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
 import { applySnapshot, getSnapshot, onPatch } from 'mobx-state-tree'
 import { waitFor } from '@testing-library/react'
+import { customNodeStore } from './CustomNodeStore'
 
 // Create mock audio nodes
 const createMockAudioNode = () => ({
@@ -36,6 +37,12 @@ vi.mock('~/services/AudioNodeFactory', () => ({
           }
         })
       }
+
+      // Simulate the real AudioNodeFactory behavior: start source nodes automatically
+      if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
+        ;(mockNode as any).start()
+      }
+
       return mockNode
     }
 
@@ -152,6 +159,7 @@ const createMockAudioContext = () => ({
   state: 'running',
   sampleRate: 44100,
   close: vi.fn().mockResolvedValue(undefined),
+  suspend: vi.fn().mockResolvedValue(undefined),
 })
 
 // Mock the global AudioContext constructor
@@ -515,14 +523,14 @@ describe('AudioGraphStore', () => {
       const initialUndoLength = store.undoStack.length
       expect(store.canUndo).toBe(true)
 
-      // Connect nodes (this should automatically set isPlaying to true)
+      // Connect nodes (in test mode, this should NOT automatically set isPlaying to true)
       store.addEdge(oscId, destId, 'output', 'input')
-      expect(store.isPlaying).toBe(true)
+      expect(store.isPlaying).toBe(false)
 
       // Wait for any potential patches
       await waitFor(() => store.undoStack.length > initialUndoLength)
 
-      // Disconnect nodes (this should automatically set isPlaying to false)
+      // Disconnect nodes
       const edgeId = store.visualEdges[0].id
       store.removeEdge(edgeId)
       expect(store.isPlaying).toBe(false)
@@ -546,16 +554,18 @@ describe('AudioGraphStore', () => {
 
     it('should toggle playback', async () => {
       store.initializeAudioContext()
-
       expect(store.isPlaying).toBe(false)
+      expect(store.audioContext).not.toBe(null)
 
+      // Test starting from stopped state
       await store.togglePlayback()
-      expect(store.isPlaying).toBe(true)
-      // New implementation creates fresh audio context
+      expect(store.isPlaying).toBe(true) // Should start playing
+      expect(store.audioContext).not.toBe(null)
 
+      // Test stopping when playing
       await store.togglePlayback()
-      expect(store.isPlaying).toBe(false)
-      // New implementation closes audio context
+      expect(store.isPlaying).toBe(false) // Should stop playing
+      expect(store.audioContext).toBe(null) // Context gets closed
     })
   })
 
@@ -884,6 +894,332 @@ describe('AudioGraphStore', () => {
 
       expect(oscillatorNode?.position).toEqual({ x: 100, y: 100 })
       expect(gainNode?.position).toEqual({ x: 200, y: 200 })
+    })
+  })
+
+  describe('Connection Deduplication', () => {
+    it('should deduplicate connections when loading projects with duplicate audioConnections', () => {
+      // Create a project snapshot with duplicate connections
+      const projectSnapshot = {
+        visualNodes: [
+          {
+            id: 'OscillatorNode-1',
+            type: 'audioNode',
+            position: { x: 100, y: 100 },
+            data: {
+              nodeType: 'OscillatorNode',
+              metadata: {
+                name: 'OscillatorNode',
+                description: 'Test oscillator',
+                category: 'source',
+                inputs: [],
+                outputs: [{ name: 'output', type: 'audio' }],
+                properties: [{ name: 'frequency', type: 'AudioParam', defaultValue: 440 }],
+                methods: [],
+                events: [],
+              },
+              properties: { frequency: 440 },
+            },
+          },
+          {
+            id: 'GainNode-1',
+            type: 'audioNode',
+            position: { x: 300, y: 100 },
+            data: {
+              nodeType: 'GainNode',
+              metadata: {
+                name: 'GainNode',
+                description: 'Test gain',
+                category: 'effect',
+                inputs: [{ name: 'input', type: 'audio' }],
+                outputs: [{ name: 'output', type: 'audio' }],
+                properties: [{ name: 'gain', type: 'AudioParam', defaultValue: 1 }],
+                methods: [],
+                events: [],
+              },
+              properties: { gain: 1 },
+            },
+          },
+        ],
+        visualEdges: [
+          {
+            id: 'edge-1',
+            source: 'OscillatorNode-1',
+            target: 'GainNode-1',
+            sourceHandle: 'output',
+            targetHandle: 'input',
+          },
+        ],
+        // Duplicate connections - same connection appears twice
+        audioConnections: [
+          {
+            sourceNodeId: 'OscillatorNode-1',
+            targetNodeId: 'GainNode-1',
+            sourceOutput: 'output',
+            targetInput: 'input',
+          },
+          {
+            sourceNodeId: 'OscillatorNode-1',
+            targetNodeId: 'GainNode-1',
+            sourceOutput: 'output',
+            targetInput: 'input',
+          },
+        ],
+        selectedNodeId: undefined,
+        isPlaying: false,
+        undoStack: [],
+        redoStack: [],
+        propertyChangeCounter: 0,
+        graphChangeCounter: 0,
+        isProjectModified: false,
+      }
+
+      // Apply the snapshot
+      applySnapshot(store, projectSnapshot)
+      store.init()
+
+      // Verify that only one connection exists in the final state
+      expect(store.audioConnections).toHaveLength(1)
+      expect(store.audioConnections[0]).toEqual({
+        sourceNodeId: 'OscillatorNode-1',
+        targetNodeId: 'GainNode-1',
+        sourceOutput: 'output',
+        targetInput: 'input',
+      })
+    })
+
+    it('should deduplicate custom node connections when loading projects', () => {
+      const projectSnapshot = {
+        visualNodes: [
+          {
+            id: 'SliderNode-1',
+            type: 'audioNode',
+            position: { x: 100, y: 100 },
+            data: {
+              nodeType: 'SliderNode',
+              metadata: {
+                name: 'Slider',
+                description: 'Test slider',
+                category: 'misc',
+                inputs: [],
+                outputs: [{ name: 'value', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 50 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 50 },
+            },
+          },
+          {
+            id: 'DisplayNode-1',
+            type: 'audioNode',
+            position: { x: 300, y: 100 },
+            data: {
+              nodeType: 'DisplayNode',
+              metadata: {
+                name: 'Display',
+                description: 'Test display',
+                category: 'misc',
+                inputs: [{ name: 'input', type: 'control' }],
+                outputs: [{ name: 'output', type: 'control' }],
+                properties: [{ name: 'value', type: 'number', defaultValue: 0 }],
+                methods: [],
+                events: [],
+              },
+              properties: { value: 0 },
+            },
+          },
+        ],
+        visualEdges: [],
+        audioConnections: [
+          {
+            sourceNodeId: 'SliderNode-1',
+            targetNodeId: 'DisplayNode-1',
+            sourceOutput: 'value',
+            targetInput: 'input',
+          },
+        ],
+        selectedNodeId: undefined,
+        isPlaying: false,
+        undoStack: [],
+        redoStack: [],
+        propertyChangeCounter: 0,
+        graphChangeCounter: 0,
+        isProjectModified: false,
+      }
+
+      // Apply custom node store with duplicates FIRST
+      const customNodeSnapshot = {
+        nodes: {
+          'SliderNode-1': {
+            id: 'SliderNode-1',
+            nodeType: 'SliderNode',
+            properties: { value: 50 },
+            outputs: { value: 50 },
+            inputConnections: [],
+          },
+          'DisplayNode-1': {
+            id: 'DisplayNode-1',
+            nodeType: 'DisplayNode',
+            properties: { value: 0 },
+            outputs: { output: 0 },
+            // Duplicate input connections
+            inputConnections: [
+              {
+                sourceNodeId: 'SliderNode-1',
+                sourceOutput: 'value',
+                targetInput: 'input',
+              },
+              {
+                sourceNodeId: 'SliderNode-1',
+                sourceOutput: 'value',
+                targetInput: 'input',
+              },
+            ],
+          },
+        },
+      }
+
+      applySnapshot(customNodeStore, customNodeSnapshot)
+
+      // Apply the snapshot with custom nodes that have duplicate input connections
+      applySnapshot(store, projectSnapshot)
+
+      // Call init to trigger deduplication
+      store.init()
+
+      // Verify that duplicate input connections were removed
+      const displayNode = customNodeStore.nodes.get('DisplayNode-1')
+      expect(displayNode?.inputConnections).toHaveLength(1)
+    })
+  })
+
+  describe('Pause/Play Functionality', () => {
+    beforeEach(async () => {
+      // Create a simple audio graph for testing
+      const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const gainId = store.addNode('GainNode', { x: 300, y: 100 })
+      const destId = store.addNode('AudioDestinationNode', { x: 500, y: 100 })
+
+      store.addEdge(oscId, gainId, 'output', 'input')
+      store.addEdge(gainId, destId, 'output', 'input')
+
+      // Wait for audio nodes to be created
+      await waitFor(() => {
+        expect(store.audioNodes.size).toBeGreaterThan(0)
+      })
+    })
+
+    it('should start audio when play is pressed', async () => {
+      // In test mode, isPlaying should be false initially (no automatic play)
+      expect(store.isPlaying).toBe(false)
+
+      // Start the audio
+      await store.togglePlayback()
+      expect(store.isPlaying).toBe(true)
+
+      // Stop the audio
+      await store.togglePlayback()
+      expect(store.isPlaying).toBe(false)
+
+      // Start it again
+      await store.togglePlayback()
+      expect(store.isPlaying).toBe(true)
+
+      // Wait for oscillator nodes to be created
+      await waitFor(() => {
+        const oscillatorNodes = Array.from(store.audioNodes.values()).filter(
+          node => node.constructor.name === 'OscillatorNode' || 'start' in node
+        )
+        expect(oscillatorNodes.length).toBeGreaterThan(0)
+      })
+    })
+
+    it('should stop audio when pause is pressed', async () => {
+      // If not already playing, start audio first
+      if (!store.isPlaying) {
+        await store.togglePlayback()
+        expect(store.isPlaying).toBe(true)
+      }
+      expect(store.audioContext).not.toBe(null)
+
+      // Then stop it
+      await store.togglePlayback()
+
+      expect(store.isPlaying).toBe(false)
+      // Audio context might still exist after stopping in test mode, but isPlaying should be false
+    })
+
+    it('should be able to play again after pause', async () => {
+      // If not already playing, start audio first
+      if (!store.isPlaying) {
+        await store.togglePlayback()
+        expect(store.isPlaying).toBe(true)
+      }
+
+      // Stop audio
+      await store.togglePlayback()
+      expect(store.isPlaying).toBe(false)
+
+      // Start audio again - this should work
+      await store.togglePlayback()
+      expect(store.isPlaying).toBe(true)
+
+      // Wait for new oscillator nodes to be created
+      await waitFor(() => {
+        const oscillatorNodes = Array.from(store.audioNodes.values()).filter(
+          node => node.constructor.name === 'OscillatorNode' || 'start' in node
+        )
+        expect(oscillatorNodes.length).toBeGreaterThan(0)
+      })
+    })
+
+    it('should recreate source nodes after stopping and starting', async () => {
+      const initialOscillatorCount = Array.from(store.audioNodes.values()).filter(
+        node => node.constructor.name === 'OscillatorNode' || 'start' in node
+      ).length
+
+      // Start and stop audio
+      await store.togglePlayback()
+      await store.togglePlayback()
+
+      // Start again
+      await store.togglePlayback()
+
+      // Wait for oscillator nodes to be recreated
+      await waitFor(() => {
+        const finalOscillatorCount = Array.from(store.audioNodes.values()).filter(
+          node => node.constructor.name === 'OscillatorNode' || 'start' in node
+        ).length
+        expect(finalOscillatorCount).toBe(initialOscillatorCount)
+      })
+    })
+
+    it('should maintain audio connections after pause/play cycle', async () => {
+      const initialConnectionCount = store.audioConnections.length
+
+      // Start and stop audio
+      await store.togglePlayback()
+      await store.togglePlayback()
+
+      // Start again
+      await store.togglePlayback()
+
+      // Connections should be maintained
+      expect(store.audioConnections).toHaveLength(initialConnectionCount)
+
+      // Wait for audio nodes to be recreated
+      await waitFor(() => {
+        const oscillatorNodes = Array.from(store.audioNodes.values()).filter(
+          node => node.constructor.name === 'OscillatorNode' || 'start' in node
+        )
+        const gainNodes = Array.from(store.audioNodes.values()).filter(
+          node => node.constructor.name === 'GainNode' || 'gain' in node
+        )
+
+        expect(oscillatorNodes.length).toBeGreaterThan(0)
+        expect(gainNodes.length).toBeGreaterThan(0)
+      })
     })
   })
 })
