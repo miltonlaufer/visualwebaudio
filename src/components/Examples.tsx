@@ -1,43 +1,5 @@
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
-// Deduplication functions for cleaning up corrupted project files
-const deduplicateConnections = (connections: any[]) => {
-  if (!connections || !Array.isArray(connections)) return []
-
-  const seen = new Set<string>()
-  return connections.filter(conn => {
-    const key = `${conn.sourceNodeId}-${conn.targetNodeId}-${conn.sourceOutput}-${conn.targetInput}`
-    if (seen.has(key)) {
-      return false
-    }
-    seen.add(key)
-    return true
-  })
-}
-
-const deduplicateCustomNodeConnections = (customNodes: any) => {
-  if (!customNodes || typeof customNodes !== 'object') return customNodes
-
-  const deduplicatedNodes = { ...customNodes }
-
-  Object.keys(deduplicatedNodes).forEach(nodeId => {
-    const node = deduplicatedNodes[nodeId]
-    if (node.inputConnections && Array.isArray(node.inputConnections)) {
-      const seen = new Set<string>()
-      node.inputConnections = node.inputConnections.filter((conn: any) => {
-        const key = `${conn.sourceNodeId}-${conn.sourceOutput}-${conn.targetInput}`
-        if (seen.has(key)) {
-          return false
-        }
-        seen.add(key)
-        return true
-      })
-    }
-  })
-
-  return deduplicatedNodes
-}
-
 export interface Example {
   id: string
   name: string
@@ -283,43 +245,41 @@ export const useExamples = () => {
       name: 'MIDI Delay Effect',
       description: 'Complex delay effect with MIDI-controlled oscillator and feedback loops',
       create: createExample(async () => {
-       
-          // Fallback: create a simpler version manually
-          const sliderId = store.addNode('SliderNode', { x: 385, y: 261 })
-          const displayId = store.addNode('DisplayNode', { x: 150, y: 263 })
-          const midiToFreqId = store.addNode('MidiToFreqNode', { x: 117, y: 71 })
-          const freqDisplayId = store.addNode('DisplayNode', { x: 331, y: 58 })
-          const oscId = store.addNode('OscillatorNode', { x: 543, y: -28 })
-          const gainId = store.addNode('GainNode', { x: 785, y: -20 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
-          const delayId = store.addNode('DelayNode', { x: 1025, y: 200 })
-          const feedbackId = store.addNode('GainNode', { x: 800, y: 200 })
+        // Fallback: create a simpler version manually
+        const sliderId = store.addNode('SliderNode', { x: 385, y: 261 })
+        const displayId = store.addNode('DisplayNode', { x: 150, y: 263 })
+        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 117, y: 71 })
+        const freqDisplayId = store.addNode('DisplayNode', { x: 331, y: 58 })
+        const oscId = store.addNode('OscillatorNode', { x: 543, y: -28 })
+        const gainId = store.addNode('GainNode', { x: 785, y: -20 })
+        const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
+        const delayId = store.addNode('DelayNode', { x: 1025, y: 200 })
+        const feedbackId = store.addNode('GainNode', { x: 800, y: 200 })
 
+        // Configure nodes with labels
+        store.updateNodeProperty(sliderId, 'min', 48)
+        store.updateNodeProperty(sliderId, 'max', 84)
+        store.updateNodeProperty(sliderId, 'value', 58)
+        store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
+        store.updateNodeProperty(displayId, 'label', 'MIDI Value')
+        store.updateNodeProperty(freqDisplayId, 'label', 'Frequency (Hz)')
+        store.updateNodeProperty(oscId, 'type', 'sawtooth')
+        store.updateNodeProperty(gainId, 'gain', 0.61)
+        // Vintage delay with feedback
+        store.updateNodeProperty(delayId, 'delayTime', 0.7)
+        store.updateNodeProperty(feedbackId, 'gain', 0.4) // Moderate feedback
+        // Create connections
+        store.addEdge(sliderId, displayId, 'value', 'input')
+        store.addEdge(displayId, midiToFreqId, 'output', 'midiNote')
+        store.addEdge(midiToFreqId, freqDisplayId, 'frequency', 'input')
+        store.addEdge(freqDisplayId, oscId, 'output', 'frequency')
+        store.addEdge(oscId, gainId, 'output', 'input')
+        store.addEdge(gainId, destId, 'output', 'input')
+        store.addEdge(gainId, delayId, 'output', 'input')
 
-          // Configure nodes with labels
-          store.updateNodeProperty(sliderId, 'min', 48)
-          store.updateNodeProperty(sliderId, 'max', 84)
-          store.updateNodeProperty(sliderId, 'value', 58)
-          store.updateNodeProperty(sliderId, 'label', 'MIDI Note')
-          store.updateNodeProperty(displayId, 'label', 'MIDI Value')
-          store.updateNodeProperty(freqDisplayId, 'label', 'Frequency (Hz)')
-          store.updateNodeProperty(oscId, 'type', 'sawtooth')
-          store.updateNodeProperty(gainId, 'gain', 0.61)
-       // Vintage delay
-       store.updateNodeProperty(delayId, 'delayTime', 0.7)
-       store.updateNodeProperty(feedbackId, 'gain', 0.4) // Moderate feedback
-          // Create connections
-          store.addEdge(sliderId, displayId, 'value', 'input')
-          store.addEdge(displayId, midiToFreqId, 'output', 'midiNote')
-          store.addEdge(midiToFreqId, freqDisplayId, 'frequency', 'input')
-          store.addEdge(freqDisplayId, oscId, 'output', 'frequency')
-          store.addEdge(oscId, gainId, 'output', 'input')
-          store.addEdge(gainId, destId, 'output', 'input')
-          store.addEdge(gainId, delayId, 'output', 'input')
-
-          store.addEdge(delayId, feedbackId, 'output', 'input')
-          store.addEdge(feedbackId, delayId, 'output', 'input')
-          store.addEdge(delayId, destId, 'output', 'input')
+        store.addEdge(delayId, feedbackId, 'output', 'input')
+        store.addEdge(feedbackId, delayId, 'output', 'input')
+        store.addEdge(delayId, destId, 'output', 'input')
       }),
     },
     {
@@ -979,7 +939,7 @@ export const useExamples = () => {
           )
         }
       }),
-    }, 
+    },
     {
       id: 'stereo-effects',
       name: 'Stereo Effects',
@@ -1296,7 +1256,7 @@ export const useExamples = () => {
           console.error('Failed to create voice pitch shifter example:', error)
           alert('Microphone access denied. Please allow microphone access and try again.')
         }
-      }), 
+      }),
     },
   ]
 
