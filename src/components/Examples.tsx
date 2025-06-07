@@ -1124,18 +1124,18 @@ export const useExamples = () => {
         store.addEdge(gainId, destId, 'output', 'input')
       }),
     },
-    /* {
+    {
       id: 'microphone-input',
       name: 'Microphone Input with Delay',
       description: 'Live microphone input with delay and feedback',
       create: createExample(async () => {
         try {
           // Use the store's microphone input action which handles permissions
-          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
           const micGainId = store.addNode('GainNode', { x: 350, y: 150 })
           const delayId = store.addNode('DelayNode', { x: 650, y: 150 })
           const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
           const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
+          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -1158,7 +1158,7 @@ export const useExamples = () => {
           )
         }
       }),
-    }, */
+    },
     {
       id: 'sound-file-player',
       name: 'Sound File Player',
@@ -1715,14 +1715,12 @@ export const useExamples = () => {
         store.addEdge(mixerId, destId, 'output', 'input')
       }),
     },
-    /*  {
+    {
       id: 'microphone-reverb',
       name: 'Microphone Reverb',
       description: 'Live microphone input with convolution reverb effect',
       create: createExample(async () => {
         try {
-          // Use the store's microphone input action which handles permissions
-          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
           const micGainId = store.addNode('GainNode', { x: 400, y: 150 })
           const gainId = store.addNode('GainNode', { x: 700, y: 150 })
           const reverbId = store.addNode('ConvolverNode', { x: 1000, y: 200 })
@@ -1730,6 +1728,8 @@ export const useExamples = () => {
           const wetGainId = store.addNode('GainNode', { x: 1000, y: 350 })
           const mixerId = store.addNode('GainNode', { x: 1300, y: 150 })
           const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 150 })
+          // Use the store's microphone input action which handles permissions
+          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -1767,7 +1767,7 @@ export const useExamples = () => {
           )
         }
       }),
-    }, */
+    }, 
     {
       id: 'stereo-effects',
       name: 'Stereo Effects',
@@ -1809,20 +1809,20 @@ export const useExamples = () => {
         store.addEdge(mergerId, destId, 'output', 'input')
       }),
     },
-    /* {
+    {
       id: 'robot-voice-ring-mod',
       name: 'Robot Voice (Ring Mod)',
       description: 'Transform your voice into a robot using ring modulation',
       create: createExample(async () => {
         try {
-          // Use microphone input
-          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
           const micGainId = store.addNode('GainNode', { x: 400, y: 150 })
           const carrierOscId = store.addNode('OscillatorNode', { x: 100, y: 400 })
           const carrierGainId = store.addNode('GainNode', { x: 400, y: 400 })
           const ringModId = store.addNode('GainNode', { x: 700, y: 275 })
           const outputGainId = store.addNode('GainNode', { x: 1000, y: 275 })
           const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 275 })
+          // Use microphone input
+          const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -1858,8 +1858,6 @@ export const useExamples = () => {
       description: 'Multi-band vocoder effect using multiple filters',
       create: createExample(async () => {
         try {
-          // Use microphone input
-          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
           const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
 
           // Create multiple band-pass filters for vocoder bands
@@ -1885,6 +1883,8 @@ export const useExamples = () => {
           // Create mixer and output
           const mixerId = store.addNode('GainNode', { x: 1300, y: 200 })
           const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 200 })
+          // Use microphone input
+          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -1967,8 +1967,6 @@ export const useExamples = () => {
       description: 'Layer your voice with musical harmonies',
       create: createExample(async () => {
         try {
-          // Use microphone input
-          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
           const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
 
           // Create harmony oscillators (3rd and 5th intervals)
@@ -1985,6 +1983,8 @@ export const useExamples = () => {
           // Create mixer and output
           const mixerId = store.addNode('GainNode', { x: 1000, y: 400 })
           const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 400 })
+          // Use microphone input
+          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -2033,8 +2033,6 @@ export const useExamples = () => {
       description: 'Pitch shift your voice using delay-based modulation',
       create: createExample(async () => {
         try {
-          // Use microphone input
-          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
           const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
 
           // Create delay-based pitch shifting
@@ -2047,6 +2045,8 @@ export const useExamples = () => {
           const wetGainId = store.addNode('GainNode', { x: 1000, y: 300 })
           const mixerId = store.addNode('GainNode', { x: 1300, y: 200 })
           const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 200 })
+          // Use microphone input
+          const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 
           // Set microphone gain to 0.5 (sound generator rule)
           store.updateNodeProperty(micGainId, 'gain', 0.5)
@@ -2085,7 +2085,7 @@ export const useExamples = () => {
           alert('Microphone access denied. Please allow microphone access and try again.')
         }
       }), 
-    },*/
+    },
   ]
 
   return { examples }

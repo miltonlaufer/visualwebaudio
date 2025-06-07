@@ -1286,6 +1286,11 @@ export const AudioGraphStore = types
 
       addMicrophoneInput: flow(function* (position: { x: number; y: number }) {
         try {
+          // Check if getUserMedia is available
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            throw new Error('getUserMedia is not supported in this browser')
+          }
+          
           // Request microphone access
           const stream = yield navigator.mediaDevices.getUserMedia({
             audio: {
@@ -1302,6 +1307,11 @@ export const AudioGraphStore = types
           if (!self.audioContext) {
             throw new Error('Failed to initialize audio context')
           }
+          
+          // Ensure audio context is running
+          if (self.audioContext.state === 'suspended') {
+            yield self.audioContext.resume()
+          }
 
           // Create MediaStreamAudioSourceNode
           const micSource = self.audioContext.createMediaStreamSource(stream)
@@ -1315,6 +1325,12 @@ export const AudioGraphStore = types
           if (!metadata) {
             throw new Error('MediaStreamAudioSourceNode metadata not found')
           }
+
+          // Create properties from metadata (same as addNode method)
+          const propertiesObj: Record<string, unknown> = {}
+          metadata.properties.forEach(prop => {
+            propertiesObj[prop.name] = prop.defaultValue
+          })
 
           // Create the visual node with MST-compatible structure
           const visualNode = {
@@ -1336,7 +1352,7 @@ export const AudioGraphStore = types
                 methods: metadata.methods,
                 events: metadata.events,
               },
-              properties: {},
+              properties: propertiesObj,
             },
           }
 
@@ -1348,6 +1364,9 @@ export const AudioGraphStore = types
 
           // Store the media stream
           self.mediaStreams.set(nodeId, stream)
+
+          // Increment graph change counter to force React re-render
+          self.graphChangeCounter += 1
 
           return nodeId
         } catch (error) {
