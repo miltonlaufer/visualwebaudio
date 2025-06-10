@@ -1,5 +1,5 @@
 import { types, Instance, getSnapshot, applySnapshot } from 'mobx-state-tree'
-import { AudioGraphStore } from './AudioGraphStore'
+import { AudioGraphStore, createAudioGraphStore } from './AudioGraphStore'
 import { customNodeStore } from './CustomNodeStore'
 
 // Version migration functions
@@ -125,6 +125,11 @@ export const RootStore = types
         self.isInitialized = true
       },
 
+      // Set up the audio graph with patch middleware
+      setupAudioGraphWithPatchMiddleware(audioGraphInstance: any) {
+        ;(self as any).audioGraph = audioGraphInstance
+      },
+
       // Update version
       updateVersion(version: string) {
         self.version = version
@@ -246,10 +251,16 @@ export const RootStore = types
 
 export interface IRootStore extends Instance<typeof RootStore> {}
 
+// Create the audio graph store with proper patch middleware for undo/redo
+const audioGraphStoreInstance = createAudioGraphStore()
+
 // Create and export the root store instance
 export const rootStore = RootStore.create({
-  audioGraph: {},
+  audioGraph: getSnapshot(audioGraphStoreInstance),
 })
+
+// Use the action to replace the audioGraph with the factory-created instance that has patch middleware
+rootStore.setupAudioGraphWithPatchMiddleware(audioGraphStoreInstance)
 
 // Export the audio graph store for backward compatibility
 export const audioGraphStore = rootStore.audioGraph
