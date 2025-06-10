@@ -365,6 +365,9 @@ export const AudioGraphStore = types
         // Increment graph change counter to force React re-render
         self.graphChangeCounter += 1
 
+        // Mark project as modified
+        this.markProjectModified()
+
         return nodeId
       },
 
@@ -448,6 +451,9 @@ export const AudioGraphStore = types
 
         // Increment graph change counter to force React re-render
         self.graphChangeCounter += 1
+
+        // Mark project as modified
+        this.markProjectModified()
       },
 
       // New method to handle audio node cleanup (called by VisualNode beforeDestroy)
@@ -795,6 +801,9 @@ export const AudioGraphStore = types
 
         // Increment graph change counter to force React re-render
         self.graphChangeCounter += 1
+
+        // Mark project as modified
+        this.markProjectModified()
       },
 
       isValidConnection(
@@ -866,6 +875,9 @@ export const AudioGraphStore = types
           this.disconnectAudioNodes(edge.source, edge.target)
 
           self.visualEdges.splice(edgeIndex, 1)
+
+          // Mark project as modified
+          this.markProjectModified()
         }
       },
 
