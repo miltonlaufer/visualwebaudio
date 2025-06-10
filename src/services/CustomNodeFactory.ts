@@ -1,4 +1,4 @@
-import type { NodeMetadata } from '~/types'
+import type { INodeMetadata } from '~/stores/NodeModels'
 import { customNodeStore, type ICustomNodeState } from '~/stores/CustomNodeStore'
 import { autorun } from 'mobx'
 
@@ -354,7 +354,7 @@ export class BaseCustomNode implements CustomNode {
   protected audioContext: AudioContext
   private onOutputChangeCallback?: (nodeId: string, outputName: string, value: number) => void
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     this.id = id
     this.type = type
     this.audioContext = audioContext
@@ -477,7 +477,7 @@ export class SliderNode extends BaseCustomNode {
   private sliderElement?: HTMLInputElement
   private labelElement?: HTMLSpanElement
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
 
     // Set initial output value
@@ -647,7 +647,7 @@ export class SelectNode extends BaseCustomNode {
 export class MidiInputNode extends BaseCustomNode {
   private midiAccess?: MIDIAccess
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
     // Don't automatically request MIDI access - let the UI component handle this
   }
@@ -834,7 +834,7 @@ export class DisplayNode extends BaseCustomNode {
   private onPropertyChangeCallback?: (nodeId: string, propertyName: string, value: any) => void
   private themeObserver?: MutationObserver
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
 
     // Set initial output to match input (passthrough)
@@ -969,7 +969,7 @@ export class RandomNode extends BaseCustomNode {
   private labelElement?: HTMLSpanElement
   private rateInputElement?: HTMLInputElement
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
 
     // Set initial output value
@@ -1153,7 +1153,7 @@ export class SoundFileNode extends BaseCustomNode {
   private gainNode?: GainNode
   private fileInputElement?: HTMLInputElement
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
     this.setupAudioNodes()
 
@@ -1397,7 +1397,7 @@ export class TimerNode extends BaseCustomNode {
   private stopButton?: HTMLButtonElement
   private resetButton?: HTMLButtonElement
 
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: NodeMetadata) {
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
     super(id, type, audioContext, metadata)
 
     // Set default properties
@@ -1687,7 +1687,7 @@ export class CustomNodeFactory {
   }
 
   // Create a custom node using MobX store
-  createNode(id: string, type: string, metadata: NodeMetadata): CustomNode {
+  createNode(id: string, type: string, metadata: INodeMetadata): CustomNode {
     // Set audio context on the store for SoundFileNode functionality
     customNodeStore.setAudioContext(this.audioContext)
 
@@ -1766,7 +1766,7 @@ export class CustomNodeFactory {
   // Backward compatibility method for existing tests
   createCustomNode(
     nodeType: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     properties: Record<string, any> = {}
   ): CustomNode {
     const id = `${nodeType}-${Date.now()}`

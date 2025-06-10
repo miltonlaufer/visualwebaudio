@@ -11,7 +11,7 @@ export function confirmUnsavedChanges(
   message: string = 'You will lose your changes. Are you sure you want to continue?'
 ): boolean {
   // If there are no nodes or no modifications, allow the action
-  if (store.visualNodes.length === 0 || !store.isProjectModified) {
+  if (store.adaptedNodes.length === 0 || !store.isProjectModified) {
     return true
   }
 

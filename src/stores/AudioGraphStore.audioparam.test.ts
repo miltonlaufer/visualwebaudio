@@ -29,7 +29,7 @@ vi.mock('~/services/AudioNodeFactory', () => ({
   AudioNodeFactory: class {
     constructor(public audioContext: AudioContext) {}
 
-    createAudioNode(nodeType: string, metadata: any, properties: any) {
+    createAudioNode(_nodeType: string, _metadata: any, properties: any) {
       const mockNode = createMockAudioNode()
       // Apply initial properties
       if (properties) {
@@ -44,7 +44,7 @@ vi.mock('~/services/AudioNodeFactory', () => ({
       return mockNode
     }
 
-    updateNodeProperty(audioNode: any, nodeType: string, propertyName: string, value: any) {
+    updateNodeProperty(audioNode: any, _nodeType: string, propertyName: string, value: any) {
       // Actually update the property on the mock
       if (propertyName === 'frequency' && audioNode.frequency) {
         audioNode.frequency.value = value
@@ -192,7 +192,7 @@ describe('AudioParam Connection Tests', () => {
 
   afterEach(() => {
     // Clean up any nodes that might have been created
-    if (store && store.visualNodes.length > 0) {
+    if (store && store.adaptedNodes.length > 0) {
       store.clearAllNodes()
     }
     // Reset all mocks
@@ -202,19 +202,19 @@ describe('AudioParam Connection Tests', () => {
   describe('Direct frequency control connections', () => {
     it('should set frequency base to 0 when connecting SliderNode', async () => {
       // Create nodes
-      const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
+      const sliderId = store.addAdaptedNode('SliderNode', { x: 100, y: 100 })
+      const oscId = store.addAdaptedNode('OscillatorNode', { x: 200, y: 100 })
 
       // Check if visual nodes were added
-      expect(store.visualNodes).toHaveLength(2)
-      expect(store.visualNodes.find(n => n.id === sliderId)).toBeDefined()
-      expect(store.visualNodes.find(n => n.id === oscId)).toBeDefined()
+      expect(store.adaptedNodes).toHaveLength(2)
+      expect(store.adaptedNodes.find(n => n.id === sliderId)).toBeDefined()
+      expect(store.adaptedNodes.find(n => n.id === oscId)).toBeDefined()
 
       // Wait for lifecycle hooks to complete - check preconditions first
       await waitFor(
         () => {
-          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
-          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          const sliderNode = store.adaptedNodes.find(n => n.id === sliderId)
+          const oscNode = store.adaptedNodes.find(n => n.id === oscId)
           expect(sliderNode?.isAttached).toBe(true)
           expect(oscNode?.isAttached).toBe(true)
         },
@@ -243,14 +243,14 @@ describe('AudioParam Connection Tests', () => {
 
     it('should set frequency base to 0 when connecting MidiToFreqNode', async () => {
       // Create nodes
-      const midiId = store.addNode('MidiToFreqNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
+      const midiId = store.addAdaptedNode('MidiToFreqNode', { x: 100, y: 100 })
+      const oscId = store.addAdaptedNode('OscillatorNode', { x: 200, y: 100 })
 
       // Wait for lifecycle hooks to complete - check preconditions first
       await waitFor(
         () => {
-          const midiNode = store.visualNodes.find(n => n.id === midiId)
-          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          const midiNode = store.adaptedNodes.find(n => n.id === midiId)
+          const oscNode = store.adaptedNodes.find(n => n.id === oscId)
           expect(midiNode?.isAttached).toBe(true)
           expect(oscNode?.isAttached).toBe(true)
         },
@@ -281,14 +281,14 @@ describe('AudioParam Connection Tests', () => {
   describe('LFO modulation connections', () => {
     it('should keep frequency base when connecting OscillatorNode for modulation', async () => {
       // Create nodes
-      const lfoId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
+      const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const oscId = store.addAdaptedNode('OscillatorNode', { x: 200, y: 100 })
 
       // Wait for lifecycle hooks to complete
       await waitFor(
         () => {
-          const lfoNode = store.visualNodes.find(n => n.id === lfoId)
-          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          const lfoNode = store.adaptedNodes.find(n => n.id === lfoId)
+          const oscNode = store.adaptedNodes.find(n => n.id === oscId)
           expect(lfoNode?.isAttached).toBe(true)
           expect(oscNode?.isAttached).toBe(true)
         },
@@ -313,14 +313,14 @@ describe('AudioParam Connection Tests', () => {
   describe('Other AudioParam connections', () => {
     it('should set gain base to 0 when connecting control signal', async () => {
       // Create nodes
-      const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
-      const gainId = store.addNode('GainNode', { x: 200, y: 100 })
+      const sliderId = store.addAdaptedNode('SliderNode', { x: 100, y: 100 })
+      const gainId = store.addAdaptedNode('GainNode', { x: 200, y: 100 })
 
       // Wait for lifecycle hooks to complete - check preconditions first
       await waitFor(
         () => {
-          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
-          const gainNode = store.visualNodes.find(n => n.id === gainId)
+          const sliderNode = store.adaptedNodes.find(n => n.id === sliderId)
+          const gainNode = store.adaptedNodes.find(n => n.id === gainId)
           expect(sliderNode?.isAttached).toBe(true)
           expect(gainNode?.isAttached).toBe(true)
         },
@@ -351,14 +351,14 @@ describe('AudioParam Connection Tests', () => {
   describe('Disconnection behavior', () => {
     it('should restore default values when disconnecting', async () => {
       // Create nodes
-      const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 200, y: 100 })
+      const sliderId = store.addAdaptedNode('SliderNode', { x: 100, y: 100 })
+      const oscId = store.addAdaptedNode('OscillatorNode', { x: 200, y: 100 })
 
       // Wait for lifecycle hooks to complete - check preconditions first
       await waitFor(
         () => {
-          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
-          const oscNode = store.visualNodes.find(n => n.id === oscId)
+          const sliderNode = store.adaptedNodes.find(n => n.id === sliderId)
+          const oscNode = store.adaptedNodes.find(n => n.id === oscId)
           expect(sliderNode?.isAttached).toBe(true)
           expect(oscNode?.isAttached).toBe(true)
         },
@@ -398,16 +398,16 @@ describe('AudioParam Connection Tests', () => {
   describe('Visual verification test', () => {
     it('should create a complete working example for manual testing', async () => {
       // Create nodes
-      const sliderId = store.addNode('SliderNode', { x: 100, y: 100 })
-      const oscId = store.addNode('OscillatorNode', { x: 300, y: 100 })
-      const destId = store.addNode('AudioDestinationNode', { x: 500, y: 100 })
+      const sliderId = store.addAdaptedNode('SliderNode', { x: 100, y: 100 })
+      const oscId = store.addAdaptedNode('OscillatorNode', { x: 300, y: 100 })
+      const destId = store.addAdaptedNode('AudioDestinationNode', { x: 500, y: 100 })
 
       // Wait for lifecycle hooks to complete - check preconditions first
       await waitFor(
         () => {
-          const sliderNode = store.visualNodes.find(n => n.id === sliderId)
-          const oscNode = store.visualNodes.find(n => n.id === oscId)
-          const destNode = store.visualNodes.find(n => n.id === destId)
+          const sliderNode = store.adaptedNodes.find(n => n.id === sliderId)
+          const oscNode = store.adaptedNodes.find(n => n.id === oscId)
+          const destNode = store.adaptedNodes.find(n => n.id === destId)
           expect(sliderNode?.isAttached).toBe(true)
           expect(oscNode?.isAttached).toBe(true)
           expect(destNode?.isAttached).toBe(true)
@@ -456,7 +456,7 @@ describe('AudioParam Connection Tests', () => {
       //)
 
       // Verify all nodes exist
-      expect(store.visualNodes.length).toBe(3)
+      expect(store.adaptedNodes.length).toBe(3)
       expect(store.visualEdges.length).toBe(2)
       expect(oscAudioNode.frequency.value).toBe(0) // Should be 0 for direct control
     })

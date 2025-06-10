@@ -7,8 +7,8 @@ const MicrophoneInput: React.FC = observer(() => {
   const [error, setError] = useState<string | null>(null)
 
   // Find any existing microphone nodes in the store
-  const microphoneNodes = store.visualNodes.filter(
-    node => node.data.nodeType === 'MediaStreamAudioSourceNode'
+  const microphoneNodes = store.adaptedNodes.filter(
+    node => node.nodeType === 'MediaStreamAudioSourceNode'
   )
   const isRecording = microphoneNodes.length > 0
 

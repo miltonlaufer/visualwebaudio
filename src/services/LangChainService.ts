@@ -158,9 +158,9 @@ REMEMBER: Include ALL nodes AND ALL connections in one complete response!`
     }
 
     const availableNodeTypes = store.availableNodeTypes
-    const currentNodes = store.visualNodes.map(node => ({
+    const currentNodes = store.adaptedNodes.map(node => ({
       id: node.id,
-      type: node.data.nodeType,
+      type: node.nodeType,
       position: node.position,
     }))
     const currentConnections = store.visualEdges.map(edge => ({
@@ -357,7 +357,7 @@ Request: ${message}`
     const getSmartPosition = (requestedPosition?: { x: number; y: number }) => {
       const basePosition = requestedPosition || { x: 100, y: 100 }
       const nodeSpacing = 200 // Reduced from 400 to 200 for more compact layout
-      const existingNodes = store.visualNodes
+      const existingNodes = store.adaptedNodes
 
       // If no existing nodes, use the base position
       if (existingNodes.length === 0) {
@@ -410,16 +410,16 @@ Request: ${message}`
         }
 
         try {
-          const nodeCountBefore = store.visualNodes.length
+          const nodeCountBefore = store.adaptedNodes.length
 
           // Use smart positioning to avoid overlaps
           const smartPosition = getSmartPosition(action.position)
 
-          store.addNode(action.nodeType, smartPosition)
+          store.addAdaptedNode(action.nodeType, smartPosition)
 
           // Map AI's nodeId to the actual generated nodeId
-          if (action.nodeId && store.visualNodes.length > nodeCountBefore) {
-            const newNode = store.visualNodes[store.visualNodes.length - 1]
+          if (action.nodeId && store.adaptedNodes.length > nodeCountBefore) {
+            const newNode = store.adaptedNodes[store.adaptedNodes.length - 1]
             nodeIdMapping[action.nodeId] = newNode.id
           }
         } catch (error) {
@@ -445,8 +445,8 @@ Request: ${message}`
               const sourceId = nodeIdMapping[action.sourceId] || action.sourceId
               const targetId = nodeIdMapping[action.targetId] || action.targetId
 
-              let sourceNode = store.visualNodes.find(n => n.id === sourceId)
-              let targetNode = store.visualNodes.find(n => n.id === targetId)
+              let sourceNode = store.adaptedNodes.find(n => n.id === sourceId)
+              let targetNode = store.adaptedNodes.find(n => n.id === targetId)
 
               // Fallback to intelligent matching if direct ID lookup fails
               if (!sourceNode) {
@@ -479,8 +479,8 @@ Request: ${message}`
               const sourceId = nodeIdMapping[action.sourceId] || action.sourceId
               const targetId = nodeIdMapping[action.targetId] || action.targetId
 
-              let sourceNode = store.visualNodes.find(n => n.id === sourceId)
-              let targetNode = store.visualNodes.find(n => n.id === targetId)
+              let sourceNode = store.adaptedNodes.find(n => n.id === sourceId)
+              let targetNode = store.adaptedNodes.find(n => n.id === targetId)
 
               if (!sourceNode) {
                 sourceNode = this.findNodeByIdOrType(store, action.sourceId)
@@ -522,7 +522,7 @@ Request: ${message}`
           case 'updateProperty':
             if (action.nodeId && action.propertyName && action.propertyValue !== undefined) {
               const actualNodeId = nodeIdMapping[action.nodeId] || action.nodeId
-              let node = store.visualNodes.find(n => n.id === actualNodeId)
+              let node = store.adaptedNodes.find(n => n.id === actualNodeId)
 
               // Fallback to intelligent matching if direct ID lookup fails
               if (!node) {
@@ -550,7 +550,7 @@ Request: ${message}`
 
   private findNodeByIdOrType(store: AudioGraphStoreType, identifier: string) {
     // First try to find by exact ID
-    let node = store.visualNodes.find(n => n.id === identifier)
+    let node = store.adaptedNodes.find(n => n.id === identifier)
 
     // If not found, try intelligent matching based on AI intent
     if (!node) {
@@ -605,8 +605,8 @@ Request: ${message}`
         identifierToNodeType[baseIdentifier] || identifierToNodeType[identifier.toLowerCase()]
       if (expectedNodeType) {
         // Find the most recently added node of this type that doesn't have the connections we expect
-        const candidateNodes = store.visualNodes
-          .filter(n => n.data.nodeType === expectedNodeType)
+        const candidateNodes = store.adaptedNodes
+          .filter(n => n.nodeType === expectedNodeType)
           .sort((a, b) => {
             // Sort by creation time (assuming higher IDs are more recent)
             const aTime = parseInt(a.id.split('-').pop() || '0')
@@ -618,9 +618,9 @@ Request: ${message}`
         if (identifier.toLowerCase().includes('feedback') && expectedNodeType === 'GainNode') {
           // For feedback gain, find a gain node that's positioned near a delay node
           node = candidateNodes.find(gainNode => {
-            const nearbyDelayNode = store.visualNodes.find(
+            const nearbyDelayNode = store.adaptedNodes.find(
               delayNode =>
-                delayNode.data.nodeType === 'DelayNode' &&
+                delayNode.nodeType === 'DelayNode' &&
                 Math.abs(delayNode.position.x - gainNode.position.x) < 200 &&
                 Math.abs(delayNode.position.y - gainNode.position.y) < 200
             )
@@ -636,11 +636,11 @@ Request: ${message}`
 
       // If still not found, try broader matching
       if (!node) {
-        node = store.visualNodes.find(
+        node = store.adaptedNodes.find(
           n =>
-            n.data.nodeType === identifier ||
-            n.data.nodeType.toLowerCase().includes(identifier.toLowerCase()) ||
-            identifier.toLowerCase().includes(n.data.nodeType.toLowerCase()) ||
+            n.nodeType === identifier ||
+            n.nodeType.toLowerCase().includes(identifier.toLowerCase()) ||
+            identifier.toLowerCase().includes(n.nodeType.toLowerCase()) ||
             n.id.toLowerCase().includes(identifier.toLowerCase())
         )
       }
@@ -648,8 +648,8 @@ Request: ${message}`
       // If still not found, try partial matching on the node type
       if (!node) {
         const lowerIdentifier = identifier.toLowerCase()
-        node = store.visualNodes.find(n => {
-          const nodeTypeLower = n.data.nodeType.toLowerCase()
+        node = store.adaptedNodes.find(n => {
+          const nodeTypeLower = n.nodeType.toLowerCase()
           return (
             nodeTypeLower.includes(lowerIdentifier) ||
             lowerIdentifier.includes(nodeTypeLower.replace('node', ''))

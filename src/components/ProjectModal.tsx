@@ -96,18 +96,18 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
   // Reset project state when all nodes are cleared (clear all, new example, etc)
   useEffect(() => {
-    if (store.visualNodes.length === 0 && (currentProjectId || currentProjectName)) {
+    if (store.adaptedNodes.length === 0 && (currentProjectId || currentProjectName)) {
       setCurrentProjectId(null)
       setCurrentProjectName('')
       // Reset modification state when project is cleared
       store.setProjectModified(false)
     }
-  }, [store.visualNodes.length, currentProjectId, currentProjectName, store])
+  }, [store.adaptedNodes.length, currentProjectId, currentProjectName, store])
 
   // Handle beforeunload warning
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (store.visualNodes.length > 0 && store.isProjectModified) {
+      if (store.adaptedNodes.length > 0 && store.isProjectModified) {
         const message = 'You will lose your changes. Are you sure you want to leave?'
         event.preventDefault()
         event.returnValue = message
@@ -117,7 +117,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [store.visualNodes.length, store.isProjectModified, store])
+  }, [store.adaptedNodes.length, store.isProjectModified, store])
 
   const loadSavedProjects = async () => {
     try {
@@ -137,7 +137,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     return JSON.stringify({
       version: '1.0.0',
       timestamp: new Date().toISOString(),
-      visualNodes: snapshot.visualNodes,
+      adaptedNodes: snapshot.adaptedNodes,
       visualEdges: snapshot.visualEdges,
       audioConnections: snapshot.audioConnections,
       customNodes: customNodeSnapshot.nodes,
@@ -228,7 +228,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         const importData = JSON.parse(project.data)
 
         // Validate the import data structure
-        if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
+        if (!importData.adaptedNodes || !importData.visualEdges || !importData.audioConnections) {
           throw new Error('Invalid project file format. Missing required fields.')
         }
 
@@ -246,7 +246,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
-            visualNodes: importData.visualNodes,
+            adaptedNodes: importData.adaptedNodes,
             visualEdges: importData.visualEdges,
             audioConnections: deduplicatedAudioConnections,
           }
@@ -394,7 +394,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
         const importData = JSON.parse(content)
 
         // Validate the import data structure
-        if (!importData.visualNodes || !importData.visualEdges || !importData.audioConnections) {
+        if (!importData.adaptedNodes || !importData.visualEdges || !importData.audioConnections) {
           throw new Error('Invalid project file format. Missing required fields.')
         }
 
@@ -412,7 +412,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           // Apply the imported data to AudioGraphStore
           const newSnapshot = {
             ...getSnapshot(store),
-            visualNodes: importData.visualNodes,
+            adaptedNodes: importData.adaptedNodes,
             visualEdges: importData.visualEdges,
             audioConnections: deduplicatedAudioConnections,
           }
@@ -553,7 +553,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Current Project</h4>
                 <div className="text-sm text-gray-600 space-y-1">
                   <div>Name: {currentProjectName || 'Untitled'}</div>
-                  <div>Nodes: {store.visualNodes.length}</div>
+                  <div>Nodes: {store.adaptedNodes.length}</div>
                   <div>Connections: {store.visualEdges.length}</div>
                 </div>
               </div>
@@ -562,14 +562,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleSave}
-                  disabled={store.visualNodes.length === 0 || !store.isProjectModified}
+                  disabled={store.adaptedNodes.length === 0 || !store.isProjectModified}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save
                 </button>
                 <button
                   onClick={handleShowSaveAsDialog}
-                  disabled={store.visualNodes.length === 0 || !store.isProjectModified}
+                  disabled={store.adaptedNodes.length === 0 || !store.isProjectModified}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save As...
@@ -671,14 +671,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-sm font-medium text-gray-700 mb-2">Current Project</h4>
                 <div className="text-sm text-gray-600 space-y-1">
-                  <div>Nodes: {store.visualNodes.length}</div>
+                  <div>Nodes: {store.adaptedNodes.length}</div>
                   <div>Connections: {store.visualEdges.length}</div>
                 </div>
               </div>
 
               <button
                 onClick={handleExport}
-                disabled={store.visualNodes.length === 0}
+                disabled={store.adaptedNodes.length === 0}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Download Project File

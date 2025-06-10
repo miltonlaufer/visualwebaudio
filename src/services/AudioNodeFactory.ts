@@ -1,5 +1,4 @@
-import type { NodeMetadata } from '~/types'
-import { INodeMetadata } from '~/models/NodeModels.ts'
+import type { INodeMetadata } from '~/stores/NodeModels'
 
 export class AudioNodeFactory {
   public audioContext: AudioContext
@@ -9,7 +8,7 @@ export class AudioNodeFactory {
 
   createAudioNode(
     nodeType: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     properties: Record<string, unknown> = {}
   ): AudioNode {
     let audioNode: AudioNode

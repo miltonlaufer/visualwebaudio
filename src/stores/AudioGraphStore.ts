@@ -1,13 +1,8 @@
 import { types, flow, onPatch, applyPatch, getEnv, destroy } from 'mobx-state-tree'
 import type { Instance, IJsonPatch } from 'mobx-state-tree'
 import { reaction } from 'mobx'
-import type { NodeMetadata } from '~/types'
-import {
-  VisualNodeModel,
-  VisualEdgeModel,
-  AudioConnectionModel,
-  INodeMetadata,
-} from '~/models/NodeModels'
+import { VisualEdgeModel, AudioConnectionModel, INodeMetadata } from './NodeModels'
+import { NodeAdapter } from './NodeAdapter'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
 import { customNodeStore } from '~/stores/CustomNodeStore'
@@ -17,16 +12,16 @@ import webAudioMetadataJson from '~/types/web-audio-metadata.json'
 import customNodesMetadataJson from '~/types/custom-nodes-metadata.json'
 
 // Use the imported metadata directly
-const getWebAudioMetadata = (): Record<string, NodeMetadata> => {
-  return webAudioMetadataJson as Record<string, NodeMetadata>
+const getWebAudioMetadata = (): Record<string, INodeMetadata> => {
+  return webAudioMetadataJson as unknown as Record<string, INodeMetadata>
 }
 
-const getCustomNodesMetadata = (): Record<string, NodeMetadata> => {
-  return customNodesMetadataJson as Record<string, NodeMetadata>
+const getCustomNodesMetadata = (): Record<string, INodeMetadata> => {
+  return customNodesMetadataJson as unknown as Record<string, INodeMetadata>
 }
 
 // Combine both metadata sources
-const getAllNodesMetadata = (): Record<string, NodeMetadata> => {
+const getAllNodesMetadata = (): Record<string, INodeMetadata> => {
   return {
     ...getWebAudioMetadata(),
     ...getCustomNodesMetadata(),
@@ -35,7 +30,7 @@ const getAllNodesMetadata = (): Record<string, NodeMetadata> => {
 
 export const AudioGraphStore = types
   .model('AudioGraphStore', {
-    visualNodes: types.array(VisualNodeModel),
+    adaptedNodes: types.array(NodeAdapter), // Unified node system
     visualEdges: types.array(VisualEdgeModel),
     audioConnections: types.array(AudioConnectionModel),
     selectedNodeId: types.maybe(types.string),
@@ -54,7 +49,7 @@ export const AudioGraphStore = types
     audioContext: null as AudioContext | null,
     audioNodes: new Map<string, AudioNode>(),
     customNodes: new Map<string, CustomNode>(),
-    webAudioMetadata: {} as Record<string, NodeMetadata>,
+    webAudioMetadata: {} as Record<string, INodeMetadata>,
     audioNodeFactory: null as AudioNodeFactory | null,
     customNodeFactory: null as CustomNodeFactory | null,
     // Keep only the patch application flag in volatile
@@ -88,6 +83,39 @@ export const AudioGraphStore = types
     // Reaction disposers for source node play state reactions
     sourceNodeReactionDisposers: null as Map<string, () => void> | null,
   }))
+  .preProcessSnapshot((snapshot: any) => {
+    // Apply migration logic when loading snapshots
+    if (!snapshot.adaptedNodes) return snapshot
+
+    const migratedSnapshot = { ...snapshot }
+
+    // Migrate nodes from old format (data.nodeType, data.metadata) to new format (nodeType, metadata)
+    migratedSnapshot.adaptedNodes = snapshot.adaptedNodes.map((node: any) => {
+      if (node.data && node.data.nodeType && node.data.metadata) {
+        // Old format - migrate to new format
+        return {
+          id: node.id,
+          nodeType: node.data.nodeType,
+          position: node.position,
+          metadata: node.data.metadata,
+          properties: node.data.properties || {},
+          type: node.type || 'audioNode',
+          selected: node.selected || false,
+          dragging: node.dragging || false,
+          inputConnections: node.inputConnections || [],
+          outputConnections: node.outputConnections || [],
+          audioNodeCreated: false,
+        }
+      }
+      // New format - return as is (but ensure audioNodeCreated is present)
+      return {
+        ...node,
+        audioNodeCreated: node.audioNodeCreated || false,
+      }
+    })
+
+    return migratedSnapshot
+  })
   .actions(self => {
     return {
       loadMetadata() {
@@ -276,8 +304,11 @@ export const AudioGraphStore = types
         }
       },
 
-      addNode(nodeType: string, position: { x: number; y: number }) {
-        const metadata = self.webAudioMetadata[nodeType]
+      // New method to add adapted nodes using the NodeAdapter system
+      addAdaptedNode(nodeType: string, position: { x: number; y: number }) {
+        // Check both WebAudio and Custom node metadata
+        const allMetadata = getAllNodesMetadata()
+        const metadata = allMetadata[nodeType]
 
         if (!metadata) {
           console.error('STORE: Unknown node type:', nodeType)
@@ -288,43 +319,46 @@ export const AudioGraphStore = types
         self.nodeIdCounter += 1
         const nodeId = `${nodeType}-${Date.now()}-${self.nodeIdCounter}`
 
+        // Apply smart positioning to prevent overlapping
+        const finalPosition = this.findAvailablePosition(position)
+
         // Create properties from metadata
         const propertiesObj: Record<string, unknown> = {}
         metadata.properties.forEach(prop => {
           propertiesObj[prop.name] = prop.defaultValue
         })
 
-        // Create the visual node with MST-compatible structure
-        const visualNode = {
+        // Create the adapted node using MST model
+        const adaptedNode = NodeAdapter.create({
           id: nodeId,
-          type: 'audioNode',
+          nodeType,
           position: {
-            x: position.x,
-            y: position.y,
+            x: finalPosition.x,
+            y: finalPosition.y,
           },
-          data: {
-            nodeType,
-            metadata: {
-              name: metadata.name,
-              description: metadata.description,
-              category: metadata.category,
-              inputs: metadata.inputs,
-              outputs: metadata.outputs,
-              properties: metadata.properties,
-              methods: metadata.methods,
-              events: metadata.events,
-            },
-            properties: propertiesObj,
+          metadata: {
+            name: metadata.name,
+            description: metadata.description,
+            category: metadata.category,
+            inputs: metadata.inputs,
+            outputs: metadata.outputs,
+            properties: metadata.properties,
+            methods: metadata.methods,
+            events: metadata.events,
           },
-        }
+          properties: propertiesObj,
+          inputConnections: [],
+          outputConnections: [],
+        })
 
-        // Add the visual node to the store
+        // Add the adapted node to the store
         try {
-          self.visualNodes.push(visualNode)
+          self.adaptedNodes.push(adaptedNode)
 
-          // Audio node will be created by afterAttach lifecycle hook
+          // Initialize the adapted node after it's added to the store
+          adaptedNode.initialize()
         } catch (error) {
-          console.error('STORE: Error adding node to visualNodes:', error)
+          console.error('STORE: Error adding adapted node:', error)
           throw error
         }
 
@@ -334,13 +368,68 @@ export const AudioGraphStore = types
         return nodeId
       },
 
-      removeNode(nodeId: string) {
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
-        if (!visualNode) {
-          return
+      // Helper method to find available position (smart positioning)
+      findAvailablePosition(requestedPosition: { x: number; y: number }): { x: number; y: number } {
+        const NODE_WIDTH = 200
+        const NODE_HEIGHT = 100
+        const SPACING = 20
+
+        // Get all existing node positions
+        const existingPositions = [
+          ...self.adaptedNodes.map(node => ({ x: node.position.x, y: node.position.y })),
+        ]
+
+        // Check if requested position is available
+        const isPositionAvailable = (pos: { x: number; y: number }) => {
+          return !existingPositions.some(
+            existing =>
+              Math.abs(existing.x - pos.x) < NODE_WIDTH + SPACING &&
+              Math.abs(existing.y - pos.y) < NODE_HEIGHT + SPACING
+          )
         }
 
-        // The audio node cleanup will now happen automatically via beforeDestroy hook
+        // If requested position is available, use it
+        if (isPositionAvailable(requestedPosition)) {
+          return requestedPosition
+        }
+
+        // Otherwise, find the next available position
+        const startX = requestedPosition.x
+        const startY = requestedPosition.y
+
+        // Try positions in a spiral pattern
+        for (let offset = 0; offset < 1000; offset += NODE_WIDTH + SPACING) {
+          const positions = [
+            { x: startX + offset, y: startY },
+            { x: startX, y: startY + offset },
+            { x: startX - offset, y: startY },
+            { x: startX, y: startY - offset },
+            { x: startX + offset, y: startY + offset },
+            { x: startX - offset, y: startY + offset },
+            { x: startX + offset, y: startY - offset },
+            { x: startX - offset, y: startY - offset },
+          ]
+
+          for (const pos of positions) {
+            if (isPositionAvailable(pos)) {
+              return pos
+            }
+          }
+        }
+
+        // Fallback: use requested position with random offset
+        return {
+          x: requestedPosition.x + Math.random() * 100,
+          y: requestedPosition.y + Math.random() * 100,
+        }
+      },
+
+      removeNode(nodeId: string) {
+        const adaptedNode = self.adaptedNodes.find(node => node.id === nodeId)
+
+        if (!adaptedNode) {
+          return
+        }
 
         // Remove connected edges
         const connectedEdges = self.visualEdges.filter(
@@ -350,11 +439,11 @@ export const AudioGraphStore = types
           this.removeEdge(edge.id)
         })
 
-        // Remove the visual node (this will trigger beforeDetach/beforeDestroy)
-        const nodeIndex = self.visualNodes.findIndex(node => node.id === nodeId)
+        // Remove the adapted node (this will trigger beforeDestroy)
+        const nodeIndex = self.adaptedNodes.findIndex(node => node.id === nodeId)
         if (nodeIndex !== -1) {
           // Use MST destroy() to properly trigger lifecycle hooks
-          destroy(self.visualNodes[nodeIndex])
+          destroy(self.adaptedNodes[nodeIndex])
         }
 
         // Increment graph change counter to force React re-render
@@ -414,13 +503,18 @@ export const AudioGraphStore = types
           self.customNodes.delete(nodeId)
 
           // Also remove from CustomNodeStore
-          const customNodeStore = getEnv(self).customNodeStore
-          if (customNodeStore && customNodeStore.removeNode) {
-            try {
-              customNodeStore.removeNode(nodeId)
-            } catch (error) {
-              console.error('Error removing from CustomNodeStore:', error)
+          try {
+            const customNodeStore = getEnv(self).customNodeStore
+            if (customNodeStore && customNodeStore.removeNode) {
+              try {
+                customNodeStore.removeNode(nodeId)
+              } catch (error) {
+                console.error('Error removing from CustomNodeStore:', error)
+              }
             }
+          } catch {
+            // Environment not available (e.g., in tests), skip CustomNodeStore cleanup
+            console.warn('CustomNodeStore environment not available, skipping cleanup')
           }
         }
 
@@ -466,12 +560,12 @@ export const AudioGraphStore = types
       syncAudioNodeProperties(nodeId: string, properties: Record<string, any>) {
         const audioNode = self.audioNodes.get(nodeId)
         const customNode = self.customNodes.get(nodeId)
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
+        const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
 
         if (!visualNode) return
 
-        const nodeType = visualNode.data.nodeType
-        const metadata = visualNode.data.metadata
+        const nodeType = visualNode.nodeType
+        const metadata = visualNode.metadata
 
         if (audioNode && self.audioNodeFactory) {
           // Update regular audio node properties
@@ -521,10 +615,12 @@ export const AudioGraphStore = types
         this.setClearingAllNodes(true)
 
         // Get all node IDs first to avoid modifying array while iterating
-        const nodeIds = self.visualNodes.map(node => node.id)
+        const visualNodeIds = self.adaptedNodes.map(node => node.id)
+        const adaptedNodeIds = self.adaptedNodes.map(node => node.id)
+        const allNodeIds = [...visualNodeIds, ...adaptedNodeIds]
 
         // Remove each node properly
-        nodeIds.forEach(nodeId => {
+        allNodeIds.forEach(nodeId => {
           this.removeNode(nodeId)
         })
 
@@ -532,9 +628,14 @@ export const AudioGraphStore = types
         this.performComprehensiveAudioCleanup()
 
         // Double-check that everything is cleared
-        if (self.visualNodes.length > 0) {
+        if (self.adaptedNodes.length > 0) {
           console.warn('Some visual nodes were not removed, force clearing...')
-          self.visualNodes.clear()
+          self.adaptedNodes.clear()
+        }
+
+        if (self.adaptedNodes.length > 0) {
+          console.warn('Some adapted nodes were not removed, force clearing...')
+          self.adaptedNodes.clear()
         }
 
         if (self.visualEdges.length > 0) {
@@ -702,8 +803,14 @@ export const AudioGraphStore = types
         sourceHandle?: string,
         targetHandle?: string
       ): boolean {
-        const sourceNode = self.visualNodes.find(node => node.id === sourceId)
-        const targetNode = self.visualNodes.find(node => node.id === targetId)
+        // Look for nodes in both visual and adapted nodes
+        const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+        const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+        const sourceAdaptedNode = self.adaptedNodes.find(node => node.id === sourceId)
+        const targetAdaptedNode = self.adaptedNodes.find(node => node.id === targetId)
+
+        const sourceNode = sourceVisualNode || sourceAdaptedNode
+        const targetNode = targetVisualNode || targetAdaptedNode
 
         if (!sourceNode || !targetNode) {
           console.warn('Source or target node not found for connection validation')
@@ -714,10 +821,18 @@ export const AudioGraphStore = types
         const outputName = sourceHandle || 'output'
         const inputName = targetHandle || 'input'
 
-        const sourceOutput = sourceNode.data.metadata.outputs.find(
-          output => output.name === outputName
+        // Get metadata from the appropriate node type
+        const sourceMetadata = sourceVisualNode
+          ? sourceVisualNode.metadata
+          : sourceAdaptedNode?.metadata
+        const targetMetadata = targetVisualNode
+          ? targetVisualNode.metadata
+          : targetAdaptedNode?.metadata
+
+        const sourceOutput = sourceMetadata?.outputs.find(
+          (output: any) => output.name === outputName
         )
-        const targetInput = targetNode.data.metadata.inputs.find(input => input.name === inputName)
+        const targetInput = targetMetadata?.inputs.find((input: any) => input.name === inputName)
 
         if (!sourceOutput || !targetInput) {
           console.warn('Output or input not found:', { outputName, inputName })
@@ -790,20 +905,21 @@ export const AudioGraphStore = types
         if (sourceCustomNode && targetNode) {
           try {
             // Check if we're connecting to the destination node
-            const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
-            const isDestinationConnection =
-              targetVisualNode?.data.nodeType === 'AudioDestinationNode'
+            const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+            const isDestinationConnection = targetVisualNode?.nodeType === 'AudioDestinationNode'
 
             // Check if this is a control connection (to an AudioParam)
-            const targetMetadata = targetVisualNode?.data.metadata
-            const targetInputDef = targetMetadata?.inputs.find(input => input.name === targetInput)
+            const targetMetadata = targetVisualNode?.metadata
+            const targetInputDef = targetMetadata?.inputs.find(
+              (input: any) => input.name === targetInput
+            )
             const isControlConnection = targetInputDef?.type === 'control'
 
             // Check if this is an audio connection from custom node
-            const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
-            const sourceMetadata = sourceVisualNode?.data.metadata
+            const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+            const sourceMetadata = sourceVisualNode?.metadata
             const sourceOutputDef = sourceMetadata?.outputs.find(
-              output => output.name === sourceOutput
+              (output: any) => output.name === sourceOutput
             )
             const isAudioOutput = sourceOutputDef?.type === 'audio'
             const isAudioInput = targetInputDef?.type === 'audio'
@@ -820,7 +936,7 @@ export const AudioGraphStore = types
                   // Direct audio connection
                   audioOutput.connect(targetNode)
                   /*console.log(
-                    `Connected custom node audio output to ${targetVisualNode?.data.nodeType}`
+                    `Connected custom node audio output to ${targetVisualNode?.nodeType}`
                   )*/
                 }
               } else {
@@ -844,8 +960,8 @@ export const AudioGraphStore = types
                 constantSource.start()
 
                 // Get the source node info to determine connection type
-                const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
-                const sourceNodeType = sourceVisualNode?.data.nodeType
+                const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+                const sourceNodeType = sourceVisualNode?.nodeType
 
                 // Smart base value handling based on parameter and source type
                 if (targetInput === 'frequency') {
@@ -925,13 +1041,14 @@ export const AudioGraphStore = types
         if (sourceNode && targetNode) {
           try {
             // Check if we're connecting to the destination node
-            const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
-            const isDestinationConnection =
-              targetVisualNode?.data.nodeType === 'AudioDestinationNode'
+            const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+            const isDestinationConnection = targetVisualNode?.nodeType === 'AudioDestinationNode'
 
             // Check if this is a control connection (to an AudioParam)
-            const targetMetadata = targetVisualNode?.data.metadata
-            const targetInputDef = targetMetadata?.inputs.find(input => input.name === targetInput)
+            const targetMetadata = targetVisualNode?.metadata
+            const targetInputDef = targetMetadata?.inputs.find(
+              (input: any) => input.name === targetInput
+            )
             const isControlConnection = targetInputDef?.type === 'control'
 
             if (isControlConnection) {
@@ -943,8 +1060,8 @@ export const AudioGraphStore = types
                 sourceNode.connect(audioParam)
 
                 // Get the source node info to determine connection type
-                const sourceVisualNode = self.visualNodes.find(node => node.id === sourceId)
-                const sourceNodeType = sourceVisualNode?.data.nodeType
+                const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+                const sourceNodeType = sourceVisualNode?.nodeType
 
                 // Smart base value handling based on parameter and source type
                 if (targetInput === 'frequency') {
@@ -1052,8 +1169,8 @@ export const AudioGraphStore = types
 
             if (connection) {
               // Restore the default value for this AudioParam
-              const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
-              const targetMetadata = targetVisualNode?.data.metadata
+              const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+              const targetMetadata = targetVisualNode?.metadata
               const paramMetadata = targetMetadata?.properties.find(
                 prop => prop.name === connection.targetInput && prop.type === 'AudioParam'
               )
@@ -1086,9 +1203,8 @@ export const AudioGraphStore = types
         if (sourceNode && targetNode) {
           try {
             // Check if we're disconnecting from the destination node
-            const targetVisualNode = self.visualNodes.find(node => node.id === targetId)
-            const isDestinationConnection =
-              targetVisualNode?.data.nodeType === 'AudioDestinationNode'
+            const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+            const isDestinationConnection = targetVisualNode?.nodeType === 'AudioDestinationNode'
 
             // Find the connection to determine the target input
             const connection = self.audioConnections.find(
@@ -1097,7 +1213,7 @@ export const AudioGraphStore = types
 
             if (connection) {
               // Check if this is a control connection
-              const targetMetadata = targetVisualNode?.data.metadata
+              const targetMetadata = targetVisualNode?.metadata
               const targetInputDef = targetMetadata?.inputs.find(
                 input => input.name === connection.targetInput
               )
@@ -1144,8 +1260,8 @@ export const AudioGraphStore = types
             if (isDestinationConnection) {
               // Check if there are any remaining connections to the destination
               const remainingDestinationConnections = self.audioConnections.filter(conn => {
-                const connTargetNode = self.visualNodes.find(node => node.id === conn.targetNodeId)
-                return connTargetNode?.data.nodeType === 'AudioDestinationNode'
+                const connTargetNode = self.adaptedNodes.find(node => node.id === conn.targetNodeId)
+                return connTargetNode?.nodeType === 'AudioDestinationNode'
               })
 
               if (remainingDestinationConnections.length === 0) {
@@ -1199,10 +1315,15 @@ export const AudioGraphStore = types
       },
 
       updateNodePosition(nodeId: string, position: { x: number; y: number }) {
-        const node = self.visualNodes.find(n => n.id === nodeId)
-        if (node) {
-          node.position.x = position.x
-          node.position.y = position.y
+        const visualNode = self.adaptedNodes.find(n => n.id === nodeId)
+        const adaptedNode = self.adaptedNodes.find(n => n.id === nodeId)
+
+        if (visualNode) {
+          visualNode.position.x = position.x
+          visualNode.position.y = position.y
+        } else if (adaptedNode) {
+          adaptedNode.position.x = position.x
+          adaptedNode.position.y = position.y
         }
       },
     }
@@ -1266,8 +1387,8 @@ export const AudioGraphStore = types
 
           // Explicitly start all source nodes after setting isPlaying = true
           self.audioNodes.forEach((audioNode, nodeId) => {
-            const visualNode = self.visualNodes.find(node => node.id === nodeId)
-            const nodeType = visualNode?.data.nodeType
+            const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
+            const nodeType = visualNode?.nodeType
 
             if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
               // Type guard to ensure we have a source node with start method
@@ -1290,7 +1411,7 @@ export const AudioGraphStore = types
           if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             throw new Error('getUserMedia is not supported in this browser')
           }
-          
+
           // Request microphone access
           const stream = yield navigator.mediaDevices.getUserMedia({
             audio: {
@@ -1307,7 +1428,7 @@ export const AudioGraphStore = types
           if (!self.audioContext) {
             throw new Error('Failed to initialize audio context')
           }
-          
+
           // Ensure audio context is running
           if (self.audioContext.state === 'suspended') {
             yield self.audioContext.resume()
@@ -1332,32 +1453,35 @@ export const AudioGraphStore = types
             propertiesObj[prop.name] = prop.defaultValue
           })
 
-          // Create the visual node with MST-compatible structure
+          // Create the visual node with MST-compatible structure (flat, not nested)
           const visualNode = {
             id: nodeId,
-            type: 'audioNode',
+            nodeType: 'MediaStreamAudioSourceNode',
             position: {
               x: position.x,
               y: position.y,
             },
-            data: {
-              nodeType: 'MediaStreamAudioSourceNode',
-              metadata: {
-                name: 'Microphone Input',
-                description: 'Live microphone input',
-                category: metadata.category,
-                inputs: metadata.inputs,
-                outputs: metadata.outputs,
-                properties: metadata.properties,
-                methods: metadata.methods,
-                events: metadata.events,
-              },
-              properties: propertiesObj,
+            metadata: {
+              name: 'Microphone Input',
+              description: 'Live microphone input',
+              category: metadata.category,
+              inputs: metadata.inputs,
+              outputs: metadata.outputs,
+              properties: metadata.properties,
+              methods: metadata.methods,
+              events: metadata.events,
             },
+            properties: propertiesObj,
+            type: 'audioNode',
+            selected: false,
+            dragging: false,
+            inputConnections: [],
+            outputConnections: [],
+            audioNodeCreated: false,
           }
 
           // Add to store using MST action
-          self.visualNodes.push(visualNode)
+          self.adaptedNodes.push(visualNode)
 
           // Store the actual audio node
           self.audioNodes.set(nodeId, micSource)
@@ -1381,7 +1505,7 @@ export const AudioGraphStore = types
         self.clipboardError = null
 
         // Get the selected nodes
-        const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
+        const nodesToCopy = self.adaptedNodes.filter(node => selectedNodeIds.includes(node.id))
 
         if (nodesToCopy.length === 0) {
           return
@@ -1399,9 +1523,9 @@ export const AudioGraphStore = types
             type: node.type,
             position: { ...node.position },
             data: {
-              nodeType: node.data.nodeType,
-              metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
-              properties: Object.fromEntries(node.data.properties.entries()),
+              nodeType: node.nodeType,
+              metadata: JSON.parse(JSON.stringify(node.metadata)), // Deep copy metadata
+              properties: Object.fromEntries(node.properties.entries()),
             },
           })),
           edges: edgesToCopy.map(edge => ({
@@ -1450,7 +1574,7 @@ export const AudioGraphStore = types
       // Cut selected nodes (copy + delete)
       cutSelectedNodes(selectedNodeIds: string[]) {
         // Get the selected nodes for copying
-        const nodesToCopy = self.visualNodes.filter(node => selectedNodeIds.includes(node.id))
+        const nodesToCopy = self.adaptedNodes.filter(node => selectedNodeIds.includes(node.id))
 
         if (nodesToCopy.length === 0) {
           return
@@ -1468,9 +1592,9 @@ export const AudioGraphStore = types
             type: node.type,
             position: { ...node.position },
             data: {
-              nodeType: node.data.nodeType,
-              metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
-              properties: Object.fromEntries(node.data.properties.entries()),
+              nodeType: node.nodeType,
+              metadata: JSON.parse(JSON.stringify(node.metadata)), // Deep copy metadata
+              properties: Object.fromEntries(node.properties.entries()),
             },
           })),
           edges: edgesToCopy.map(edge => ({
@@ -1514,11 +1638,11 @@ export const AudioGraphStore = types
 
         // Delete the nodes
         selectedNodeIds.forEach(nodeId => {
-          const nodeIndex = self.visualNodes.findIndex(node => node.id === nodeId)
+          const nodeIndex = self.adaptedNodes.findIndex(node => node.id === nodeId)
           if (nodeIndex !== -1) {
             // Remove the node using the existing removeNode logic
-            const visualNode = self.visualNodes[nodeIndex]
-            const nodeType = visualNode.data.nodeType
+            const visualNode = self.adaptedNodes[nodeIndex]
+            const nodeType = visualNode.nodeType
 
             // Clean up audio/custom nodes
             const customNode = self.customNodes.get(nodeId)
@@ -1577,7 +1701,7 @@ export const AudioGraphStore = types
             })
 
             // Remove the visual node
-            self.visualNodes.splice(nodeIndex, 1)
+            self.adaptedNodes.splice(nodeIndex, 1)
 
             // Clean up media stream if this is a microphone node
             if (nodeType === 'MediaStreamAudioSourceNode') {
@@ -1630,8 +1754,8 @@ export const AudioGraphStore = types
               ...node,
               data: {
                 ...node.data,
-                metadata: JSON.parse(JSON.stringify(node.data.metadata)), // Deep copy metadata
-                properties: { ...node.data.properties },
+                metadata: JSON.parse(JSON.stringify(node.metadata)), // Deep copy metadata
+                properties: { ...node.properties },
               },
             })),
             edges: self.clipboardEdges.map(edge => ({ ...edge })),
@@ -1656,7 +1780,7 @@ export const AudioGraphStore = types
         clipboardData.nodes.forEach((clipboardNode: any) => {
           // Generate new unique ID
           self.nodeIdCounter += 1
-          const newNodeId = `${clipboardNode.data.nodeType}-${Date.now()}-${self.nodeIdCounter}`
+          const newNodeId = `${clipboardNode.nodeType}-${Date.now()}-${self.nodeIdCounter}`
           idMapping.set(clipboardNode.id, newNodeId)
           newNodeIds.push(newNodeId)
 
@@ -1666,21 +1790,24 @@ export const AudioGraphStore = types
             y: clipboardNode.position.y + offset.y,
           }
 
-          // Create the visual node
+          // Create the visual node with MST-compatible structure (flat, not nested)
           const visualNode = {
             id: newNodeId,
-            type: clipboardNode.type,
+            nodeType: clipboardNode.nodeType,
             position: newPosition,
-            data: {
-              nodeType: clipboardNode.data.nodeType,
-              metadata: { ...clipboardNode.data.metadata },
-              properties: { ...clipboardNode.data.properties },
-            },
+            metadata: { ...clipboardNode.metadata },
+            properties: { ...clipboardNode.properties },
+            type: clipboardNode.type,
+            selected: false,
+            dragging: false,
+            inputConnections: [],
+            outputConnections: [],
+            audioNodeCreated: false,
           }
 
           // Add the visual node to the store
           // The audio node will be created automatically by the afterAttach lifecycle hook
-          self.visualNodes.push(visualNode)
+          self.adaptedNodes.push(visualNode)
         })
 
         // Create new edges with updated IDs
@@ -1739,26 +1866,31 @@ export const AudioGraphStore = types
           return
         }
 
-        // Get the visual node to extract properties and metadata
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
+        // Get the visual node or adapted node to extract properties and metadata
+        const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
+        const adaptedNode = self.adaptedNodes.find(node => node.id === nodeId)
 
-        // Use metadata from the visual node if available (for loaded projects),
+        // Use metadata from the node if available (for loaded projects),
         // otherwise fall back to global metadata (for new nodes)
-        let metadata: NodeMetadata
-        if (visualNode && visualNode.data.metadata) {
-          metadata = visualNode.data.metadata as NodeMetadata
+        let metadata: INodeMetadata
+        let properties: Record<string, any> = {}
+
+        if (visualNode && visualNode.metadata) {
+          metadata = visualNode.metadata as unknown as INodeMetadata
+          properties = Object.fromEntries(visualNode.properties.entries())
+        } else if (adaptedNode) {
+          metadata = adaptedNode.metadata as unknown as INodeMetadata
+          properties = Object.fromEntries(adaptedNode.properties.entries())
         } else {
-          metadata = self.webAudioMetadata[nodeType]
+          // Fall back to global metadata for both WebAudio and custom nodes
+          const allMetadata = getAllNodesMetadata()
+          metadata = allMetadata[nodeType]
         }
 
         if (!metadata) {
           console.error(`No metadata found for node type: ${nodeType}`)
           return
         }
-
-        const properties = visualNode
-          ? Object.fromEntries(visualNode.data.properties.entries())
-          : {}
 
         // Check if it's a custom node type
         if (self.customNodeFactory.isCustomNodeType(nodeType)) {
@@ -1786,9 +1918,13 @@ export const AudioGraphStore = types
               ;(customNode as any).setPropertyChangeCallback(
                 (nodeId: string, propertyName: string, value: any) => {
                   // Update the visual node property so it shows up in the properties panel
-                  const visualNode = self.visualNodes.find(node => node.id === nodeId)
-                  if (visualNode) {
-                    visualNode.data.properties.set(propertyName, value)
+                  const targetVisualNode = self.adaptedNodes.find(node => node.id === nodeId)
+                  const targetAdaptedNode = self.adaptedNodes.find(node => node.id === nodeId)
+                  if (targetVisualNode) {
+                    targetVisualNode.properties.set(propertyName, value)
+                    self.propertyChangeCounter += 1
+                  } else if (targetAdaptedNode) {
+                    targetAdaptedNode.updateProperty(propertyName, value)
                     self.propertyChangeCounter += 1
                   }
                 }
@@ -1954,6 +2090,9 @@ export const AudioGraphStore = types
 
       // Initialize the store - sets up reactions for automatic audio node creation
       init() {
+        // Load metadata first
+        self.loadMetadata()
+
         // Deduplicate connections to prevent audio corruption from corrupted project files
         this.deduplicateConnections()
 
@@ -1971,9 +2110,9 @@ export const AudioGraphStore = types
             const audioContextExists = !!self.audioContext
             return {
               audioContextExists,
-              nodes: self.visualNodes.map(node => ({
+              nodes: self.adaptedNodes.map(node => ({
                 id: node.id,
-                nodeType: node.data.nodeType,
+                nodeType: node.nodeType,
                 hasAudioNode: self.audioNodes.has(node.id) || self.customNodes.has(node.id),
                 isAttached: node.isAttached,
               })),
@@ -1987,9 +2126,9 @@ export const AudioGraphStore = types
                   this.createAudioNode(nodeState.id, nodeState.nodeType)
 
                   // Mark the visual node as having an audio node created
-                  const visualNode = self.visualNodes.find(node => node.id === nodeState.id)
-                  if (visualNode && visualNode.markAudioNodeCreated) {
-                    visualNode.markAudioNodeCreated()
+                  const visualNode = self.adaptedNodes.find(node => node.id === nodeState.id)
+                  if (visualNode) {
+                    visualNode.audioNodeCreated = true
                   }
                 } catch (error) {
                   console.error(
@@ -2004,8 +2143,8 @@ export const AudioGraphStore = types
             // For source nodes (like oscillators), we need to recreate them because
             // they can only be started once in Web Audio API
             self.audioNodes.forEach((audioNode, nodeId) => {
-              const visualNode = self.visualNodes.find(node => node.id === nodeId)
-              const nodeType = visualNode?.data.nodeType
+              const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
+              const nodeType = visualNode?.nodeType
 
               if (nodeType && self.audioNodeFactory) {
                 // Check if this is a source node that needs to be recreated
@@ -2026,8 +2165,8 @@ export const AudioGraphStore = types
                     }
 
                     // Create a new node with the same properties
-                    const metadata = visualNode.data.metadata as NodeMetadata
-                    const properties = Object.fromEntries(visualNode.data.properties.entries())
+                    const metadata = visualNode.metadata as unknown as INodeMetadata
+                    const properties = Object.fromEntries(visualNode.properties.entries())
                     const newAudioNode = self.audioNodeFactory.createAudioNode(
                       nodeType,
                       metadata,
@@ -2084,13 +2223,47 @@ export const AudioGraphStore = types
           self.audioNodeCreationReactionDisposer = null
         }
       },
+
+      // Migration helper for backward compatibility
+      migrateSnapshot(snapshot: any): any {
+        if (!snapshot.adaptedNodes) return snapshot
+
+        const migratedSnapshot = { ...snapshot }
+
+        // Migrate nodes from old format (data.nodeType, data.metadata) to new format (nodeType, metadata)
+        migratedSnapshot.adaptedNodes = snapshot.adaptedNodes.map((node: any) => {
+          if (node.data && node.data.nodeType && node.data.metadata) {
+            // Old format - migrate to new format
+            return {
+              id: node.id,
+              nodeType: node.data.nodeType,
+              position: node.position,
+              metadata: node.data.metadata,
+              properties: node.data.properties || {},
+              type: node.type || 'audioNode',
+              selected: node.selected || false,
+              dragging: node.dragging || false,
+              inputConnections: node.inputConnections || [],
+              outputConnections: node.outputConnections || [],
+            }
+          }
+          // New format - return as is
+          return node
+        })
+
+        return migratedSnapshot
+      },
     }
   })
   .views(self => ({
     get selectedNode() {
-      return self.selectedNodeId
-        ? self.visualNodes.find(node => node.id === self.selectedNodeId)
-        : undefined
+      if (!self.selectedNodeId) return undefined
+
+      // Look in both visual nodes (legacy) and adapted nodes (new system)
+      const visualNode = self.adaptedNodes.find(node => node.id === self.selectedNodeId)
+      const adaptedNode = self.adaptedNodes.find(node => node.id === self.selectedNodeId)
+
+      return visualNode || adaptedNode
     },
 
     get availableNodeTypes() {
@@ -2131,28 +2304,28 @@ export const AudioGraphStore = types
   .actions(self => {
     return {
       updateNodeProperty(nodeId: string, propertyName: string, value: unknown) {
-        const visualNode = self.visualNodes.find(node => node.id === nodeId)
+        const adaptedNode = self.adaptedNodes.find(node => node.id === nodeId)
         const audioNode = self.audioNodes.get(nodeId)
         // Use the MST-based custom node store instead of legacy map
         const customNode = customNodeStore.getNode(nodeId)
 
-        if (visualNode) {
-          // Update the property using MST map API
-          visualNode.data.properties.set(propertyName, value)
+        if (adaptedNode) {
+          // Update the adapted node property
+          adaptedNode.updateProperty(propertyName, value)
 
           // Increment the property change counter to trigger React re-renders
           self.propertyChangeCounter += 1
         }
 
         // Handle custom node property updates using MST store
-        if (customNode && visualNode) {
+        if (customNode && adaptedNode) {
           // Update the custom node's property using MST action
           customNode.setProperty(propertyName, value)
 
           // Check if this property corresponds to an output and update bridges
-          const nodeMetadata = visualNode.data.metadata
+          const nodeMetadata = adaptedNode.metadata
           const hasCorrespondingOutput = nodeMetadata.outputs.some(
-            output => output.name === propertyName
+            (output: any) => output.name === propertyName
           )
 
           if (hasCorrespondingOutput) {
@@ -2172,8 +2345,8 @@ export const AudioGraphStore = types
           return
         }
 
-        if (audioNode && visualNode && self.audioNodeFactory) {
-          const nodeType = visualNode.data.nodeType
+        if (audioNode && adaptedNode && self.audioNodeFactory) {
+          const nodeType = adaptedNode.nodeType
           const metadata = self.webAudioMetadata[nodeType] as INodeMetadata
 
           if (metadata) {
@@ -2246,6 +2419,8 @@ export const AudioGraphStore = types
   })
 
 export type AudioGraphStoreType = Instance<typeof AudioGraphStore>
+
+// Migration helper for backward compatibility removed (was unused)
 
 // Factory function to create store with patch middleware
 export const createAudioGraphStore = () => {

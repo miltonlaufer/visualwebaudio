@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { AudioNodeFactory } from './AudioNodeFactory'
-import type { NodeMetadata } from '~/types'
+import type { INodeMetadata } from '~/stores/NodeModels'
 
 // Mock AudioContext
 class MockAudioContext {
@@ -50,19 +50,20 @@ describe('AudioNodeFactory', () => {
     factory = new AudioNodeFactory(mockAudioContext as any)
   })
 
-  const createMockMetadata = (nodeType: string): NodeMetadata => ({
-    name: nodeType,
-    description: `Test ${nodeType} for unit testing`,
-    category: 'source' as const,
-    inputs: [{ name: 'input', type: 'audio' as const }],
-    outputs: [{ name: 'output', type: 'audio' as const }],
-    properties: [
-      { name: 'frequency', type: 'AudioParam', defaultValue: 440, min: 0, max: 20000 },
-      { name: 'type', type: 'OscillatorType', defaultValue: 'sine' },
-    ],
-    methods: ['start', 'stop'],
-    events: ['ended'],
-  })
+  const createMockMetadata = (nodeType: string): INodeMetadata =>
+    ({
+      name: nodeType,
+      description: `Test ${nodeType} for unit testing`,
+      category: 'source' as const,
+      inputs: [{ name: 'input', type: 'audio' as const }],
+      outputs: [{ name: 'output', type: 'audio' as const }],
+      properties: [
+        { name: 'frequency', type: 'AudioParam', defaultValue: 440, min: 0, max: 20000 },
+        { name: 'type', type: 'OscillatorType', defaultValue: 'sine' },
+      ],
+      methods: ['start', 'stop'],
+      events: ['ended'],
+    }) as unknown as INodeMetadata
 
   it('creates an OscillatorNode with metadata-driven approach', () => {
     const metadata = createMockMetadata('OscillatorNode')
@@ -83,7 +84,7 @@ describe('AudioNodeFactory', () => {
   })
 
   it('creates a GainNode with default properties', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'GainNode',
       description: 'Test GainNode for unit testing',
       category: 'effect',
@@ -92,7 +93,7 @@ describe('AudioNodeFactory', () => {
       properties: [{ name: 'gain', type: 'AudioParam', defaultValue: 0.5, min: 0, max: 1 }],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const audioNode = factory.createAudioNode('GainNode', metadata, {})
 
@@ -112,7 +113,7 @@ describe('AudioNodeFactory', () => {
   })
 
   it('handles AudioDestinationNode correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'AudioDestinationNode',
       description: 'Test AudioDestinationNode for unit testing',
       category: 'destination',
@@ -121,7 +122,7 @@ describe('AudioNodeFactory', () => {
       properties: [],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const audioNode = factory.createAudioNode('AudioDestinationNode', metadata, {})
 
@@ -153,7 +154,8 @@ describe('AudioNodeFactory', () => {
 
   it('updates node properties successfully', () => {
     const metadata = createMockMetadata('GainNode')
-    metadata.properties = [{ name: 'gain', type: 'AudioParam', defaultValue: 1 }]
+    // Cast to any to bypass MST type checking for test purposes
+    ;(metadata as any).properties = [{ name: 'gain', type: 'AudioParam', defaultValue: 1 }]
 
     const mockGainNode = {
       gain: { value: 1 },
@@ -203,7 +205,7 @@ describe('AudioNodeFactory', () => {
   })
 
   it('applies properties with different types correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'TestNode',
       description: 'Test node for property type testing',
       category: 'effect',
@@ -215,7 +217,7 @@ describe('AudioNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const mockNode = {
       gain: { value: 1 }, // Required by the mock type
@@ -238,7 +240,7 @@ describe('AudioNodeFactory', () => {
   it('warns when property not found on audio node', () => {
     const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
 
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'TestNode',
       description: 'Test node for property warning testing',
       category: 'effect',
@@ -247,7 +249,7 @@ describe('AudioNodeFactory', () => {
       properties: [{ name: 'missingProp', type: 'AudioParam', defaultValue: 100 }],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const mockNode = {} // No properties
     mockAudioContext.createGain = vi.fn(() => mockNode)
@@ -260,7 +262,7 @@ describe('AudioNodeFactory', () => {
   })
 
   it('should create nodes using dynamic method calls', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'DelayNode',
       description: 'Test DelayNode for dynamic method call testing',
       category: 'effect',
@@ -269,7 +271,7 @@ describe('AudioNodeFactory', () => {
       properties: [],
       methods: ['connect', 'disconnect'],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const audioNode = factory.createAudioNode('DelayNode', metadata)
 
@@ -278,7 +280,7 @@ describe('AudioNodeFactory', () => {
   })
 
   it('should handle unknown node types gracefully', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'UnknownNode',
       description: 'Test UnknownNode for error handling',
       category: 'effect',
@@ -287,7 +289,7 @@ describe('AudioNodeFactory', () => {
       properties: [],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     expect(() => {
       factory.createAudioNode('UnknownNode', metadata)

@@ -1,20 +1,23 @@
 import React, { useState, useCallback } from 'react'
-import { Handle, Position, useNodeId } from '@xyflow/react'
-import type { VisualNodeData } from '~/types'
+import { Handle, Position } from '@xyflow/react'
+import { observer } from 'mobx-react-lite'
+import type { INodeAdapter } from '~/stores/NodeAdapter'
 import CustomNodeRenderer from './customNodes'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 
-interface AudioNodeProps {
-  data: VisualNodeData
+interface AdaptedAudioNodeProps {
+  data: {
+    nodeAdapter: INodeAdapter
+  }
   selected?: boolean
 }
 
-const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
-  const nodeId = useNodeId() // Get the node ID from React Flow
+const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, selected }) => {
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
 
-  const { metadata, nodeType, properties } = data
+  const { nodeAdapter } = data
+  const { metadata, nodeType, properties, id: nodeId } = nodeAdapter
 
   // Check if this is a custom node type
   const customNodeTypes = [
@@ -53,22 +56,22 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
     setIsConnecting(false)
   }, [])
 
-  // Helper function to safely get property value whether properties is a Map or object
-  const getPropertyValue = (properties: unknown, propertyName: string): unknown => {
+  // Helper function to safely get property value from NodeAdapter properties
+  const getPropertyValue = (properties: any, propertyName: string): unknown => {
     if (!properties) return undefined
 
-    // Check if it's a MobX State Tree Map or regular Map with .get method
-    if (typeof (properties as any).get === 'function') {
-      return (properties as any).get(propertyName)
+    // NodeAdapter uses MST map, so use .get method
+    if (typeof properties.get === 'function') {
+      return properties.get(propertyName)
     } else if (typeof properties === 'object') {
-      return (properties as Record<string, unknown>)[propertyName]
+      return properties[propertyName]
     }
     return undefined
   }
 
   // Error handling
   if (!metadata) {
-    console.error('AudioNode: metadata is undefined for nodeType:', nodeType)
+    console.error('AdaptedAudioNode: metadata is undefined for nodeType:', nodeType)
     return (
       <div className="min-w-32 p-3 rounded-lg shadow-md border-2 bg-red-100 border-red-300">
         <div className="text-sm font-semibold text-red-800">Error: No metadata</div>
@@ -285,6 +288,6 @@ const AudioNode: React.FC<AudioNodeProps> = ({ data, selected }) => {
       </div>
     </div>
   )
-}
+})
 
-export default AudioNode
+export default AdaptedAudioNode

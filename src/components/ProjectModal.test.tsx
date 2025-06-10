@@ -1,11 +1,10 @@
-import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import ProjectModal from './ProjectModal'
 
 // Simple mock store
 const mockStore = {
-  visualNodes: [],
+  adaptedNodes: [],
   visualEdges: [],
   setProjectModified: vi.fn(),
   clearAllNodes: vi.fn(),

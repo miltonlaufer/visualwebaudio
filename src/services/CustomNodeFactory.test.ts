@@ -1,6 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { CustomNodeFactory } from './CustomNodeFactory'
-import type { NodeMetadata } from '~/types'
+import type { INodeMetadata } from '~/stores/NodeModels'
 
 // Mock AudioContext for testing
 const mockAudioContext = {
@@ -45,7 +45,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('creates a ButtonNode with correct properties', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Button',
       description: 'Test button',
       category: 'processing',
@@ -57,7 +57,7 @@ describe('CustomNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const button = factory.createCustomNode('ButtonNode', metadata)
 
@@ -68,7 +68,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('creates a SliderNode with correct initial value', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Slider',
       description: 'Test slider',
       category: 'processing',
@@ -83,7 +83,7 @@ describe('CustomNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const slider = factory.createCustomNode('SliderNode', metadata)
 
@@ -94,7 +94,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('ButtonNode triggers correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Button',
       description: 'Test button',
       category: 'processing',
@@ -106,7 +106,7 @@ describe('CustomNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const button = factory.createCustomNode('ButtonNode', metadata)
 
@@ -125,7 +125,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('MidiToFreqNode converts MIDI notes to frequencies correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'MIDI to Frequency',
       description: 'Test MIDI converter',
       category: 'processing',
@@ -137,7 +137,7 @@ describe('CustomNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const converter = factory.createCustomNode('MidiToFreqNode', metadata)
 
@@ -155,7 +155,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('ScaleToMidiNode converts scale degrees to MIDI notes correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Scale to MIDI',
       description: 'Test scale converter',
       category: 'processing',
@@ -171,7 +171,7 @@ describe('CustomNodeFactory', () => {
       ],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const scaleConverter = factory.createCustomNode('ScaleToMidiNode', metadata)
 
@@ -201,7 +201,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('applies initial properties correctly', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Slider',
       description: 'Test slider',
       category: 'processing',
@@ -210,7 +210,7 @@ describe('CustomNodeFactory', () => {
       properties: [{ name: 'value', type: 'number', defaultValue: 50 }],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const slider = factory.createCustomNode('SliderNode', metadata, { value: 75 })
 
@@ -219,7 +219,7 @@ describe('CustomNodeFactory', () => {
   })
 
   it('handles unknown node type gracefully', () => {
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Unknown',
       description: 'Unknown node',
       category: 'processing',
@@ -228,7 +228,7 @@ describe('CustomNodeFactory', () => {
       properties: [],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     // The MST approach creates the node but it won't have specific behaviors
     const node = factory.createCustomNode('UnknownNode', metadata)
@@ -257,7 +257,7 @@ describe('Custom Node Behaviors', () => {
 
   it('GreaterThanNode creates with correct structure', () => {
     const factory = new CustomNodeFactory(mockAudioContext)
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Greater Than',
       description: 'Test comparison',
       category: 'processing',
@@ -269,7 +269,7 @@ describe('Custom Node Behaviors', () => {
       properties: [{ name: 'threshold', type: 'number', defaultValue: 0 }],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const comp = factory.createCustomNode('GreaterThanNode', metadata)
 
@@ -289,7 +289,7 @@ describe('Custom Node Behaviors', () => {
 
   it('SelectNode creates with correct structure', () => {
     const factory = new CustomNodeFactory(mockAudioContext)
-    const metadata: NodeMetadata = {
+    const metadata: INodeMetadata = {
       name: 'Select',
       description: 'Test router',
       category: 'processing',
@@ -306,7 +306,7 @@ describe('Custom Node Behaviors', () => {
       properties: [{ name: 'numOutputs', type: 'number', defaultValue: 2 }],
       methods: [],
       events: [],
-    }
+    } as unknown as INodeMetadata
 
     const selector = factory.createCustomNode('SelectNode', metadata)
 
@@ -327,7 +327,7 @@ describe('Custom Node Behaviors', () => {
   })
 })
 
-const soundFileMetadata: NodeMetadata = {
+const soundFileMetadata: INodeMetadata = {
   name: 'Sound File',
   description: 'Loads and plays audio files',
   category: 'source' as const,
@@ -344,7 +344,7 @@ const soundFileMetadata: NodeMetadata = {
   ],
   methods: ['loadFile', 'play', 'stop'],
   events: [],
-}
+} as unknown as INodeMetadata
 
 describe('SoundFileNode - Pause/Resume Functionality', () => {
   let factory: CustomNodeFactory

@@ -24,7 +24,7 @@ vi.mock('~/services/AudioNodeFactory', () => ({
   AudioNodeFactory: class {
     constructor(public audioContext: AudioContext) {}
 
-    createAudioNode(nodeType: string, metadata: any, properties: any) {
+    createAudioNode(_nodeType: string, _metadata: any, properties: any) {
       const mockNode = createMockAudioNode()
       // Apply initial properties
       if (properties) {
@@ -39,7 +39,7 @@ vi.mock('~/services/AudioNodeFactory', () => ({
       return mockNode
     }
 
-    updateNodeProperty(audioNode: any, nodeType: string, propertyName: string, value: any) {
+    updateNodeProperty(audioNode: any, _nodeType: string, propertyName: string, value: any) {
       // Actually update the property on the mock
       if (propertyName === 'frequency' && audioNode.frequency) {
         audioNode.frequency.value = value
@@ -217,12 +217,12 @@ describe('Examples Structure Tests', () => {
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(3)
+        expect(store.adaptedNodes).toHaveLength(3)
       })
 
-      expect(store.visualNodes.some(n => n.data.nodeType === 'OscillatorNode')).toBe(true)
-      expect(store.visualNodes.some(n => n.data.nodeType === 'GainNode')).toBe(true)
-      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'GainNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should create exactly 2 connections', async () => {
@@ -241,9 +241,9 @@ describe('Examples Structure Tests', () => {
 
       // Wait for nodes to be created and properties to be set
       await waitFor(() => {
-        const gainNode = store.visualNodes.find(n => n.data.nodeType === 'GainNode')
+        const gainNode = store.adaptedNodes.find(n => n.nodeType === 'GainNode')
         expect(gainNode).toBeDefined()
-        expect(gainNode?.data.properties.get('gain')).toBe(0.5)
+        expect(gainNode?.properties.get('gain')).toBe(0.5)
       })
     })
   })
@@ -257,13 +257,13 @@ describe('Examples Structure Tests', () => {
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(6)
       })
 
-      expect(store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
-      expect(store.visualNodes.filter(n => n.data.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
-      expect(store.visualNodes.some(n => n.data.nodeType === 'StereoPannerNode')).toBe(true)
-      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
+      expect(store.adaptedNodes.some(n => n.nodeType === 'StereoPannerNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should create exactly 5 connections (main chain + LFO modulation)', async () => {
@@ -283,25 +283,25 @@ describe('Examples Structure Tests', () => {
       // Wait for nodes to be created and properties to be set
       await waitFor(() => {
         // Find the LFO oscillator (should be at y: 350)
-        const lfoNode = store.visualNodes.find(
-          n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+        const lfoNode = store.adaptedNodes.find(
+          n => n.nodeType === 'OscillatorNode' && n.position.y === 350
         )
         expect(lfoNode).toBeDefined()
-        expect(lfoNode?.data.properties.get('frequency')).toBe(0.2)
+        expect(lfoNode?.properties.get('frequency')).toBe(0.2)
 
         // Find the LFO gain node
-        const lfoGainNode = store.visualNodes.find(
-          n => n.data.nodeType === 'GainNode' && n.position.y === 350
+        const lfoGainNode = store.adaptedNodes.find(
+          n => n.nodeType === 'GainNode' && n.position.y === 350
         )
         expect(lfoGainNode).toBeDefined()
-        expect(lfoGainNode?.data.properties.get('gain')).toBe(1)
+        expect(lfoGainNode?.properties.get('gain')).toBe(1)
 
         // Find the oscillator gain node
-        const oscGainNode = store.visualNodes.find(
-          n => n.data.nodeType === 'GainNode' && n.position.y === 150
+        const oscGainNode = store.adaptedNodes.find(
+          n => n.nodeType === 'GainNode' && n.position.y === 150
         )
         expect(oscGainNode).toBeDefined()
-        expect(oscGainNode?.data.properties.get('gain')).toBe(0.5)
+        expect(oscGainNode?.properties.get('gain')).toBe(0.5)
       })
     })
   })
@@ -315,12 +315,12 @@ describe('Examples Structure Tests', () => {
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(6)
       })
-      expect(store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
-      expect(store.visualNodes.filter(n => n.data.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
-      expect(store.visualNodes.some(n => n.data.nodeType === 'BiquadFilterNode')).toBe(true)
-      expect(store.visualNodes.some(n => n.data.nodeType === 'AudioDestinationNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
+      expect(store.adaptedNodes.some(n => n.nodeType === 'BiquadFilterNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
     it('should configure filter and LFO properly', async () => {
@@ -330,25 +330,25 @@ describe('Examples Structure Tests', () => {
       // Wait for nodes to be created and properties to be set
       await waitFor(() => {
         // Check filter configuration
-        const filterNode = store.visualNodes.find(n => n.data.nodeType === 'BiquadFilterNode')
+        const filterNode = store.adaptedNodes.find(n => n.nodeType === 'BiquadFilterNode')
         expect(filterNode).toBeDefined()
-        expect(filterNode?.data.properties.get('type')).toBe('lowpass')
-        expect(filterNode?.data.properties.get('frequency')).toBe(800)
-        expect(filterNode?.data.properties.get('Q')).toBe(10)
+        expect(filterNode?.properties.get('type')).toBe('lowpass')
+        expect(filterNode?.properties.get('frequency')).toBe(800)
+        expect(filterNode?.properties.get('Q')).toBe(10)
 
         // Check LFO configuration
-        const lfoNode = store.visualNodes.find(
-          n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+        const lfoNode = store.adaptedNodes.find(
+          n => n.nodeType === 'OscillatorNode' && n.position.y === 350
         )
         expect(lfoNode).toBeDefined()
-        expect(lfoNode?.data.properties.get('frequency')).toBe(0.5)
+        expect(lfoNode?.properties.get('frequency')).toBe(0.5)
 
         // Check oscillator gain
-        const oscGainNode = store.visualNodes.find(
-          n => n.data.nodeType === 'GainNode' && n.position.y === 100
+        const oscGainNode = store.adaptedNodes.find(
+          n => n.nodeType === 'GainNode' && n.position.y === 100
         )
         expect(oscGainNode).toBeDefined()
-        expect(oscGainNode?.data.properties.get('gain')).toBe(0.5)
+        expect(oscGainNode?.properties.get('gain')).toBe(0.5)
       })
     })
   })
@@ -358,7 +358,7 @@ describe('Examples Structure Tests', () => {
       for (const example of examples) {
         // Clear any previous nodes
         store.clearAllNodes()
-        expect(store.visualNodes).toHaveLength(0)
+        expect(store.adaptedNodes).toHaveLength(0)
         expect(store.visualEdges).toHaveLength(0)
 
         // Create the example
@@ -366,12 +366,12 @@ describe('Examples Structure Tests', () => {
 
         // Wait for nodes to be created
         await waitFor(() => {
-          expect(store.visualNodes.length).toBeGreaterThan(0)
+          expect(store.adaptedNodes.length).toBeGreaterThan(0)
         })
 
         // Clear again
         store.clearAllNodes()
-        expect(store.visualNodes).toHaveLength(0)
+        expect(store.adaptedNodes).toHaveLength(0)
         expect(store.visualEdges).toHaveLength(0)
       }
     })
@@ -381,13 +381,13 @@ describe('Examples Structure Tests', () => {
 
       // Run the example twice
       await example.create()
-      const firstRunNodeCount = store.visualNodes.length
+      const firstRunNodeCount = store.adaptedNodes.length
       const firstRunEdgeCount = store.visualEdges.length
 
       store.clearAllNodes()
 
       await example.create()
-      const secondRunNodeCount = store.visualNodes.length
+      const secondRunNodeCount = store.adaptedNodes.length
       const secondRunEdgeCount = store.visualEdges.length
 
       // Should create the same structure both times
@@ -419,14 +419,14 @@ describe('Examples UI Integration Tests', () => {
 
       // Wait for nodes and edges to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(3)
+        expect(store.adaptedNodes).toHaveLength(3)
         expect(store.visualEdges).toHaveLength(2)
       })
 
       // Verify connection structure
-      const oscNode = store.visualNodes.find(n => n.data.nodeType === 'OscillatorNode')
-      const gainNode = store.visualNodes.find(n => n.data.nodeType === 'GainNode')
-      const destNode = store.visualNodes.find(n => n.data.nodeType === 'AudioDestinationNode')
+      const oscNode = store.adaptedNodes.find(n => n.nodeType === 'OscillatorNode')
+      const gainNode = store.adaptedNodes.find(n => n.nodeType === 'GainNode')
+      const destNode = store.adaptedNodes.find(n => n.nodeType === 'AudioDestinationNode')
 
       expect(oscNode).toBeDefined()
       expect(gainNode).toBeDefined()
@@ -454,22 +454,22 @@ describe('Examples UI Integration Tests', () => {
 
       // Wait for nodes and edges to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(6)
         expect(store.visualEdges).toHaveLength(5)
       })
 
       // Verify LFO modulation connection exists
-      const lfoNode = store.visualNodes.find(
-        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+      const lfoNode = store.adaptedNodes.find(
+        n => n.nodeType === 'OscillatorNode' && n.position.y === 350
       )
-      const filterNode = store.visualNodes.find(n => n.data.nodeType === 'BiquadFilterNode')
+      const filterNode = store.adaptedNodes.find(n => n.nodeType === 'BiquadFilterNode')
 
       expect(lfoNode).toBeDefined()
       expect(filterNode).toBeDefined()
 
       // Should have a modulation connection (through LFO gain)
-      const lfoGainNode = store.visualNodes.find(
-        n => n.data.nodeType === 'GainNode' && n.position.y === 350
+      const lfoGainNode = store.adaptedNodes.find(
+        n => n.nodeType === 'GainNode' && n.position.y === 350
       )
       expect(lfoGainNode).toBeDefined()
 
@@ -491,19 +491,19 @@ describe('Examples UI Integration Tests', () => {
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.visualNodes).toHaveLength(8)
+        expect(store.adaptedNodes).toHaveLength(8)
       })
 
       // Should have oscillators for chord notes
-      const oscillators = store.visualNodes.filter(n => n.data.nodeType === 'OscillatorNode')
+      const oscillators = store.adaptedNodes.filter(n => n.nodeType === 'OscillatorNode')
       expect(oscillators).toHaveLength(3) // C, E, G
 
       // Should have individual gains for each oscillator
-      const gains = store.visualNodes.filter(n => n.data.nodeType === 'GainNode')
+      const gains = store.adaptedNodes.filter(n => n.nodeType === 'GainNode')
       expect(gains).toHaveLength(4) // 3 individual + 1 mixer
 
       // Should have destination
-      const destination = store.visualNodes.filter(n => n.data.nodeType === 'AudioDestinationNode')
+      const destination = store.adaptedNodes.filter(n => n.nodeType === 'AudioDestinationNode')
       expect(destination).toHaveLength(1)
     })
 
@@ -518,16 +518,16 @@ describe('Examples UI Integration Tests', () => {
       // Wait for nodes and edges to be created
       await waitFor(() => {
         expect(store.visualEdges).toHaveLength(5)
-        expect(store.visualNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(6)
       })
 
       // Verify tremolo structure: Osc → OscGain → TremoloGain → Dest
       //                          LFO → LFOGain → TremoloGain
-      const mainOsc = store.visualNodes.find(
-        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 100
+      const mainOsc = store.adaptedNodes.find(
+        n => n.nodeType === 'OscillatorNode' && n.position.y === 100
       )
-      const lfoOsc = store.visualNodes.find(
-        n => n.data.nodeType === 'OscillatorNode' && n.position.y === 350
+      const lfoOsc = store.adaptedNodes.find(
+        n => n.nodeType === 'OscillatorNode' && n.position.y === 350
       )
 
       expect(mainOsc).toBeDefined()

@@ -17,41 +17,12 @@ export interface NodeProperty {
   max?: number
 }
 
-export interface NodeMetadata {
-  name: string
-  description: string
-  category:
-    | 'source'
-    | 'effect'
-    | 'destination'
-    | 'analysis'
-    | 'processing'
-    | 'context'
-    | 'control'
-    | 'logic'
-    | 'input'
-    | 'utility'
-    | 'misc'
-  inputs: Array<{ name: string; type: 'audio' | 'control' }>
-  outputs: Array<{ name: string; type: 'audio' | 'control' }>
-  properties: Array<{
-    name: string
-    type: string
-    defaultValue: unknown
-    min?: number
-    max?: number
-    step?: number
-    options?: unknown[]
-    description?: string
-  }>
-  methods: string[]
-  events: string[]
-}
+import type { INodeMetadata } from '~/stores/NodeModels'
 
 // Visual Node Types for React Flow
 export interface VisualNodeData {
   nodeType: string
-  metadata: NodeMetadata
+  metadata: INodeMetadata
   audioNode?: AudioNode
   properties: Map<string, unknown>
 }
@@ -87,7 +58,7 @@ export interface AudioGraph {
 
 // Store Types
 export interface AppState {
-  visualNodes: VisualNode[]
+  adaptedNodes: VisualNode[]
   visualEdges: VisualEdge[]
   audioGraph: AudioGraph
   selectedNodeId: string | null

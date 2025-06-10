@@ -2,11 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 
-import {
-  createAudioGraphStore,
-  AudioGraphStoreContext,
-  useAudioGraphStore,
-} from '~/stores/AudioGraphStore'
+import { rootStore } from '~/stores/RootStore'
+import { AudioGraphStoreContext, useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
@@ -17,12 +14,11 @@ import OfflineIndicator from '~/components/OfflineIndicator'
 import AIChat from '~/components/AIChat'
 
 const App: React.FC = observer(() => {
-  const store = useMemo(() => createAudioGraphStore(), [])
   const themeStore = useMemo(() => createThemeStore(), [])
 
   return (
     <ThemeStoreContext.Provider value={themeStore}>
-      <AudioGraphStoreContext.Provider value={store}>
+      <AudioGraphStoreContext.Provider value={rootStore.audioGraph}>
         <AppContent />
       </AudioGraphStoreContext.Provider>
     </ThemeStoreContext.Provider>

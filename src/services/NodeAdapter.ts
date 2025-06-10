@@ -1,4 +1,4 @@
-import type { NodeMetadata } from '~/types'
+import type { INodeMetadata } from '~/stores/NodeModels'
 import { AudioNodeFactory } from './AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from './CustomNodeFactory'
 
@@ -6,7 +6,7 @@ import { CustomNodeFactory, type CustomNode } from './CustomNodeFactory'
 export interface UnifiedNode {
   id: string
   type: string
-  metadata: NodeMetadata
+  metadata: INodeMetadata
   properties: Map<string, any>
 
   // Connection methods
@@ -33,7 +33,7 @@ export interface UnifiedNode {
 export class WebAudioNodeAdapter implements UnifiedNode {
   id: string
   type: string
-  metadata: NodeMetadata
+  metadata: INodeMetadata
   properties: Map<string, any> = new Map()
 
   private audioNode: AudioNode
@@ -43,7 +43,7 @@ export class WebAudioNodeAdapter implements UnifiedNode {
   constructor(
     id: string,
     type: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     audioNode: AudioNode,
     audioNodeFactory: AudioNodeFactory,
     initialProperties: Record<string, any> = {}
@@ -153,13 +153,13 @@ export class WebAudioNodeAdapter implements UnifiedNode {
 export class CustomNodeAdapter implements UnifiedNode {
   id: string
   type: string
-  metadata: NodeMetadata
+  metadata: INodeMetadata
   properties: Map<string, any> = new Map()
 
   private customNode: CustomNode
   private connections: Array<{ target: UnifiedNode; outputName?: string; inputName?: string }> = []
 
-  constructor(id: string, type: string, metadata: NodeMetadata, customNode: CustomNode) {
+  constructor(id: string, type: string, metadata: INodeMetadata, customNode: CustomNode) {
     this.id = id
     this.type = type
     this.metadata = metadata
@@ -177,7 +177,8 @@ export class CustomNodeAdapter implements UnifiedNode {
       // Custom nodes will notify their connections when values change
     } else {
       // Custom to Custom connection
-      this.customNode.connect(targetInternalNode as CustomNode, outputName, inputName)
+      // Custom nodes handle connections through the reactive system
+      // No direct connect method needed
     }
   }
 
@@ -250,7 +251,7 @@ export class UnifiedNodeFactory {
   createNode(
     id: string,
     nodeType: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     properties: Record<string, any> = {}
   ): UnifiedNode {
     // Check if it's a custom node type
@@ -277,7 +278,7 @@ export class UnifiedNodeFactory {
     }
   }
 
-  createMicrophoneNode(id: string, metadata: NodeMetadata, mediaStream: MediaStream): UnifiedNode {
+  createMicrophoneNode(id: string, metadata: INodeMetadata, mediaStream: MediaStream): UnifiedNode {
     const micSource = this.audioContext.createMediaStreamSource(mediaStream)
     return new WebAudioNodeAdapter(
       id,

@@ -1,4 +1,3 @@
-import React from 'react'
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { userEvent } from '@testing-library/user-event'
@@ -38,7 +37,7 @@ document.execCommand = vi.fn(() => true)
 
 describe('ExportJSButton', () => {
   const mockStore = {
-    visualNodes: [],
+    adaptedNodes: [],
     visualEdges: [],
     audioConnections: [],
     selectedNodeId: undefined,
@@ -73,7 +72,7 @@ describe('ExportJSButton', () => {
   it('enables button when nodes are present', () => {
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -101,7 +100,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -152,7 +151,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -211,7 +210,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'gain-1',
           type: 'GainNode',
@@ -241,7 +240,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'delay-1',
           type: 'DelayNode',
@@ -271,7 +270,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -316,7 +315,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -349,7 +348,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -381,7 +380,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-node-123!@#',
           type: 'OscillatorNode',
@@ -411,7 +410,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',
@@ -448,22 +447,32 @@ describe('ExportJSButton', () => {
 
     const mockStoreWithCustomNodes = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'slider-1',
-          type: 'SliderNode',
-          data: {
-            nodeType: 'SliderNode',
-            properties: new Map([['value', 50]] as [string, any][]),
-          },
+          nodeType: 'SliderNode',
+          type: 'audioNode',
+          properties: new Map([['value', 50]] as [string, any][]),
+          position: { x: 100, y: 100 },
+          metadata: { name: 'Slider', category: 'utility' },
+          selected: false,
+          dragging: false,
+          inputConnections: [],
+          outputConnections: [],
+          audioNodeCreated: false,
         },
         {
           id: 'osc-1',
-          type: 'OscillatorNode',
-          data: {
-            nodeType: 'OscillatorNode',
-            properties: new Map([['frequency', 440]] as [string, any][]),
-          },
+          nodeType: 'OscillatorNode',
+          type: 'audioNode',
+          properties: new Map([['frequency', 440]] as [string, any][]),
+          position: { x: 200, y: 100 },
+          metadata: { name: 'Oscillator', category: 'source' },
+          selected: false,
+          dragging: false,
+          inputConnections: [],
+          outputConnections: [],
+          audioNodeCreated: false,
         },
       ],
       visualEdges: [
@@ -513,7 +522,7 @@ describe('ExportJSButton', () => {
     const user = userEvent.setup()
     const mockStoreWithWebAudioOnly = {
       ...mockStore,
-      visualNodes: [
+      adaptedNodes: [
         {
           id: 'osc-1',
           type: 'OscillatorNode',

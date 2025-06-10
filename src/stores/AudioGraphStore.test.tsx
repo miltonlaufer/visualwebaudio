@@ -66,7 +66,7 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
   describe('Store Initialization', () => {
     it('initializes with empty state', () => {
-      expect(store.visualNodes.length).toBe(0)
+      expect(store.adaptedNodes.length).toBe(0)
       expect(store.visualEdges.length).toBe(0)
       expect(store.selectedNodeId).toBeUndefined()
       expect(store.isPlaying).toBe(false)
@@ -92,48 +92,48 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
   describe('Node Management', () => {
     it('adds a node correctly', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
       expect(nodeId).toBeDefined()
-      expect(store.visualNodes.length).toBe(1)
+      expect(store.adaptedNodes.length).toBe(1)
 
-      const node = store.visualNodes[0]
-      expect(node.data.nodeType).toBe('OscillatorNode')
+      const node = store.adaptedNodes[0]
+      expect(node.nodeType).toBe('OscillatorNode')
       expect(node.position.x).toBe(100)
       expect(node.position.y).toBe(100)
     })
 
     it('removes a node correctly', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.visualNodes.length).toBe(1)
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      expect(store.adaptedNodes.length).toBe(1)
 
       store.removeNode(nodeId)
-      expect(store.visualNodes.length).toBe(0)
+      expect(store.adaptedNodes.length).toBe(0)
     })
 
     it('clears all nodes', () => {
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-      store.addNode('GainNode', { x: 200, y: 200 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('GainNode', { x: 200, y: 200 })
 
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
 
       store.clearAllNodes()
-      expect(store.visualNodes.length).toBe(0)
+      expect(store.adaptedNodes.length).toBe(0)
       expect(store.visualEdges.length).toBe(0)
     })
 
     it('updates node position', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
       store.updateNodePosition(nodeId, { x: 200, y: 300 })
 
-      const node = store.visualNodes.find(n => n.id === nodeId)
+      const node = store.adaptedNodes.find(n => n.id === nodeId)
       expect(node?.position.x).toBe(200)
       expect(node?.position.y).toBe(300)
     })
 
     it('selects and deselects nodes', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
       expect(store.selectedNodeId).toBeUndefined()
 
@@ -145,7 +145,7 @@ describe('AudioGraphStore - Basic Functionality', () => {
     })
 
     it('gets selected node correctly', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
       expect(store.selectedNode).toBeUndefined()
 
@@ -159,7 +159,7 @@ describe('AudioGraphStore - Basic Functionality', () => {
     it('increments property change counter', () => {
       const initialCounter = store.propertyChangeCounter
 
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       store.updateNodeProperty(nodeId, 'frequency', 880)
 
       expect(store.propertyChangeCounter).toBe(initialCounter + 1)
@@ -168,7 +168,7 @@ describe('AudioGraphStore - Basic Functionality', () => {
     it('increments counter on multiple property changes', () => {
       const initialCounter = store.propertyChangeCounter
 
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       store.updateNodeProperty(nodeId, 'frequency', 880)
       store.updateNodeProperty(nodeId, 'type', 'square')
 
@@ -178,23 +178,23 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
   describe('Edge Management - Basic', () => {
     it('validates connections correctly', () => {
-      const sourceId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const targetId = store.addNode('GainNode', { x: 200, y: 200 })
+      const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const targetId = store.addAdaptedNode('GainNode', { x: 200, y: 200 })
 
       const isValid = store.isValidConnection(sourceId, targetId, 'output', 'input')
       expect(isValid).toBe(true)
     })
 
     it('removes edges when node is removed', () => {
-      const sourceId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      store.addNode('GainNode', { x: 200, y: 200 })
+      const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('GainNode', { x: 200, y: 200 })
 
       // Test that edge removal works when nodes are removed
       // (We can't directly test edge addition due to MST protection)
       expect(store.visualEdges.length).toBe(0)
 
       store.removeNode(sourceId)
-      expect(store.visualNodes.length).toBe(1)
+      expect(store.adaptedNodes.length).toBe(1)
     })
   })
 
@@ -219,27 +219,27 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
     it('handles unknown node types', () => {
       expect(() => {
-        store.addNode('UnknownNode', { x: 100, y: 100 })
+        store.addAdaptedNode('UnknownNode', { x: 100, y: 100 })
       }).toThrow('Unknown node type: UnknownNode')
     })
   })
 
   describe('State Consistency', () => {
     it('maintains consistent state after multiple operations', () => {
-      const sourceId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const targetId = store.addNode('GainNode', { x: 200, y: 200 })
+      const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const targetId = store.addAdaptedNode('GainNode', { x: 200, y: 200 })
 
       // Select nodes
       store.selectNode(sourceId)
 
       // Verify state consistency
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
       expect(store.selectedNodeId).toBe(sourceId)
 
-      const sourceNode = store.visualNodes.find(n => n.id === sourceId)
-      const targetNode = store.visualNodes.find(n => n.id === targetId)
-      expect(sourceNode?.data.nodeType).toBe('OscillatorNode')
-      expect(targetNode?.data.nodeType).toBe('GainNode')
+      const sourceNode = store.adaptedNodes.find(n => n.id === sourceId)
+      const targetNode = store.adaptedNodes.find(n => n.id === targetId)
+      expect(sourceNode?.nodeType).toBe('OscillatorNode')
+      expect(targetNode?.nodeType).toBe('GainNode')
     })
 
     it('handles rapid node creation and deletion', () => {
@@ -247,15 +247,15 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
       // Create many nodes
       for (let i = 0; i < 10; i++) {
-        nodeIds.push(store.addNode('OscillatorNode', { x: i * 100, y: 100 }))
+        nodeIds.push(store.addAdaptedNode('OscillatorNode', { x: i * 100, y: 100 }))
       }
 
-      expect(store.visualNodes.length).toBe(10)
+      expect(store.adaptedNodes.length).toBe(10)
 
       // Delete them all
       nodeIds.forEach(id => store.removeNode(id))
 
-      expect(store.visualNodes.length).toBe(0)
+      expect(store.adaptedNodes.length).toBe(0)
     })
   })
 
@@ -280,20 +280,20 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
   describe('Node Properties', () => {
     it('creates nodes with default properties from metadata', () => {
-      const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const node = store.visualNodes.find(n => n.id === nodeId)
+      const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const node = store.adaptedNodes.find(n => n.id === nodeId)
 
-      expect(node?.data.properties).toBeDefined()
+      expect(node?.properties).toBeDefined()
       // Note: Properties might not be directly accessible due to MST structure
-      expect(typeof node?.data.properties).toBe('object')
+      expect(typeof node?.properties).toBe('object')
     })
 
     it('creates gain nodes with correct default properties', () => {
-      const nodeId = store.addNode('GainNode', { x: 100, y: 100 })
-      const node = store.visualNodes.find(n => n.id === nodeId)
+      const nodeId = store.addAdaptedNode('GainNode', { x: 100, y: 100 })
+      const node = store.adaptedNodes.find(n => n.id === nodeId)
 
-      expect(node?.data.properties).toBeDefined()
-      expect(typeof node?.data.properties).toBe('object')
+      expect(node?.properties).toBeDefined()
+      expect(typeof node?.properties).toBe('object')
     })
   })
 

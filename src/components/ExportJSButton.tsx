@@ -1,18 +1,15 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
-import type { Node, Edge } from '@xyflow/react'
+import type { Edge } from '@xyflow/react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { useOnClickOutside } from 'usehooks-ts'
 
-interface AudioNode extends Node {
+interface AudioNode {
   id: string
-  type: string
-  data: {
-    nodeType: string
-    properties: Map<string, unknown>
-  }
+  nodeType: string
+  properties: Map<string, unknown>
 }
 
 const ExportJSButton: React.FC = observer(() => {
@@ -22,8 +19,30 @@ const ExportJSButton: React.FC = observer(() => {
   const [copied, setCopied] = useState(false)
   const modalRef = useRef<HTMLDivElement>(null)
 
-  const nodes = store.visualNodes as AudioNode[]
+  const nodes = store.adaptedNodes
   const hasNodes = nodes.length > 0
+
+  // Helper function to get nodeType from both old and new node structures
+  const getNodeType = (node: any): string => {
+    return node.nodeType || node.data?.nodeType || 'Unknown'
+  }
+
+  // Helper function to get properties from both old and new node structures
+  const getNodeProperties = (node: any): Map<string, unknown> => {
+    if (node.properties && node.properties instanceof Map) {
+      return node.properties
+    }
+    if (node.data?.properties && node.data.properties instanceof Map) {
+      return node.data.properties
+    }
+    if (node.data?.properties && typeof node.data.properties === 'object') {
+      return new Map(Object.entries(node.data.properties))
+    }
+    if (node.properties && typeof node.properties === 'object') {
+      return new Map(Object.entries(node.properties))
+    }
+    return new Map()
+  }
 
   // Handle click outside to close modal
   const handleClickOutside = useCallback(() => {
@@ -47,10 +66,10 @@ const ExportJSButton: React.FC = observer(() => {
   const handleExport = () => {
     if (!hasNodes) return
 
-    const nodes = store.visualNodes as AudioNode[]
+    const nodes = store.adaptedNodes
     const edges = store.visualEdges
 
-    const generatedCode = generateJavaScriptCode(nodes, edges)
+    const generatedCode = generateJavaScriptCode(nodes as any, edges)
     setCode(generatedCode)
     setIsModalOpen(true)
   }
@@ -84,7 +103,7 @@ const ExportJSButton: React.FC = observer(() => {
   }
 
   const generateCustomNodeClasses = (customNodes: AudioNode[]) => {
-    const nodeTypes = [...new Set(customNodes.map(node => node.data.nodeType))]
+    const nodeTypes = [...new Set(customNodes.map(node => node.nodeType))]
 
     return nodeTypes
       .map(nodeType => {
@@ -919,8 +938,8 @@ class ${nodeType} {
 
         if (!sourceNode || !targetNode) return ''
 
-        const isSourceCustom = customNodeTypes.includes(sourceNode.data.nodeType)
-        const isTargetCustom = customNodeTypes.includes(targetNode.data.nodeType)
+        const isSourceCustom = customNodeTypes.includes(sourceNode.nodeType)
+        const isTargetCustom = customNodeTypes.includes(targetNode.nodeType)
 
         const sourceHandle = edge.sourceHandle || 'output'
         const targetHandle = edge.targetHandle || 'input'
@@ -930,7 +949,7 @@ class ${nodeType} {
           return `${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
         } else if (isSourceCustom && !isTargetCustom) {
           // Custom to Web Audio connection
-          if (sourceNode.data.nodeType === 'SoundFileNode') {
+          if (sourceNode.nodeType === 'SoundFileNode') {
             // SoundFileNode has audio output
             return `${sourceId}.connect(${targetId});`
           } else {
@@ -963,10 +982,10 @@ class ${nodeType} {
     edges: Edge[]
   ) => {
     const interactiveNodes = customNodes.filter(node =>
-      ['SliderNode', 'ButtonNode', 'RandomNode', 'TimerNode'].includes(node.data.nodeType)
+      ['SliderNode', 'ButtonNode', 'RandomNode', 'TimerNode'].includes(node.nodeType)
     )
 
-    const hasOscillators = allNodes.some(node => node.data.nodeType === 'OscillatorNode')
+    const hasOscillators = allNodes.some(node => node.nodeType === 'OscillatorNode')
 
     if (interactiveNodes.length === 0 && !hasOscillators) {
       return '// No interactive UI controls needed'
@@ -999,8 +1018,8 @@ function createAudioControls() {
 ${interactiveNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
-    const nodeType = node.data.nodeType
-    const properties = node.data.properties
+    const nodeType = node.nodeType
+    const properties = node.properties
 
     switch (nodeType) {
       case 'SliderNode': {
@@ -1055,11 +1074,11 @@ ${interactiveNodes
         const targetNodeId = idMap.get(conn.target)
         const targetHandle = conn.targetHandle
 
-        if (targetNode && targetNodeId && targetNode.data.nodeType !== 'SliderNode') {
+        if (targetNode && targetNodeId && targetNode.nodeType !== 'SliderNode') {
           // Check if it's a custom node that needs receiveInput
           if (
             ['MidiToFreqNode', 'GreaterThanNode', 'EqualsNode', 'SelectNode'].includes(
-              targetNode.data.nodeType
+              targetNode.nodeType
             )
           ) {
             return `${targetNodeId}.receiveInput('${targetHandle}', value);`
@@ -1220,7 +1239,7 @@ ${interactiveNodes
         
         // Start any oscillators or other nodes that need to be started
         ${allNodes
-          .filter(node => node.data.nodeType === 'OscillatorNode')
+          .filter(node => node.nodeType === 'OscillatorNode')
           .map(node => {
             const nodeId = idMap.get(node.id)
             return `if (${nodeId} && typeof ${nodeId}.start === 'function' && !${nodeId}._started) {
@@ -1278,14 +1297,14 @@ ${interactiveNodes
       'TimerNode',
     ]
 
-    const webAudioNodes = nodes.filter(node => !customNodeTypes.includes(node.data.nodeType))
-    const customNodes = nodes.filter(node => customNodeTypes.includes(node.data.nodeType))
+    const webAudioNodes = nodes.filter(node => !customNodeTypes.includes(getNodeType(node)))
+    const customNodes = nodes.filter(node => customNodeTypes.includes(getNodeType(node)))
 
     // Check if there are any MediaStreamAudioSourceNode nodes or MIDI nodes
     const hasMicrophoneInput = nodes.some(
-      node => node.data.nodeType === 'MediaStreamAudioSourceNode'
+      node => getNodeType(node) === 'MediaStreamAudioSourceNode'
     )
-    const hasMidiInput = nodes.some(node => node.data.nodeType === 'MidiInputNode')
+    const hasMidiInput = nodes.some(node => getNodeType(node) === 'MidiInputNode')
 
     // Generate custom node class definitions
     const customNodeClasses = generateCustomNodeClasses(customNodes)
@@ -1317,20 +1336,21 @@ async function createAudioGraph() {
 ${webAudioNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
-    const nodeType = node.data.nodeType.replace('Node', '') // Remove 'Node' suffix for cleaner code
+    const fullNodeType = getNodeType(node)
+    const nodeType = fullNodeType.replace('Node', '') || 'Unknown' // Remove 'Node' suffix for cleaner code
 
     // Special case for destination node
-    if (node.data.nodeType === 'AudioDestinationNode') {
+    if (fullNodeType === 'AudioDestinationNode') {
       return `const ${nodeId} = audioContext.destination;`
     }
 
     // Special case for MediaStreamAudioSourceNode - requires getUserMedia
-    if (node.data.nodeType === 'MediaStreamAudioSourceNode') {
+    if (fullNodeType === 'MediaStreamAudioSourceNode') {
       return `const ${nodeId} = audioContext.createMediaStreamSource(stream);`
     }
 
     // Special cases for nodes that require parameters in constructor
-    if (node.data.nodeType === 'DelayNode') {
+    if (fullNodeType === 'DelayNode') {
       // DelayNode requires maxDelayTime parameter, use a reasonable default
       return `const ${nodeId} = audioContext.create${nodeType}(1.0);`
     }
@@ -1344,7 +1364,7 @@ ${webAudioNodes
 ${customNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
-    const nodeType = node.data.nodeType
+    const nodeType = getNodeType(node)
 
     if (nodeType === 'MidiInputNode') {
       return `const ${nodeId} = new MidiInputNode('${nodeId}', audioContext, midiAccess);`
@@ -1359,21 +1379,21 @@ ${customNodes
 // Set Web Audio node properties
 ${webAudioNodes
   .map(node => {
-    const properties = node.data.properties
-    const audioProperties = Array.from(properties.entries())
-      .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
-      .filter(([, value]) => value !== null) // Filter out null values
+    const properties = getNodeProperties(node)
+    const audioProperties = properties
+      ? Array.from(properties.entries())
+          .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
+          .filter(([, value]) => value !== null) // Filter out null values
+      : []
 
     const nodeId = idMap.get(node.id)
+    const nodeType = getNodeType(node)
 
     // Set all properties after creation
     const paramSetters = audioProperties
       .map(([key, value]) => {
         // Handle different property types
-        if (
-          key === 'type' &&
-          (node.data.nodeType === 'OscillatorNode' || node.data.nodeType === 'BiquadFilterNode')
-        ) {
+        if (key === 'type' && (nodeType === 'OscillatorNode' || nodeType === 'BiquadFilterNode')) {
           return `${nodeId}.${key} = '${value}';`
         }
         // AudioParam properties (frequency, gain, delayTime, etc.)
@@ -1393,7 +1413,7 @@ ${webAudioNodes
 // Set custom node properties
 ${customNodes
   .map(node => {
-    const properties = node.data.properties
+    const properties = getNodeProperties(node)
     const customProperties = Array.from(properties.entries())
       .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
       .filter(([, value]) => value !== null) // Filter out null values
