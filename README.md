@@ -5,7 +5,7 @@
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
 [![Tests](https://img.shields.io/badge/Tests-302%2F302%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
-[![Coverage](https://img.shields.io/badge/Coverage-60.4%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
+[![Coverage](https://img.shields.io/badge/Coverage-54.8%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
