@@ -63,7 +63,13 @@ class MobXCustomNodeAdapter implements CustomNode {
   }
 
   trigger(): void {
-    this.mobxNode.trigger()
+    // Generate a timestamp-based trigger value (always > 0)
+    const triggerValue = Date.now()
+    this.mobxNode.setOutput('trigger', triggerValue)
+
+    // Also update the outputValue property for display purposes
+    const outputValue = this.properties.get('outputValue') || 1
+    this.mobxNode.setProperty('currentValue', outputValue)
   }
 
   receiveInput(inputName: string, value: any): void {
@@ -82,6 +88,21 @@ class MobXCustomNodeAdapter implements CustomNode {
       const scaleDegree = Number(value) || 0
       this.mobxNode.setProperty('scaleDegree', scaleDegree)
       this.mobxNode.updateScaleToMidiOutput()
+    } else if (this.mobxNode.nodeType === 'SoundFileNode' && inputName === 'trigger' && value > 0) {
+      // Handle SoundFileNode trigger - call the performSoundFileTrigger method
+      if (this.mobxNode.performSoundFileTrigger) {
+        this.mobxNode.performSoundFileTrigger()
+      }
+    } else if (this.mobxNode.nodeType === 'TimerNode' && inputName === 'trigger' && value > 0) {
+      // Handle TimerNode trigger input - start the timer
+      if (this.mobxNode.startTimer) {
+        this.mobxNode.startTimer()
+      }
+    } else if (this.mobxNode.nodeType === 'TimerNode' && inputName === 'reset' && value > 0) {
+      // Handle TimerNode reset input
+      if (this.mobxNode.resetTimer) {
+        this.mobxNode.resetTimer()
+      }
     }
     // Add more node type handling as needed for testing
   }
@@ -130,6 +151,34 @@ class MobXCustomNodeAdapter implements CustomNode {
   updateAudioContext(audioContext: AudioContext): void {
     if (this.mobxNode.updateAudioContext) {
       this.mobxNode.updateAudioContext(audioContext)
+    }
+  }
+
+  getCurrentValue(): number {
+    // For ButtonNode, return the current trigger value
+    if (this.mobxNode.nodeType === 'ButtonNode') {
+      return this.mobxNode.outputs.get('trigger') || 0
+    }
+    // For other nodes, return the main output value
+    return this.mobxNode.outputs.get('value') || this.mobxNode.outputs.get('output') || 0
+  }
+
+  // TimerNode-specific methods
+  startTimer(): void {
+    if (this.mobxNode.nodeType === 'TimerNode' && this.mobxNode.startTimer) {
+      this.mobxNode.startTimer()
+    }
+  }
+
+  stopTimer(): void {
+    if (this.mobxNode.nodeType === 'TimerNode' && this.mobxNode.stopTimer) {
+      this.mobxNode.stopTimer()
+    }
+  }
+
+  resetTimer(): void {
+    if (this.mobxNode.nodeType === 'TimerNode' && this.mobxNode.resetTimer) {
+      this.mobxNode.resetTimer()
     }
   }
 
@@ -294,7 +343,7 @@ class MobXCustomNodeAdapter implements CustomNode {
     `
 
     buttonElement.addEventListener('click', () => {
-      this.mobxNode.trigger()
+      this.trigger()
     })
 
     // Prevent click events from bubbling
@@ -425,9 +474,14 @@ export class ButtonNode extends BaseCustomNode {
   private buttonElement?: HTMLButtonElement
 
   trigger(): void {
+    // Generate a timestamp-based trigger value (always > 0)
+    const triggerValue = Date.now()
+    this.outputs.set('trigger', triggerValue)
+    this.notifyConnections('trigger', triggerValue)
+
+    // Also update the outputValue property for display purposes
     const outputValue = this.properties.get('outputValue') || 1
-    this.outputs.set('trigger', outputValue)
-    this.notifyConnections('trigger', outputValue)
+    this.properties.set('currentValue', outputValue)
   }
 
   createUIElement(container: HTMLElement): void {
@@ -577,12 +631,26 @@ export class SliderNode extends BaseCustomNode {
 export class GreaterThanNode extends BaseCustomNode {
   private input1Value = 0
   private input2Value = 0
+  private gainNode?: GainNode
+  private audioInputConnected = false
+
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
+    super(id, type, audioContext, metadata)
+    this.setupAudioNodes()
+  }
+
+  private setupAudioNodes(): void {
+    this.gainNode = this.audioContext.createGain()
+    this.gainNode.gain.value = 0 // Start with audio gated off
+  }
 
   receiveInput(inputName: string, value: any): void {
     if (inputName === 'input1') {
       this.input1Value = Number(value) || 0
     } else if (inputName === 'input2') {
       this.input2Value = Number(value) || 0
+    } else if (inputName === 'audioIn') {
+      this.audioInputConnected = true
     }
 
     this.calculateResult()
@@ -592,6 +660,28 @@ export class GreaterThanNode extends BaseCustomNode {
     const result = this.input1Value > this.input2Value ? 1 : 0
     this.outputs.set('result', result)
     this.notifyConnections('result', result)
+
+    // Gate audio signal based on condition
+    if (this.gainNode && this.audioInputConnected) {
+      this.gainNode.gain.value = result
+    }
+  }
+
+  getAudioOutput(): AudioNode | null {
+    return this.gainNode || null
+  }
+
+  updateAudioContext(newAudioContext: AudioContext): void {
+    super.updateAudioContext(newAudioContext)
+    this.setupAudioNodes()
+  }
+
+  cleanup(): void {
+    super.cleanup()
+    if (this.gainNode) {
+      this.gainNode.disconnect()
+      this.gainNode = undefined
+    }
   }
 }
 
@@ -599,12 +689,26 @@ export class GreaterThanNode extends BaseCustomNode {
 export class EqualsNode extends BaseCustomNode {
   private input1Value = 0
   private input2Value = 0
+  private gainNode?: GainNode
+  private audioInputConnected = false
+
+  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
+    super(id, type, audioContext, metadata)
+    this.setupAudioNodes()
+  }
+
+  private setupAudioNodes(): void {
+    this.gainNode = this.audioContext.createGain()
+    this.gainNode.gain.value = 0 // Start with audio gated off
+  }
 
   receiveInput(inputName: string, value: any): void {
     if (inputName === 'input1') {
       this.input1Value = Number(value) || 0
     } else if (inputName === 'input2') {
       this.input2Value = Number(value) || 0
+    } else if (inputName === 'audioIn') {
+      this.audioInputConnected = true
     }
 
     this.calculateResult()
@@ -615,6 +719,28 @@ export class EqualsNode extends BaseCustomNode {
     const result = Math.abs(this.input1Value - this.input2Value) <= tolerance ? 1 : 0
     this.outputs.set('result', result)
     this.notifyConnections('result', result)
+
+    // Gate audio signal based on condition
+    if (this.gainNode && this.audioInputConnected) {
+      this.gainNode.gain.value = result
+    }
+  }
+
+  getAudioOutput(): AudioNode | null {
+    return this.gainNode || null
+  }
+
+  updateAudioContext(newAudioContext: AudioContext): void {
+    super.updateAudioContext(newAudioContext)
+    this.setupAudioNodes()
+  }
+
+  cleanup(): void {
+    super.cleanup()
+    if (this.gainNode) {
+      this.gainNode.disconnect()
+      this.gainNode = undefined
+    }
   }
 }
 
@@ -1284,6 +1410,11 @@ export class SoundFileNode extends BaseCustomNode {
     }
   }
 
+  // Public method to load audio file (required by CustomNode interface)
+  async loadAudioFile(file: File): Promise<void> {
+    return this.loadFile(file)
+  }
+
   receiveInput(inputName: string, value: any): void {
     if (inputName === 'trigger' && value > 0) {
       this.trigger()
@@ -1382,293 +1513,6 @@ export class SoundFileNode extends BaseCustomNode {
 
     // Recreate audio nodes with the new context
     this.setupAudioNodes()
-  }
-}
-
-export class TimerNode extends BaseCustomNode {
-  private timeoutId?: number
-  private intervalId?: number
-  private isRunning = false
-  private triggerCount = 0
-  private displayElement?: HTMLDivElement
-  private countElement?: HTMLSpanElement
-  private statusElement?: HTMLSpanElement
-  private startButton?: HTMLButtonElement
-  private stopButton?: HTMLButtonElement
-  private resetButton?: HTMLButtonElement
-
-  constructor(id: string, type: string, audioContext: AudioContext, metadata: INodeMetadata) {
-    super(id, type, audioContext, metadata)
-
-    // Set default properties
-    this.properties.set('mode', 'loop')
-    this.properties.set('delay', 1000)
-    this.properties.set('interval', 1000)
-    this.properties.set('startMode', 'auto')
-    this.properties.set('enabled', true)
-    this.properties.set('count', 0)
-
-    // Auto-start if enabled
-    if (this.properties.get('startMode') === 'auto' && this.properties.get('enabled')) {
-      this.startTimer()
-    }
-  }
-
-  createUIElement(container: HTMLElement): void {
-    this.displayElement = document.createElement('div')
-    this.displayElement.className = 'timer-node-ui'
-    this.displayElement.style.cssText = `
-      padding: 8px;
-      background: #f8f9fa;
-      border: 1px solid #dee2e6;
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 12px;
-      min-width: 200px;
-    `
-
-    // Status display
-    const statusContainer = document.createElement('div')
-    statusContainer.style.cssText = 'margin-bottom: 8px;'
-
-    const statusLabel = document.createElement('span')
-    statusLabel.textContent = 'Status: '
-    statusLabel.style.fontWeight = 'bold'
-
-    this.statusElement = document.createElement('span')
-    this.statusElement.style.cssText = 'color: #666;'
-
-    statusContainer.appendChild(statusLabel)
-    statusContainer.appendChild(this.statusElement)
-
-    // Count display
-    const countContainer = document.createElement('div')
-    countContainer.style.cssText = 'margin-bottom: 8px;'
-
-    const countLabel = document.createElement('span')
-    countLabel.textContent = 'Count: '
-    countLabel.style.fontWeight = 'bold'
-
-    this.countElement = document.createElement('span')
-    this.countElement.style.cssText = 'color: #007bff; font-weight: bold;'
-
-    countContainer.appendChild(countLabel)
-    countContainer.appendChild(this.countElement)
-
-    // Control buttons
-    const buttonContainer = document.createElement('div')
-    buttonContainer.style.cssText = 'display: flex; gap: 4px; margin-top: 8px;'
-
-    this.startButton = document.createElement('button')
-    this.startButton.textContent = 'Start'
-    this.startButton.style.cssText = `
-      padding: 4px 8px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-    `
-    this.startButton.onclick = () => this.startTimer()
-
-    this.stopButton = document.createElement('button')
-    this.stopButton.textContent = 'Stop'
-    this.stopButton.style.cssText = `
-      padding: 4px 8px;
-      background: #dc3545;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-    `
-    this.stopButton.onclick = () => this.stopTimer()
-
-    this.resetButton = document.createElement('button')
-    this.resetButton.textContent = 'Reset'
-    this.resetButton.style.cssText = `
-      padding: 4px 8px;
-      background: #6c757d;
-      color: white;
-      border: none;
-      border-radius: 3px;
-      cursor: pointer;
-      font-size: 11px;
-    `
-    this.resetButton.onclick = () => this.resetTimer()
-
-    buttonContainer.appendChild(this.startButton)
-    buttonContainer.appendChild(this.stopButton)
-    buttonContainer.appendChild(this.resetButton)
-
-    // Settings display
-    const settingsContainer = document.createElement('div')
-    settingsContainer.style.cssText = 'margin-top: 8px; font-size: 10px; color: #666;'
-
-    const mode = this.properties.get('mode')
-    const delay = this.properties.get('delay')
-    const interval = this.properties.get('interval')
-    const startMode = this.properties.get('startMode')
-
-    settingsContainer.innerHTML = `
-      Mode: ${mode}<br>
-      Delay: ${delay}ms<br>
-      ${mode === 'loop' ? `Interval: ${interval}ms<br>` : ''}
-      Start: ${startMode}
-    `
-
-    this.displayElement.appendChild(statusContainer)
-    this.displayElement.appendChild(countContainer)
-    this.displayElement.appendChild(settingsContainer)
-    this.displayElement.appendChild(buttonContainer)
-
-    container.appendChild(this.displayElement)
-    this.updateDisplay()
-  }
-
-  private updateDisplay(): void {
-    if (this.statusElement) {
-      this.statusElement.textContent = this.isRunning ? 'Running' : 'Stopped'
-      this.statusElement.style.color = this.isRunning ? '#28a745' : '#dc3545'
-    }
-
-    if (this.countElement) {
-      this.countElement.textContent = this.triggerCount.toString()
-    }
-
-    if (this.startButton) {
-      this.startButton.disabled = this.isRunning
-    }
-
-    if (this.stopButton) {
-      this.stopButton.disabled = !this.isRunning
-    }
-  }
-
-  private startTimer(): void {
-    if (this.isRunning || !this.properties.get('enabled')) {
-      return
-    }
-
-    this.isRunning = true
-    const delay = this.properties.get('delay') || 1000
-    const mode = this.properties.get('mode')
-
-    // Start with initial delay
-    this.timeoutId = window.setTimeout(() => {
-      this.fireTrigger()
-
-      // If loop mode, start interval
-      if (mode === 'loop') {
-        const interval = this.properties.get('interval') || 1000
-        this.intervalId = window.setInterval(() => {
-          this.fireTrigger()
-        }, interval)
-      } else {
-        // One-shot mode, stop after first trigger
-        this.isRunning = false
-        this.updateDisplay()
-      }
-    }, delay)
-
-    this.updateDisplay()
-  }
-
-  private stopTimer(): void {
-    if (!this.isRunning) {
-      return
-    }
-
-    if (this.timeoutId) {
-      clearTimeout(this.timeoutId)
-      this.timeoutId = undefined
-    }
-
-    if (this.intervalId) {
-      clearInterval(this.intervalId)
-      this.intervalId = undefined
-    }
-
-    this.isRunning = false
-    this.updateDisplay()
-  }
-
-  private resetTimer(): void {
-    this.stopTimer()
-    this.triggerCount = 0
-    this.properties.set('count', 0)
-    this.outputs.set('count', 0)
-
-    this.updateDisplay()
-
-    // Notify connections of count reset
-    this.notifyConnections('count', 0)
-  }
-
-  private fireTrigger(): void {
-    this.triggerCount++
-    this.properties.set('count', this.triggerCount)
-    this.outputs.set('trigger', 1)
-    this.outputs.set('count', this.triggerCount)
-
-    // Notify connections
-    this.notifyConnections('trigger', 1)
-    this.notifyConnections('count', this.triggerCount)
-
-    this.updateDisplay()
-
-    // Reset trigger output immediately
-    this.outputs.set('trigger', 0)
-    this.notifyConnections('trigger', 0)
-  }
-
-  receiveInput(inputName: string, value: any): void {
-    if (inputName === 'trigger' && value > 0) {
-      if (this.properties.get('startMode') === 'manual') {
-        this.startTimer()
-      }
-    } else if (inputName === 'reset' && value > 0) {
-      this.resetTimer()
-    }
-  }
-
-  setProperty(name: string, value: any): void {
-    super.setProperty(name, value)
-
-    // If timer is running and timing properties change, restart
-    if ((name === 'delay' || name === 'interval' || name === 'mode') && this.isRunning) {
-      this.stopTimer()
-      this.startTimer()
-    }
-
-    // If enabled state changes
-    if (name === 'enabled') {
-      if (!value && this.isRunning) {
-        this.stopTimer()
-      } else if (value && !this.isRunning && this.properties.get('startMode') === 'auto') {
-        this.startTimer()
-      }
-    }
-
-    this.updateDisplay()
-  }
-
-  cleanup(): void {
-    // Only stop timer if we're actually being destroyed, not just recreated
-    if (this.timeoutId || this.intervalId) {
-      this.stopTimer()
-    }
-
-    super.cleanup()
-  }
-
-  // Override to handle audio context updates
-  updateAudioContext(newAudioContext: AudioContext): void {
-    /* console.log(
-      `🔄 TimerNode: Updating audio context from ${this.audioContext.state} to ${newAudioContext.state}`
-    ) */
-    super.updateAudioContext(newAudioContext)
   }
 }
 

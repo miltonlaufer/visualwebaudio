@@ -542,6 +542,11 @@
       {
         "name": "detune",
         "type": "control"
+      },
+      {
+        "name": "trigger",
+        "type": "control",
+        "description": "Triggers the oscillator to start (for manual triggering when autostart is false)"
       }
     ],
     "outputs": [
@@ -569,6 +574,12 @@
         "name": "type",
         "type": "OscillatorType",
         "defaultValue": "sine"
+      },
+      {
+        "name": "autostart",
+        "type": "boolean",
+        "defaultValue": true,
+        "description": "Whether the oscillator should start automatically when created"
       }
     ],
     "methods": ["connect", "disconnect", "start", "stop"],
@@ -656,6 +667,46 @@
         "defaultValue": null,
         "min": -1000,
         "max": 1000
+      },
+      {
+        "name": "panningModel",
+        "type": "PanningModelType",
+        "defaultValue": "equalpower"
+      },
+      {
+        "name": "distanceModel",
+        "type": "DistanceModelType",
+        "defaultValue": "inverse"
+      },
+      {
+        "name": "refDistance",
+        "type": "number",
+        "defaultValue": 1
+      },
+      {
+        "name": "maxDistance",
+        "type": "number",
+        "defaultValue": 10000
+      },
+      {
+        "name": "rolloffFactor",
+        "type": "number",
+        "defaultValue": 1
+      },
+      {
+        "name": "coneInnerAngle",
+        "type": "number",
+        "defaultValue": 360
+      },
+      {
+        "name": "coneOuterAngle",
+        "type": "number",
+        "defaultValue": 360
+      },
+      {
+        "name": "coneOuterGain",
+        "type": "number",
+        "defaultValue": 0
       }
     ],
     "methods": ["connect", "disconnect"],

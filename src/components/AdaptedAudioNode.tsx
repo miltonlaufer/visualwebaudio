@@ -4,6 +4,7 @@ import { observer } from 'mobx-react-lite'
 import type { INodeAdapter } from '~/stores/NodeAdapter'
 import CustomNodeRenderer from './customNodes'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 
 interface AdaptedAudioNodeProps {
   data: {
@@ -15,6 +16,7 @@ interface AdaptedAudioNodeProps {
 const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, selected }) => {
   const [hoveredHandle, setHoveredHandle] = useState<string | null>(null)
   const [isConnecting, setIsConnecting] = useState(false)
+  const store = useAudioGraphStore()
 
   const { nodeAdapter } = data
   const { metadata, nodeType, properties, id: nodeId } = nodeAdapter
@@ -257,8 +259,77 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
         </div>
       )}
 
-      {/* Node Properties - Show properties for nodes with fewer handles or important properties (only for non-custom nodes) */}
+      {/* Special UI for OscillatorNode */}
+      {!isCustomNode && nodeType === 'OscillatorNode' && (
+        <div className="space-y-2 mt-4 w-full">
+          {/* Autostart checkbox */}
+          <div className="flex items-center justify-center space-x-2">
+            <input
+              type="checkbox"
+              id={`autostart-${nodeId}`}
+              checked={getPropertyValue(properties, 'autostart') !== false}
+              onChange={e => {
+                store.updateNodeProperty(nodeId, 'autostart', e.target.checked)
+              }}
+              className="w-3 h-3"
+              onClick={e => e.stopPropagation()}
+            />
+            <label htmlFor={`autostart-${nodeId}`} className="text-xs text-gray-600">
+              Autostart
+            </label>
+          </div>
+
+          {/* Manual trigger/stop button */}
+          <div className="flex justify-center">
+            <button
+              onClick={e => {
+                e.stopPropagation()
+                const isOscRunning = store.getNodeState(nodeId)?.isRunning || false
+
+                if (isOscRunning) {
+                  // Stop the oscillator
+                  const audioNode = store.audioNodes.get(nodeId)
+                  if (audioNode && store.audioNodeFactory) {
+                    store.audioNodeFactory.stopSourceNode(audioNode, nodeType)
+                    store.setNodeState(nodeId, { isRunning: false })
+                  }
+                } else {
+                  // Start/restart the oscillator (recreate if needed)
+                  store.recreateAndStartOscillator(nodeId)
+                }
+              }}
+              className={`px-2 py-1 text-xs text-white rounded transition-colors ${
+                store.getNodeState(nodeId)?.isRunning
+                  ? 'bg-red-500 hover:bg-red-600'
+                  : 'bg-green-500 hover:bg-green-600'
+              }`}
+            >
+              {store.getNodeState(nodeId)?.isRunning ? '⏹ Stop' : '▶ Start'}
+            </button>
+          </div>
+
+          {/* Show key properties */}
+          <div className="space-y-1">
+            {['type', 'frequency'].map(propName => {
+              const prop = metadata.properties.find((p: any) => p.name === propName)
+              if (!prop) return null
+              return (
+                <div key={prop.name} className="text-xs text-gray-600 text-center">
+                  <span className="font-medium">{prop.name}:</span>{' '}
+                  <span className="text-gray-500">
+                    {getPropertyValue(properties, prop.name)?.toString() ||
+                      prop.defaultValue?.toString()}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Node Properties - Show properties for other nodes with fewer handles or important properties (only for non-custom nodes) */}
       {!isCustomNode &&
+        nodeType !== 'OscillatorNode' &&
         metadata.properties.length > 0 &&
         (maxHandles <= 3 ||
           metadata.properties.some((p: any) => p.name === 'type' || p.name === 'frequency')) && (

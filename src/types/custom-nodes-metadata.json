@@ -90,7 +90,7 @@
   },
   "GreaterThanNode": {
     "name": "Greater Than",
-    "description": "Outputs 1 if first input is greater than second input, 0 otherwise. Logic conditional node.",
+    "description": "Outputs 1 if first input is greater than second input, 0 otherwise. Logic conditional node. Can also gate audio signals.",
     "category": "logic",
     "inputs": [
       {
@@ -100,12 +100,22 @@
       {
         "name": "input2",
         "type": "control"
+      },
+      {
+        "name": "audioIn",
+        "type": "audio",
+        "description": "Audio signal to gate based on condition"
       }
     ],
     "outputs": [
       {
         "name": "result",
         "type": "control"
+      },
+      {
+        "name": "audioOut",
+        "type": "audio",
+        "description": "Gated audio output (passes when condition is true)"
       }
     ],
     "properties": [
@@ -120,7 +130,7 @@
   },
   "EqualsNode": {
     "name": "Equals",
-    "description": "Outputs 1 if inputs are equal, 0 otherwise. Comparison conditional node.",
+    "description": "Outputs 1 if inputs are equal, 0 otherwise. Comparison conditional node. Can also gate audio signals.",
     "category": "logic",
     "inputs": [
       {
@@ -130,12 +140,22 @@
       {
         "name": "input2",
         "type": "control"
+      },
+      {
+        "name": "audioIn",
+        "type": "audio",
+        "description": "Audio signal to gate based on condition"
       }
     ],
     "outputs": [
       {
         "name": "result",
         "type": "control"
+      },
+      {
+        "name": "audioOut",
+        "type": "audio",
+        "description": "Gated audio output (passes when condition is true)"
       }
     ],
     "properties": [

@@ -528,16 +528,20 @@ export const useExamples = () => {
           const file = new File([blob], 'test-sound.wav', { type: 'audio/wav' })
 
           // Get the custom node and load the file
-          const customNode = store.customNodes.get(soundFileId)
+          const customNode = store.getCustomNode(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
+          } else {
+            console.error(
+              'Sound File Player: Custom node not found or missing loadAudioFile method'
+            )
           }
         } catch (error) {
           console.error('Sound File Player: Failed to load sample audio:', error)
         }
       }),
     },
-    /* {
+    {
       id: 'auto-file-player',
       name: 'Auto File Player',
       description: 'Timer-triggered automatic sound file playback with sample audio',
@@ -550,7 +554,7 @@ export const useExamples = () => {
         store.updateNodeProperty(timerId, 'delay', 1000) // 1 second initial delay
         store.updateNodeProperty(timerId, 'interval', 3000) // Play every 3 seconds
         store.updateNodeProperty(timerId, 'startMode', 'auto')
-        store.updateNodeProperty(timerId, 'enabled', 'true')
+        store.updateNodeProperty(timerId, 'enabled', true)
 
         store.updateNodeProperty(soundFileId, 'gain', 1)
         store.updateNodeProperty(soundFileId, 'loop', false)
@@ -574,15 +578,17 @@ export const useExamples = () => {
           const file = new File([blob], 'test-sound.wav', { type: 'audio/wav' })
 
           // Get the custom node and load the file
-          const customNode = store.customNodes.get(soundFileId)
+          const customNode = store.getCustomNode(soundFileId)
           if (customNode && customNode.loadAudioFile) {
             await customNode.loadAudioFile(file)
+          } else {
+            console.error('Auto File Player: Custom node not found or missing loadAudioFile method')
           }
         } catch (error) {
           console.error('Auto File Player: Failed to load sample audio:', error)
         }
       }),
-    }, */
+    },
     {
       id: 'delay-effect',
       name: 'Delay Effect',

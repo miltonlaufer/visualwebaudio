@@ -421,26 +421,13 @@ const CustomNodeState = types
         if (self.nodeType !== 'TimerNode') return
 
         try {
-          this.setOutput('trigger', 1)
+          // Use timestamp like ButtonNode to ensure unique trigger values
+          this.setOutput('trigger', Date.now())
           this.setOutput('count', count)
           this.setProperty('count', count)
-
-          // Reset trigger output immediately
-          this.resetTimerTrigger()
         } catch (error) {
           // Node was detached from MST tree, ignore
           console.error(`[TimerNode] Node ${self.id} detached, cannot fire trigger:`, error)
-        }
-      },
-
-      resetTimerTrigger(): void {
-        if (self.nodeType !== 'TimerNode') return
-
-        try {
-          this.setOutput('trigger', 0)
-        } catch (error) {
-          // Node was detached from MST tree, ignore
-          console.error(`[TimerNode] Node ${self.id} detached, cannot reset trigger:`, error)
         }
       },
 
@@ -693,18 +680,6 @@ const CustomNodeStore = types
           propertiesObj['isRunning'] = 'false'
           propertiesObj['_timeoutId'] = undefined
           propertiesObj['_intervalId'] = undefined
-
-          // Auto-start if startMode is not 'manual'
-          const startMode = propertiesObj['startMode'] || 'auto'
-          const enabled = (propertiesObj['enabled'] || 'true') === 'true'
-
-          if (startMode !== 'manual' && enabled) {
-            // Auto-start immediately after the node is fully created
-            const node = self.nodes.get(id)
-            if (node && node.nodeType === 'TimerNode') {
-              node.startTimer()
-            }
-          }
         } else if (nodeType === 'ScaleToMidiNode') {
           // Initialize with default values if not set
           if (!propertiesObj['scaleDegree']) propertiesObj['scaleDegree'] = 0
@@ -784,6 +759,31 @@ const CustomNodeStore = types
           },
           { fireImmediately: false }
         )
+
+        // Set up auto-start reaction for TimerNode (reacts to property changes)
+        if (nodeType === 'TimerNode') {
+          // Set up a reaction to auto-start when properties change
+          reaction(
+            () => ({
+              startMode: node.properties.get('startMode') || 'auto',
+              enabled: (node.properties.get('enabled') || 'true') === 'true',
+              isRunning: node.properties.get('isRunning') === 'true',
+            }),
+            ({ startMode, enabled, isRunning }) => {
+              // Auto-start if: startMode is 'auto', enabled is true, and not already running
+              if (startMode === 'auto' && enabled && !isRunning) {
+                try {
+                  if (self.nodes.has(id)) {
+                    node.startTimer()
+                  }
+                } catch (error) {
+                  console.error(`[TimerNode] Failed to auto-start timer ${id}:`, error)
+                }
+              }
+            },
+            { fireImmediately: true } // Check immediately and on changes
+          )
+        }
 
         return node
       },
