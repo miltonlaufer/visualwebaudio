@@ -283,6 +283,169 @@ export const useExamples = () => {
       }),
     },
     {
+      id: 'midi-pentatonic',
+      name: 'MIDI Pentatonic',
+      description:
+        'Pentatonic scale synthesizer with multiple oscillators, resonant filter, and delay effects',
+      create: createExample(() => {
+        // Note control slider
+        const noteSlider = store.addAdaptedNode('SliderNode', { x: -216, y: 118 })
+
+        // Scale to MIDI converter for pentatonic scale
+        const scaleToMidiId = store.addAdaptedNode('ScaleToMidiNode', { x: 22, y: 112 })
+
+        // MIDI to frequency converter
+        const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', { x: 272, y: 138 })
+
+        // Multiple oscillators for rich sound
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 776, y: -4 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 706, y: 176 })
+        const osc3Id = store.addAdaptedNode('OscillatorNode', { x: 360, y: 442 })
+
+        // Individual gain controls for oscillators
+        const osc1GainId = store.addAdaptedNode('GainNode', { x: 1084, y: -26 })
+        const osc2GainId = store.addAdaptedNode('GainNode', { x: 698, y: 420 })
+        const osc3GainId = store.addAdaptedNode('GainNode', { x: 598, y: 706 })
+
+        // Mixer for combining oscillators
+        const mixerId = store.addAdaptedNode('GainNode', { x: 980, y: 586 })
+        const mainGainId = store.addAdaptedNode('GainNode', { x: 1012, y: 410 })
+
+        // Resonant filter
+        const filterId = store.addAdaptedNode('BiquadFilterNode', { x: 1338, y: 138 })
+
+        // LFO for filter modulation
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 378, y: -112 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 968, y: -252 })
+
+        // Delay effect
+        const delayId = store.addAdaptedNode('DelayNode', { x: 1566, y: 206 })
+        const delayGainId = store.addAdaptedNode('GainNode', { x: 1558, y: -54 })
+        const feedbackId = store.addAdaptedNode('GainNode', { x: 1556, y: 458 })
+
+        // Output
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1836, y: 296 })
+
+        // User control sliders
+        const filterCutoffSlider = store.addAdaptedNode('SliderNode', { x: -111, y: 396 })
+        const filterResSlider = store.addAdaptedNode('SliderNode', { x: -46, y: 658 })
+
+        // Configure note slider
+        store.updateNodeProperty(noteSlider, 'min', -10)
+        store.updateNodeProperty(noteSlider, 'max', 10)
+        store.updateNodeProperty(noteSlider, 'value', 0)
+        store.updateNodeProperty(noteSlider, 'step', 1)
+        store.updateNodeProperty(noteSlider, 'label', 'Note (MIDI)')
+
+        // Configure scale to MIDI converter for pentatonic minor
+        store.updateNodeProperty(scaleToMidiId, 'scaleDegree', 0)
+        store.updateNodeProperty(scaleToMidiId, 'key', 'C')
+        store.updateNodeProperty(scaleToMidiId, 'mode', 'pentatonic_minor')
+        store.updateNodeProperty(scaleToMidiId, 'midiNote', 60)
+
+        // Configure MIDI to frequency converter
+        store.updateNodeProperty(midiToFreqId, 'midiNote', 60)
+        store.updateNodeProperty(midiToFreqId, 'frequency', 261.63)
+        store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
+        store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        // Configure oscillators
+        store.updateNodeProperty(osc1Id, 'frequency', 110)
+        store.updateNodeProperty(osc1Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc1Id, 'detune', null)
+
+        store.updateNodeProperty(osc2Id, 'frequency', 110.5)
+        store.updateNodeProperty(osc2Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc2Id, 'detune', null)
+
+        store.updateNodeProperty(osc3Id, 'frequency', 220)
+        store.updateNodeProperty(osc3Id, 'type', 'square')
+        store.updateNodeProperty(osc3Id, 'detune', null)
+
+        // Configure oscillator gains
+        store.updateNodeProperty(osc1GainId, 'gain', 0.3)
+        store.updateNodeProperty(osc2GainId, 'gain', 0.2)
+        store.updateNodeProperty(osc3GainId, 'gain', 0.15)
+
+        // Configure mixer and main gain
+        store.updateNodeProperty(mixerId, 'gain', 1)
+        store.updateNodeProperty(mainGainId, 'gain', 0.8)
+
+        // Configure resonant filter
+        store.updateNodeProperty(filterId, 'type', 'lowpass')
+        store.updateNodeProperty(filterId, 'frequency', 800)
+        store.updateNodeProperty(filterId, 'Q', 15)
+        store.updateNodeProperty(filterId, 'gain', 1)
+        store.updateNodeProperty(filterId, 'detune', null)
+
+        // Configure LFO for filter modulation
+        store.updateNodeProperty(lfoId, 'frequency', 0.3)
+        store.updateNodeProperty(lfoId, 'type', 'sine')
+        store.updateNodeProperty(lfoId, 'detune', null)
+        store.updateNodeProperty(lfoGainId, 'gain', 400)
+
+        // Configure delay
+        store.updateNodeProperty(delayId, 'delayTime', 0.25)
+        store.updateNodeProperty(delayGainId, 'gain', 0.4)
+        store.updateNodeProperty(feedbackId, 'gain', 0.2)
+
+        // Configure user control sliders
+        store.updateNodeProperty(filterCutoffSlider, 'min', 200)
+        store.updateNodeProperty(filterCutoffSlider, 'max', 4000)
+        store.updateNodeProperty(filterCutoffSlider, 'value', 3185)
+        store.updateNodeProperty(filterCutoffSlider, 'step', 1)
+        store.updateNodeProperty(filterCutoffSlider, 'label', 'Filter Cutoff')
+
+        store.updateNodeProperty(filterResSlider, 'min', 1)
+        store.updateNodeProperty(filterResSlider, 'max', 30)
+        store.updateNodeProperty(filterResSlider, 'value', 30)
+        store.updateNodeProperty(filterResSlider, 'step', 1)
+        store.updateNodeProperty(filterResSlider, 'label', 'Resonance')
+
+        // Connect note control chain
+        store.addEdge(noteSlider, scaleToMidiId, 'value', 'scaleDegree')
+        store.addEdge(scaleToMidiId, midiToFreqId, 'midiNote', 'midiNote')
+
+        // Connect frequency to oscillators
+        store.addEdge(midiToFreqId, osc1Id, 'frequency', 'frequency')
+        store.addEdge(midiToFreqId, osc2Id, 'frequency', 'frequency')
+        store.addEdge(midiToFreqId, osc3Id, 'frequency', 'frequency')
+
+        // Connect oscillators to their gain nodes
+        store.addEdge(osc1Id, osc1GainId, 'output', 'input')
+        store.addEdge(osc2Id, osc2GainId, 'output', 'input')
+        store.addEdge(osc3Id, osc3GainId, 'output', 'input')
+
+        // Mix oscillators
+        store.addEdge(osc1GainId, mixerId, 'output', 'input')
+        store.addEdge(osc2GainId, mixerId, 'output', 'input')
+        store.addEdge(osc3GainId, mixerId, 'output', 'input')
+
+        // Through main gain
+        store.addEdge(mixerId, mainGainId, 'output', 'input')
+
+        // Through filter
+        store.addEdge(mainGainId, filterId, 'output', 'input')
+
+        // LFO modulation of filter
+        store.addEdge(lfoId, lfoGainId, 'output', 'input')
+        store.addEdge(lfoGainId, filterId, 'output', 'frequency')
+
+        // User control of filter
+        store.addEdge(filterCutoffSlider, filterId, 'value', 'frequency')
+        store.addEdge(filterResSlider, filterId, 'value', 'Q')
+
+        // Through delay
+        store.addEdge(filterId, delayId, 'output', 'input')
+        store.addEdge(delayId, delayGainId, 'output', 'input')
+        store.addEdge(delayGainId, delayId, 'output', 'input') // Feedback loop
+        store.addEdge(delayId, feedbackId, 'output', 'input')
+
+        // To output
+        store.addEdge(feedbackId, destId, 'output', 'input')
+      }),
+    },
+    {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
