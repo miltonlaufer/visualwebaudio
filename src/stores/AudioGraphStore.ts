@@ -265,6 +265,26 @@ export const AudioGraphStore = types
         self.clipboardError = null
       },
 
+      // Test helper to set clipboard data directly (for testing only)
+      setClipboardDataForTesting(nodes: any[], edges: any[]) {
+        self.clipboardNodes = nodes
+        self.clipboardEdges = edges
+      },
+
+      // Test helper to set clipboard error directly (for testing only)
+      setClipboardErrorForTesting(error: string | null) {
+        self.clipboardError = error
+      },
+
+      // Helper action to set clipboard permission state and error (for async callbacks)
+      setClipboardPermissionState(
+        state: 'granted' | 'denied' | 'prompt' | 'unknown',
+        error: string | null = null
+      ) {
+        self.clipboardPermissionState = state
+        self.clipboardError = error
+      },
+
       applyUndo() {
         const patches = this.moveToRedoStack()
         if (patches) {
@@ -1630,17 +1650,18 @@ export const AudioGraphStore = types
         })
 
         if (navigator.clipboard && navigator.clipboard.writeText) {
+          const store = self as any
           navigator.clipboard
             .writeText(clipboardText)
             .then(() => {
-              self.clipboardPermissionState = 'granted'
-              self.clipboardError = null
+              store.setClipboardPermissionState('granted', null)
             })
             .catch(error => {
               console.warn('Failed to write to system clipboard:', error)
-              self.clipboardPermissionState = 'denied'
-              self.clipboardError =
+              store.setClipboardPermissionState(
+                'denied',
                 'Clipboard access denied. Copy/paste will work within this tab only.'
+              )
             })
         } else {
           self.clipboardPermissionState = 'denied'
@@ -1764,11 +1785,7 @@ export const AudioGraphStore = types
           clipboardData = {
             nodes: self.clipboardNodes.map(node => ({
               ...node,
-              data: {
-                ...node.data,
-                metadata: JSON.parse(JSON.stringify(node.metadata)), // Deep copy metadata
-                properties: { ...node.properties },
-              },
+              // Ensure data structure is consistent - the internal clipboard already has the correct structure
             })),
             edges: self.clipboardEdges.map(edge => ({ ...edge })),
           }
@@ -1790,9 +1807,14 @@ export const AudioGraphStore = types
 
         // Create new nodes with new IDs
         clipboardData.nodes.forEach((clipboardNode: any) => {
+          // Extract nodeType, metadata, and properties from the correct location
+          const nodeType = clipboardNode.data?.nodeType || clipboardNode.nodeType
+          const metadata = clipboardNode.data?.metadata || clipboardNode.metadata
+          const properties = clipboardNode.data?.properties || clipboardNode.properties
+
           // Generate new unique ID
           self.nodeIdCounter += 1
-          const newNodeId = `${clipboardNode.nodeType}-${Date.now()}-${self.nodeIdCounter}`
+          const newNodeId = `${nodeType}-${Date.now()}-${self.nodeIdCounter}`
           idMapping.set(clipboardNode.id, newNodeId)
           newNodeIds.push(newNodeId)
 
@@ -1805,10 +1827,10 @@ export const AudioGraphStore = types
           // Create the visual node with MST-compatible structure (flat, not nested)
           const visualNode = {
             id: newNodeId,
-            nodeType: clipboardNode.nodeType,
+            nodeType: nodeType,
             position: newPosition,
-            metadata: { ...clipboardNode.metadata },
-            properties: { ...clipboardNode.properties },
+            metadata: { ...metadata },
+            properties: { ...properties },
             type: clipboardNode.type,
             selected: false,
             dragging: false,
@@ -1860,9 +1882,8 @@ export const AudioGraphStore = types
           `Pasted ${newNodeIds.length} nodes with ${clipboardData.edges.length} connections`
         ) */
 
-        // Clear clipboard state after successful paste to clean up UI
-        self.clipboardNodes = []
-        self.clipboardEdges = []
+        // Don't clear clipboard state after paste - users expect to be able to paste multiple times
+        // Only clear clipboard error since paste was successful
         self.clipboardError = null
 
         return newNodeIds
