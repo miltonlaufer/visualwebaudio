@@ -572,4 +572,56 @@ describe('ExportJSButton', () => {
     // Should open modal for pure Web Audio API projects
     expect(screen.getByText('Exported JavaScript Code')).toBeInTheDocument()
   })
+
+  it('exports ScaleToMidiNode as custom node, not Web Audio node', async () => {
+    const user = userEvent.setup()
+    const mockStoreWithScaleToMidi = {
+      ...mockStore,
+      adaptedNodes: [
+        {
+          id: 'scale-1',
+          nodeType: 'ScaleToMidiNode',
+          type: 'audioNode',
+          properties: new Map([
+            ['scaleDegree', 2],
+            ['key', 'C'],
+            ['mode', 'major'],
+          ] as [string, any][]),
+          position: { x: 100, y: 100 },
+          metadata: { name: 'Scale to MIDI', category: 'misc' },
+          selected: false,
+          dragging: false,
+          inputConnections: [],
+          outputConnections: [],
+          audioNodeCreated: false,
+        },
+      ],
+    }
+
+    vi.mocked(useAudioGraphStore).mockReturnValue(mockStoreWithScaleToMidi as any)
+
+    render(<ExportJSButton />)
+
+    const button = screen.getByRole('button')
+    await user.click(button)
+
+    const codeElement = screen.getByTestId('syntax-highlighter')
+    const generatedCode = codeElement.textContent
+
+    // Should include ScaleToMidiNode class definition
+    expect(generatedCode).toContain('class ScaleToMidiNode')
+
+    // Should create instance using constructor, not audioContext.createScaleToMidi()
+    expect(generatedCode).toContain('const scale_1 = new ScaleToMidiNode')
+    expect(generatedCode).toContain("scale_1 = new ScaleToMidiNode('scale_1', audioContext)")
+
+    // Should NOT try to create it as a Web Audio node
+    expect(generatedCode).not.toContain('audioContext.createScaleToMidi')
+
+    // Should set properties using setProperty method
+    expect(generatedCode).toContain('scale_1.setProperty')
+    expect(generatedCode).toContain("setProperty('scaleDegree', 2)")
+    expect(generatedCode).toContain('setProperty(\'key\', "C")')
+    expect(generatedCode).toContain('setProperty(\'mode\', "major")')
+  })
 })

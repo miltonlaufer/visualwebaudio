@@ -1295,6 +1295,7 @@ ${interactiveNodes
       'SoundFileNode',
       'RandomNode',
       'TimerNode',
+      'ScaleToMidiNode',
     ]
 
     const webAudioNodes = nodes.filter(node => !customNodeTypes.includes(getNodeType(node)))
