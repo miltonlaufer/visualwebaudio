@@ -51,10 +51,13 @@ export class AudioNodeFactory {
       this.applyProperty(audioNode, propertyDef.name, value, propertyDef.type)
     })
 
-    // Start source nodes automatically
+    // Start source nodes automatically only if autostart is enabled
     // Use the provided metadata to check if this is a source node
     if (this.isSourceNodeFromMetadata(metadata)) {
-      this.startSourceNode(audioNode, nodeType)
+      const autostart = properties.autostart ?? true // Default to true for backward compatibility
+      if (autostart) {
+        this.startSourceNode(audioNode, nodeType)
+      }
     }
 
     return audioNode
@@ -69,6 +72,12 @@ export class AudioNodeFactory {
     // Skip if value is null or undefined
     if (value === null || value === undefined) {
       console.warn(`Skipping property ${propertyName} - value is null/undefined`)
+      return
+    }
+
+    // Skip custom properties that don't exist on the actual audio node
+    if (propertyName === 'autostart') {
+      // autostart is a custom property for our logic, not a Web Audio API property
       return
     }
 
@@ -120,6 +129,26 @@ export class AudioNodeFactory {
       }
     } catch (error) {
       console.error(`${nodeType} was already stopped or stopping failed:`, error)
+    }
+  }
+
+  triggerSourceNode(audioNode: AudioNode, nodeType: string): void {
+    try {
+      if (nodeType === 'OscillatorNode') {
+        const oscNode = audioNode as OscillatorNode
+        // Check if oscillator is already started by checking if it has been connected
+        // We can't directly check if it's started, so we'll try to start it
+        oscNode.start()
+      } else if (nodeType === 'AudioBufferSourceNode') {
+        const bufferNode = audioNode as AudioBufferSourceNode
+        bufferNode.start()
+      }
+    } catch (error) {
+      // If already started, this will throw an error, which is expected
+      console.warn(
+        `${nodeType} trigger failed (might already be started):`,
+        error instanceof Error ? error.message : String(error)
+      )
     }
   }
 

@@ -94,13 +94,24 @@ function extractWebAudioTypes() {
       // Merge extracted methods with fallback methods, removing duplicates
       const allMethods = [...new Set([...extractedMethods, ...fallbackMethods])]
 
+      const extractedProperties = extractPropertiesFromInterface(node, checker)
+      const fallbackProperties = getNodeProperties(nodeType)
+
+      // Merge extracted properties with fallback properties, removing duplicates by name
+      const allProperties = [...extractedProperties]
+      fallbackProperties.forEach(fallbackProp => {
+        if (!extractedProperties.some(extractedProp => extractedProp.name === fallbackProp.name)) {
+          allProperties.push(fallbackProp)
+        }
+      })
+
       nodeMetadata[nodeType] = {
         name: nodeType,
         description: extractDescription(node),
         category: getNodeCategory(nodeType),
         inputs: getNodeInputs(nodeType),
         outputs: getNodeOutputs(nodeType),
-        properties: extractPropertiesFromInterface(node, checker),
+        properties: allProperties,
         methods: allMethods,
         events: extractEventsFromInterface(node, checker),
       }
@@ -344,6 +355,16 @@ function getNodeInputs(nodeType) {
     }
   })
 
+  // Add special trigger input for OscillatorNode
+  if (nodeType === 'OscillatorNode') {
+    inputs.push({
+      name: 'trigger',
+      type: 'control',
+      description:
+        'Triggers the oscillator to start (for manual triggering when autostart is false)',
+    })
+  }
+
   return inputs
 }
 
@@ -373,6 +394,12 @@ function getNodeProperties(nodeType) {
         { name: 'frequency', type: 'AudioParam', defaultValue: 440 },
         { name: 'detune', type: 'AudioParam', defaultValue: 0 },
         { name: 'type', type: 'OscillatorType', defaultValue: 'sine' },
+        {
+          name: 'autostart',
+          type: 'boolean',
+          defaultValue: true,
+          description: 'Whether the oscillator should start automatically when created',
+        },
       ]
     case 'GainNode':
       return [{ name: 'gain', type: 'AudioParam', defaultValue: 1 }]

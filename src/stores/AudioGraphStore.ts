@@ -44,6 +44,8 @@ export const AudioGraphStore = types
     graphChangeCounter: types.optional(types.number, 0),
     // Track if the current project has been modified (default false for new projects)
     isProjectModified: types.optional(types.boolean, false),
+    // Counter to force reactivity when node states change
+    nodeStateChangeCounter: types.optional(types.number, 0),
   })
   .volatile(() => ({
     audioContext: null as AudioContext | null,
@@ -71,7 +73,7 @@ export const AudioGraphStore = types
     // Store media streams for microphone nodes
     mediaStreams: new Map<string, MediaStream>(),
     // New field for custom node bridges
-    customNodeBridges: null as Map<string, ConstantSourceNode> | null,
+    customNodeBridges: null as Map<string, ConstantSourceNode | GainNode> | null,
     // Clipboard for copy/paste functionality
     clipboardNodes: [] as any[],
     clipboardEdges: [] as any[],
@@ -82,6 +84,8 @@ export const AudioGraphStore = types
     audioNodeCreationReactionDisposer: null as (() => void) | null,
     // Reaction disposers for source node play state reactions
     sourceNodeReactionDisposers: null as Map<string, () => void> | null,
+    // Node runtime state (for tracking individual node states like isRunning)
+    nodeStates: new Map<string, { isRunning?: boolean; [key: string]: any }>(),
   }))
   .preProcessSnapshot((snapshot: any) => {
     // Apply migration logic when loading snapshots
@@ -208,6 +212,105 @@ export const AudioGraphStore = types
       // Action to force React re-render by incrementing graph change counter
       forceRerender() {
         self.graphChangeCounter += 1
+      },
+
+      // Set node runtime state
+      setNodeState(nodeId: string, state: { isRunning?: boolean; [key: string]: any }) {
+        const currentState = self.nodeStates.get(nodeId) || {}
+        self.nodeStates.set(nodeId, { ...currentState, ...state })
+        // Increment counter to trigger reactivity
+        self.nodeStateChangeCounter += 1
+      },
+
+      // Clear node state when node is removed
+      clearNodeState(nodeId: string) {
+        if (self.nodeStates.has(nodeId)) {
+          self.nodeStates.delete(nodeId)
+          // Increment counter to trigger reactivity
+          self.nodeStateChangeCounter += 1
+        }
+      },
+
+      // Recreate and start an oscillator (needed because oscillators can only be started once)
+      recreateAndStartOscillator(nodeId: string) {
+        const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
+        if (!visualNode || visualNode.nodeType !== 'OscillatorNode') {
+          console.error('Node not found or not an oscillator:', nodeId)
+          return
+        }
+
+        // Get current properties
+        const properties = Object.fromEntries(visualNode.properties.entries())
+        const metadata = visualNode.metadata as unknown as INodeMetadata
+
+        // Stop and disconnect the old oscillator
+        const oldAudioNode = self.audioNodes.get(nodeId)
+        if (oldAudioNode) {
+          try {
+            oldAudioNode.disconnect()
+            if ('stop' in oldAudioNode && typeof oldAudioNode.stop === 'function') {
+              oldAudioNode.stop()
+            }
+          } catch {
+            // Ignore errors when stopping/disconnecting
+          }
+        }
+
+        // Create a new oscillator
+        if (self.audioNodeFactory) {
+          try {
+            const newAudioNode = self.audioNodeFactory.createAudioNode(
+              'OscillatorNode',
+              metadata,
+              properties
+            )
+            self.audioNodes.set(nodeId, newAudioNode)
+
+            // Start the new oscillator
+            self.audioNodeFactory.triggerSourceNode(newAudioNode, 'OscillatorNode')
+            this.setNodeState(nodeId, { isRunning: true })
+
+            // Reconnect all existing connections
+            this.reconnectNodeConnections(nodeId)
+          } catch (error) {
+            console.error('Failed to recreate oscillator:', error)
+          }
+        }
+      },
+
+      // Reconnect all connections for a node (used after recreating oscillators)
+      reconnectNodeConnections(nodeId: string) {
+        // Reconnect audio connections where this node is the source
+        const sourceConnections = self.audioConnections.filter(conn => conn.sourceNodeId === nodeId)
+        sourceConnections.forEach(conn => {
+          try {
+            this.connectAudioNodes(
+              conn.sourceNodeId,
+              conn.targetNodeId,
+              conn.sourceOutput,
+              conn.targetInput,
+              true // Skip adding to array since it's already there
+            )
+          } catch (error) {
+            console.warn('Failed to reconnect source connection:', error)
+          }
+        })
+
+        // Reconnect audio connections where this node is the target
+        const targetConnections = self.audioConnections.filter(conn => conn.targetNodeId === nodeId)
+        targetConnections.forEach(conn => {
+          try {
+            this.connectAudioNodes(
+              conn.sourceNodeId,
+              conn.targetNodeId,
+              conn.sourceOutput,
+              conn.targetInput,
+              true // Skip adding to array since it's already there
+            )
+          } catch (error) {
+            console.warn('Failed to reconnect target connection:', error)
+          }
+        })
       },
 
       // Check clipboard permissions
@@ -476,6 +579,11 @@ export const AudioGraphStore = types
         this.markProjectModified()
       },
 
+      // Get custom node by ID (for external access)
+      getCustomNode(nodeId: string) {
+        return self.customNodes.get(nodeId)
+      },
+
       // New method to handle audio node cleanup (called by VisualNode beforeDestroy)
       cleanupAudioNode(nodeId: string) {
         const audioNode = self.audioNodes.get(nodeId)
@@ -559,7 +667,9 @@ export const AudioGraphStore = types
           self.customNodeBridges.forEach((bridge, key) => {
             if (key.includes(nodeId)) {
               try {
-                bridge.stop()
+                if ('stop' in bridge && typeof bridge.stop === 'function') {
+                  bridge.stop()
+                }
                 bridge.disconnect()
                 bridgesToRemove.push(key)
               } catch (error) {
@@ -580,6 +690,9 @@ export const AudioGraphStore = types
             self.audioConnections.splice(index, 1)
           }
         })
+
+        // Clear node runtime state
+        this.clearNodeState(nodeId)
       },
 
       // New method to sync audio node properties (called by VisualNode reaction)
@@ -851,12 +964,27 @@ export const AudioGraphStore = types
         const inputName = targetHandle || 'input'
 
         // Get metadata from the appropriate node type
-        const sourceMetadata = sourceVisualNode
-          ? sourceVisualNode.metadata
-          : sourceAdaptedNode?.metadata
-        const targetMetadata = targetVisualNode
-          ? targetVisualNode.metadata
-          : targetAdaptedNode?.metadata
+        // For custom nodes, use the global metadata
+        let sourceMetadata: any
+        let targetMetadata: any
+
+        if (sourceNode.nodeType && self.customNodeFactory?.isCustomNodeType(sourceNode.nodeType)) {
+          // Custom node - get metadata from global custom nodes metadata
+          const customMetadata = getCustomNodesMetadata()
+          sourceMetadata = customMetadata[sourceNode.nodeType]
+        } else {
+          // Web Audio node - use node's metadata
+          sourceMetadata = sourceVisualNode?.metadata || sourceAdaptedNode?.metadata
+        }
+
+        if (targetNode.nodeType && self.customNodeFactory?.isCustomNodeType(targetNode.nodeType)) {
+          // Custom node - get metadata from global custom nodes metadata
+          const customMetadata = getCustomNodesMetadata()
+          targetMetadata = customMetadata[targetNode.nodeType]
+        } else {
+          // Web Audio node - use node's metadata
+          targetMetadata = targetVisualNode?.metadata || targetAdaptedNode?.metadata
+        }
 
         const sourceOutput = sourceMetadata?.outputs.find(
           (output: any) => output.name === outputName
@@ -864,7 +992,12 @@ export const AudioGraphStore = types
         const targetInput = targetMetadata?.inputs.find((input: any) => input.name === inputName)
 
         if (!sourceOutput || !targetInput) {
-          console.warn('Output or input not found:', { outputName, inputName })
+          console.warn('Output or input not found:', {
+            outputName,
+            inputName,
+            sourceNodeType: sourceNode.nodeType,
+            targetNodeType: targetNode.nodeType,
+          })
           return false
         }
 
@@ -919,6 +1052,18 @@ export const AudioGraphStore = types
             // Connect the custom nodes via the MST store (correct parameter order)
             customNodeStore.connectNodes(sourceId, sourceOutput, targetId, targetInput)
 
+            // Special handling for trigger connections - create bridge for updateCustomNodeBridges
+            if (targetInput === 'trigger') {
+              const triggerBridge = self.audioContext!.createGain()
+              triggerBridge.gain.value = 0 // Silent bridge
+
+              // Store the bridge for cleanup and mark it as a trigger bridge
+              if (!self.customNodeBridges) {
+                self.customNodeBridges = new Map()
+              }
+              self.customNodeBridges.set(`${sourceId}-${targetId}-trigger`, triggerBridge)
+            }
+
             if (!skipAddingToArray) {
               self.audioConnections.push({
                 sourceNodeId: sourceId,
@@ -929,6 +1074,54 @@ export const AudioGraphStore = types
             }
           } catch (error) {
             console.error('Failed to connect custom node to custom node:', error)
+          }
+          return
+        }
+
+        // Handle audio node to custom node connections
+        if (sourceNode && targetCustomNode) {
+          try {
+            // Check if this is an audio connection to a logical controller
+            const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+            const targetMetadata = targetVisualNode?.metadata
+            const targetInputDef = targetMetadata?.inputs.find(
+              (input: any) => input.name === targetInput
+            )
+            const isAudioInput = targetInputDef?.type === 'audio'
+
+            if (
+              isAudioInput &&
+              (targetVisualNode?.nodeType === 'GreaterThanNode' ||
+                targetVisualNode?.nodeType === 'EqualsNode')
+            ) {
+              // Connect audio node to logical controller's audio input
+              const audioOutput = targetCustomNode.getAudioOutput?.()
+              if (audioOutput) {
+                sourceNode.connect(audioOutput)
+                // Notify the custom node that audio input is connected
+                targetCustomNode.receiveInput?.(targetInput, true)
+                /*console.log(
+                  `Connected audio node to logical controller ${targetVisualNode?.nodeType} audio input`
+                )*/
+              } else {
+                console.error(`Custom node ${targetId} does not have audio input available`)
+                return
+              }
+            } else {
+              console.error('Audio nodes can only connect to audio inputs of logical controllers')
+              return
+            }
+
+            if (!skipAddingToArray) {
+              self.audioConnections.push({
+                sourceNodeId: sourceId,
+                targetNodeId: targetId,
+                sourceOutput,
+                targetInput,
+              })
+            }
+          } catch (error) {
+            console.error('Failed to connect audio node to custom node:', error)
           }
           return
         }
@@ -976,69 +1169,85 @@ export const AudioGraphStore = types
                 return
               }
             } else if (isControlConnection) {
-              // Create a ConstantSourceNode bridge for custom node control output
-              const constantSource = self.audioContext!.createConstantSource()
+              // Special handling for trigger inputs
+              if (targetInput === 'trigger') {
+                // Create a trigger bridge for any node type that has a trigger input
+                const triggerBridge = self.audioContext!.createGain()
+                triggerBridge.gain.value = 0 // Silent bridge
 
-              // Get current output value from custom node
-              const currentValue = sourceCustomNode.outputs.get(sourceOutput) || 0
-              constantSource.offset.value = currentValue
-
-              // Connect to AudioParam
-              const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
-              const audioParam = targetNodeWithParams[targetInput]
-
-              if (audioParam && typeof audioParam.value !== 'undefined') {
-                constantSource.connect(audioParam)
-                constantSource.start()
-
-                // Get the source node info to determine connection type
-                const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
-                const sourceNodeType = sourceVisualNode?.nodeType
-
-                // Smart base value handling based on parameter and source type
-                if (targetInput === 'frequency') {
-                  // For frequency parameters, check the source type
-                  if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
-                    // Direct frequency control - these nodes output frequency values
-                    audioParam.value = 0
-                    /*   console.log(
-                      `Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`
-                    ) */
-                  } else {
-                    // Default: keep base value for modulation
-                    /* console.log(
-                      `Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`
-                    ) */
-                  }
-                } else {
-                  // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
-                  audioParam.value = 0
-                  /* console.log(
-                    `Connected custom node to AudioParam: ${targetInput}, set base value to 0`
-                  ) */
-                }
-
-                // Store the bridge source for updates and cleanup
+                // Store the bridge for cleanup and mark it as a trigger bridge
                 if (!self.customNodeBridges) {
                   self.customNodeBridges = new Map()
                 }
-                self.customNodeBridges.set(`${sourceId}-${targetId}`, constantSource)
+                self.customNodeBridges.set(`${sourceId}-${targetId}-trigger`, triggerBridge)
 
-                /* console.log(
-                  `Bridge created for custom node ${sourceNodeType} → ${targetInput} with initial value: ${currentValue}`
-                ) */
-
-                // Force an immediate update to ensure the bridge has the latest value
-                // This handles the case where the custom node already has a valid output value
-                setTimeout(() => {
-                  const latestValue = sourceCustomNode.outputs.get(sourceOutput)
-                  if (latestValue !== undefined && latestValue !== currentValue) {
-                    constantSource.offset.value = latestValue
-                  }
-                }, 1)
+                // The trigger mechanism will be handled in updateCustomNodeBridges
+                // This works for OscillatorNode, SoundFileNode, and any other custom node with trigger input
               } else {
-                console.error(`AudioParam ${targetInput} not found on target node`)
-                return
+                // Create a ConstantSourceNode bridge for custom node control output
+                const constantSource = self.audioContext!.createConstantSource()
+
+                // Get current output value from custom node
+                const currentValue = sourceCustomNode.outputs.get(sourceOutput) || 0
+                constantSource.offset.value = currentValue
+
+                // Connect to AudioParam
+                const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+                const audioParam = targetNodeWithParams[targetInput]
+
+                if (audioParam && typeof audioParam.value !== 'undefined') {
+                  constantSource.connect(audioParam)
+                  constantSource.start()
+
+                  // Get the source node info to determine connection type
+                  const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+                  const sourceNodeType = sourceVisualNode?.nodeType
+
+                  // Smart base value handling based on parameter and source type
+                  if (targetInput === 'frequency') {
+                    // For frequency parameters, check the source type
+                    if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
+                      // Direct frequency control - these nodes output frequency values
+                      audioParam.value = 0
+                      /*   console.log(
+                        `Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`
+                      ) */
+                    } else {
+                      // Default: keep base value for modulation
+                      /* console.log(
+                        `Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`
+                      ) */
+                    }
+                  } else {
+                    // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
+                    audioParam.value = 0
+                    /* console.log(
+                      `Connected custom node to AudioParam: ${targetInput}, set base value to 0`
+                    ) */
+                  }
+
+                  // Store the bridge source for updates and cleanup
+                  if (!self.customNodeBridges) {
+                    self.customNodeBridges = new Map()
+                  }
+                  self.customNodeBridges.set(`${sourceId}-${targetId}`, constantSource)
+
+                  /* console.log(
+                    `Bridge created for custom node ${sourceNodeType} → ${targetInput} with initial value: ${currentValue}`
+                  ) */
+
+                  // Force an immediate update to ensure the bridge has the latest value
+                  // This handles the case where the custom node already has a valid output value
+                  setTimeout(() => {
+                    const latestValue = sourceCustomNode.outputs.get(sourceOutput)
+                    if (latestValue !== undefined && latestValue !== currentValue) {
+                      constantSource.offset.value = latestValue
+                    }
+                  }, 1)
+                } else {
+                  console.error(`AudioParam ${targetInput} not found on target node`)
+                  return
+                }
               }
             } else {
               console.error('Custom nodes can only connect to control inputs (AudioParams)')
@@ -1084,44 +1293,63 @@ export const AudioGraphStore = types
             const isControlConnection = targetInputDef?.type === 'control'
 
             if (isControlConnection) {
-              // Connect to AudioParam
-              const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
-              const audioParam = targetNodeWithParams[targetInput]
+              // Special handling for trigger inputs
+              if (targetInput === 'trigger') {
+                // Create a trigger bridge for any node type that has a trigger input
+                const triggerBridge = self.audioContext!.createGain()
+                triggerBridge.gain.value = 0 // Silent bridge
 
-              if (audioParam && typeof audioParam.value !== 'undefined') {
-                sourceNode.connect(audioParam)
+                // Connect source to the bridge
+                sourceNode.connect(triggerBridge)
 
-                // Get the source node info to determine connection type
-                const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
-                const sourceNodeType = sourceVisualNode?.nodeType
+                // Store the bridge for cleanup and mark it as a trigger bridge
+                if (!self.customNodeBridges) {
+                  self.customNodeBridges = new Map()
+                }
+                self.customNodeBridges.set(`${sourceId}-${targetId}-trigger`, triggerBridge)
 
-                // Smart base value handling based on parameter and source type
-                if (targetInput === 'frequency') {
-                  // For frequency parameters, check the source type
-                  if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
-                    // Direct frequency control - these nodes output frequency values
-                    audioParam.value = 0
-                    /* console.log(
-                      `Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`
-                    ) */
-                  } else if (sourceNodeType === 'OscillatorNode') {
-                    // LFO modulation - oscillator output adds to base frequency
-                    /* console.log(
-                      `Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`
-                    ) */
+                // For custom nodes that output trigger signals, we'll handle this in the custom node bridge update
+                // This connection establishes the relationship for trigger handling
+              } else {
+                // Connect to AudioParam
+                const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+                const audioParam = targetNodeWithParams[targetInput]
+
+                if (audioParam && typeof audioParam.value !== 'undefined') {
+                  sourceNode.connect(audioParam)
+
+                  // Get the source node info to determine connection type
+                  const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+                  const sourceNodeType = sourceVisualNode?.nodeType
+
+                  // Smart base value handling based on parameter and source type
+                  if (targetInput === 'frequency') {
+                    // For frequency parameters, check the source type
+                    if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
+                      // Direct frequency control - these nodes output frequency values
+                      audioParam.value = 0
+                      /* console.log(
+                        `Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`
+                      ) */
+                    } else if (sourceNodeType === 'OscillatorNode') {
+                      // LFO modulation - oscillator output adds to base frequency
+                      /* console.log(
+                        `Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`
+                      ) */
+                    } else {
+                      // Default: keep base value for modulation
+                      /* console.log(
+                        `Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`
+                      ) */
+                    }
                   } else {
-                    // Default: keep base value for modulation
-                    /* console.log(
-                      `Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`
-                    ) */
+                    // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
+                    audioParam.value = 0
                   }
                 } else {
-                  // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
-                  audioParam.value = 0
+                  console.error(`AudioParam ${targetInput} not found on target node`)
+                  return
                 }
-              } else {
-                console.error(`AudioParam ${targetInput} not found on target node`)
-                return
               }
             } else if (isDestinationConnection && self.globalAnalyzer) {
               // Connect through the analyzer: source -> analyzer -> destination
@@ -1180,6 +1408,42 @@ export const AudioGraphStore = types
           return
         }
 
+        // Handle audio node to custom node disconnections
+        if (sourceNode && targetCustomNode) {
+          try {
+            // Find the connection to determine the target input
+            const connection = self.audioConnections.find(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+
+            if (connection) {
+              const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+              if (
+                targetVisualNode?.nodeType === 'GreaterThanNode' ||
+                targetVisualNode?.nodeType === 'EqualsNode'
+              ) {
+                // Disconnect from logical controller's audio input
+                const audioOutput = targetCustomNode.getAudioOutput?.()
+                if (audioOutput) {
+                  sourceNode.disconnect(audioOutput)
+                  // Notify the custom node that audio input is disconnected
+                  targetCustomNode.receiveInput?.(connection.targetInput, false)
+                }
+              }
+            }
+
+            const connectionIndex = self.audioConnections.findIndex(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+            if (connectionIndex !== -1) {
+              self.audioConnections.splice(connectionIndex, 1)
+            }
+          } catch (error) {
+            console.error('Failed to disconnect audio node from custom node:', error)
+          }
+          return
+        }
+
         // Handle custom node to audio node disconnections
         if (sourceCustomNode && targetNode) {
           try {
@@ -1188,7 +1452,9 @@ export const AudioGraphStore = types
               const bridgeKey = `${sourceId}-${targetId}`
               const bridge = self.customNodeBridges.get(bridgeKey)
               if (bridge) {
-                bridge.stop()
+                if ('stop' in bridge && typeof bridge.stop === 'function') {
+                  bridge.stop()
+                }
                 bridge.disconnect()
                 self.customNodeBridges.delete(bridgeKey)
               }
@@ -1327,16 +1593,50 @@ export const AudioGraphStore = types
         self.customNodeBridges.forEach((bridge, bridgeKey) => {
           // Check if this bridge starts with the source node ID
           if (bridgeKey.startsWith(`${nodeId}-`)) {
-            // Find the connection that uses this bridge
-            const connection = self.audioConnections.find(
-              conn =>
-                conn.sourceNodeId === nodeId &&
-                bridgeKey === `${conn.sourceNodeId}-${conn.targetNodeId}` &&
-                conn.sourceOutput === outputName
-            )
+            // Handle trigger connections specially
+            if (bridgeKey.includes('-trigger')) {
+              // For trigger bridges, extract target ID from bridge key: sourceId-targetId-trigger
+              const parts = bridgeKey.split('-')
+              if (parts.length >= 3 && parts[parts.length - 1] === 'trigger') {
+                // Find the connection for this trigger bridge
+                const connection = self.audioConnections.find(
+                  conn =>
+                    conn.sourceNodeId === nodeId &&
+                    conn.sourceOutput === outputName &&
+                    conn.targetInput === 'trigger'
+                )
 
-            if (connection) {
-              bridge.offset.value = value
+                if (connection && value > 0) {
+                  const targetId = connection.targetNodeId
+                  const targetAudioNode = self.audioNodes.get(targetId)
+                  const targetCustomNode = self.customNodes.get(targetId)
+                  const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+
+                  if (
+                    targetAudioNode &&
+                    targetVisualNode?.nodeType === 'OscillatorNode' &&
+                    self.audioNodeFactory
+                  ) {
+                    // Recreate and start the oscillator (since oscillators can only be started once)
+                    self.recreateAndStartOscillator(targetId)
+                  } else if (targetCustomNode && targetCustomNode.receiveInput) {
+                    // For other custom nodes (SoundFileNode, etc.), send trigger signal directly
+                    targetCustomNode.receiveInput('trigger', value)
+                  }
+                }
+              }
+            } else {
+              // Handle regular control connections
+              const connection = self.audioConnections.find(
+                conn =>
+                  conn.sourceNodeId === nodeId &&
+                  bridgeKey === `${conn.sourceNodeId}-${conn.targetNodeId}` &&
+                  conn.sourceOutput === outputName
+              )
+
+              if (connection && 'offset' in bridge && bridge.offset) {
+                bridge.offset.value = value
+              }
             }
           }
         })
@@ -2018,12 +2318,15 @@ export const AudioGraphStore = types
           const audioNode = self.audioNodeFactory.createAudioNode(nodeType, metadata, properties)
           self.audioNodes.set(nodeId, audioNode)
 
-          // Start source nodes immediately if we're currently playing
+          // Start source nodes immediately if we're currently playing AND autostart is enabled
           if (
             (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') &&
             self.isPlaying
           ) {
-            if ('start' in audioNode && typeof audioNode.start === 'function') {
+            // Check autostart property for oscillators
+            const shouldAutostart = nodeType !== 'OscillatorNode' || properties.autostart !== false
+
+            if (shouldAutostart && 'start' in audioNode && typeof audioNode.start === 'function') {
               try {
                 ;(audioNode as OscillatorNode | AudioBufferSourceNode).start()
               } catch (error) {
@@ -2334,6 +2637,13 @@ export const AudioGraphStore = types
 
     get hasClipboardAccess() {
       return self.clipboardPermissionState === 'granted'
+    },
+
+    // Get node runtime state (reactive computed property)
+    getNodeState(nodeId: string) {
+      // Access the counter to make this reactive
+      void self.nodeStateChangeCounter
+      return self.nodeStates.get(nodeId) || {}
     },
   }))
   .actions(self => {

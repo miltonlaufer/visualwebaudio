@@ -416,17 +416,70 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
                   Methods
                 </h3>
                 <div className="space-y-2">
-                  {selectedNode.metadata.methods.map(method => (
-                    <button
-                      key={method}
-                      onClick={() => {
-                        /* Method calls not implemented yet */
-                      }}
-                      className="w-full px-3 py-2 text-sm bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-600 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-                    >
-                      {method}()
-                    </button>
-                  ))}
+                  {selectedNode.metadata.methods.map(method => {
+                    // Determine if method should be disabled
+                    const isDisabled = method === 'connect' || method === 'disconnect'
+
+                    // For oscillator nodes, check if start/stop should be enabled
+                    const isOscillator = selectedNode.nodeType === 'OscillatorNode'
+                    const isRunning = isOscillator
+                      ? store.getNodeState(selectedNode.id)?.isRunning
+                      : false
+
+                    return (
+                      <button
+                        key={method}
+                        onClick={() => {
+                          if (isDisabled) return
+
+                          if (method === 'start' && isOscillator) {
+                            if (isRunning) {
+                              // Stop the oscillator
+                              const audioNode = store.audioNodes.get(selectedNode.id)
+                              if (audioNode && store.audioNodeFactory) {
+                                store.audioNodeFactory.stopSourceNode(
+                                  audioNode,
+                                  selectedNode.nodeType
+                                )
+                                store.setNodeState(selectedNode.id, { isRunning: false })
+                              }
+                            } else {
+                              // Start/restart the oscillator (recreate if needed)
+                              store.recreateAndStartOscillator(selectedNode.id)
+                            }
+                          } else if (method === 'stop' && isOscillator) {
+                            if (isRunning) {
+                              const audioNode = store.audioNodes.get(selectedNode.id)
+                              if (audioNode && store.audioNodeFactory) {
+                                store.audioNodeFactory.stopSourceNode(
+                                  audioNode,
+                                  selectedNode.nodeType
+                                )
+                                store.setNodeState(selectedNode.id, { isRunning: false })
+                              }
+                            }
+                          }
+                        }}
+                        disabled={isDisabled}
+                        className={`w-full px-3 py-2 text-sm border rounded-md transition-colors ${
+                          isDisabled
+                            ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                            : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30'
+                        }`}
+                      >
+                        {isOscillator && method === 'start'
+                          ? isRunning
+                            ? 'stop()'
+                            : 'start()'
+                          : `${method}()`}
+                        {isOscillator && (method === 'start' || method === 'stop') && (
+                          <span className="text-xs ml-2">
+                            ({isRunning ? 'Running' : 'Stopped'})
+                          </span>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )}
