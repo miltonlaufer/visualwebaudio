@@ -4,8 +4,8 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-310%2F310%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
-[![Coverage](https://img.shields.io/badge/Coverage-54.8%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-333%2F333%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Coverage](https://img.shields.io/badge/Coverage-63.76%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ## Table of Contents
