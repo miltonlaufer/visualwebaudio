@@ -2160,7 +2160,9 @@ export const AudioGraphStore = types
 
               if (nodeType && self.audioNodeFactory) {
                 // Check if this is a source node that needs to be recreated
-                const isSourceNode = ['OscillatorNode', 'AudioBufferSourceNode'].includes(nodeType)
+                // Source nodes are characterized by having start/stop methods
+                const nodeMetadata = self.webAudioMetadata[nodeType] as INodeMetadata
+                const isSourceNode = nodeMetadata?.methods?.includes('start') ?? false
 
                 if (isSourceNode) {
                   try {

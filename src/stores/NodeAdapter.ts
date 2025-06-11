@@ -2,6 +2,13 @@ import { types, getRoot, Instance } from 'mobx-state-tree'
 import { reaction } from 'mobx'
 import { IAudioGraphStore } from './AudioGraphStore'
 import { INodeMetadata } from './NodeModels'
+// Import the JSON metadata directly to check WebAudio nodes
+import webAudioMetadataJson from '~/types/web-audio-metadata.json'
+
+// Get WebAudio metadata directly
+const getWebAudioMetadata = (): Record<string, INodeMetadata> => {
+  return webAudioMetadataJson as unknown as Record<string, INodeMetadata>
+}
 
 // Base interface for all node implementations
 export interface INodeImplementation {
@@ -114,51 +121,22 @@ export const NodeAdapter = types
     },
 
     get isWebAudioNode(): boolean {
-      // Check if this is a WebAudio API node type
-      const webAudioNodeTypes = [
-        'AnalyserNode',
-        'AudioBufferSourceNode',
-        'AudioContext',
-        'AudioDestinationNode',
-        'AudioWorkletNode',
-        'BiquadFilterNode',
-        'ChannelMergerNode',
-        'ChannelSplitterNode',
-        'ConstantSourceNode',
-        'ConvolverNode',
-        'DelayNode',
-        'DynamicsCompressorNode',
-        'GainNode',
-        'IIRFilterNode',
-        'MediaElementAudioSourceNode',
-        'MediaStreamAudioDestinationNode',
-        'MediaStreamAudioSourceNode',
-        'OscillatorNode',
-        'PannerNode',
-        'ScriptProcessorNode',
-        'StereoPannerNode',
-        'WaveShaperNode',
-      ]
-      return webAudioNodeTypes.includes(self.nodeType)
+      // Check if this node type exists in the WebAudio metadata (not the combined metadata)
+      // This uses the dynamically generated metadata from TypeScript definitions
+      try {
+        const webAudioMetadata = getWebAudioMetadata()
+        return self.nodeType in webAudioMetadata
+      } catch (error) {
+        // Fallback for cases where metadata is not available
+        console.warn(`[NodeAdapter] Could not access webAudioMetadata for ${self.nodeType}:`, error)
+        return false
+      }
     },
 
     get isCustomNode(): boolean {
-      // Check if this is a custom node type
-      const customNodeTypes = [
-        'ButtonNode',
-        'SliderNode',
-        'GreaterThanNode',
-        'EqualsNode',
-        'SelectNode',
-        'MidiInputNode',
-        'MidiToFreqNode',
-        'ScaleToMidiNode',
-        'DisplayNode',
-        'RandomNode',
-        'SoundFileNode',
-        'TimerNode',
-      ]
-      return customNodeTypes.includes(self.nodeType)
+      // Custom nodes are all nodes that are NOT WebAudio nodes
+      // This ensures we don't need to maintain a separate hardcoded list
+      return !this.isWebAudioNode
     },
 
     get isAttached(): boolean {
