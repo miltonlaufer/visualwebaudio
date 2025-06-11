@@ -1,6 +1,6 @@
 import { types, getRoot, Instance } from 'mobx-state-tree'
 import { reaction } from 'mobx'
-import { IAudioGraphStore } from '~/stores/AudioGraphStore'
+import { IAudioGraphStore } from './AudioGraphStore'
 
 export const NodeInput = types.model('NodeInput', {
   name: types.string,
@@ -179,7 +179,7 @@ export const VisualNodeModel = types
 
             // Create a snapshot of current properties
             const props: Record<string, any> = {}
-            self.data.properties.forEach((value, key) => {
+            self.data.properties.forEach((value: any, key: any) => {
               props[key] = value
             })
             return props

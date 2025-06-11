@@ -36,7 +36,7 @@ describe('PropertyPanel', () => {
 
   it('renders node properties when a node is selected', () => {
     // Add a node and select it
-    const nodeId = store.addNode('OscillatorNode', { x: 100, y: 100 })
+    const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
     store.selectNode(nodeId)
 
     renderWithStore(<PropertyPanel />)
@@ -46,7 +46,7 @@ describe('PropertyPanel', () => {
   })
 
   it('displays node metadata information', () => {
-    const nodeId = store.addNode('GainNode', { x: 100, y: 100 })
+    const nodeId = store.addAdaptedNode('GainNode', { x: 100, y: 100 })
     store.selectNode(nodeId)
 
     renderWithStore(<PropertyPanel />)
@@ -56,7 +56,7 @@ describe('PropertyPanel', () => {
   })
 
   it('handles nodes with no properties gracefully', () => {
-    const nodeId = store.addNode('AudioDestinationNode', { x: 100, y: 100 })
+    const nodeId = store.addAdaptedNode('AudioDestinationNode', { x: 100, y: 100 })
     store.selectNode(nodeId)
 
     renderWithStore(<PropertyPanel />)

@@ -11,8 +11,8 @@ const FrequencyAnalyzer: React.FC = observer(() => {
   useEffect(() => {
     // Check if audio is playing and there are connections to destination
     const destinationConnections = store.audioConnections.filter(conn => {
-      const targetNode = store.visualNodes.find(node => node.id === conn.targetNodeId)
-      return targetNode?.data.nodeType === 'AudioDestinationNode'
+      const targetNode = store.adaptedNodes.find(node => node.id === conn.targetNodeId)
+      return targetNode?.nodeType === 'AudioDestinationNode'
     })
 
     const hasActiveAudio =
@@ -23,7 +23,7 @@ const FrequencyAnalyzer: React.FC = observer(() => {
     } else {
       setIsActive(false)
     }
-  }, [store.audioConnections, store.visualNodes, store.isPlaying, store.frequencyAnalyzer])
+  }, [store.audioConnections, store.adaptedNodes, store.isPlaying, store.frequencyAnalyzer])
 
   // Animation loop for drawing the frequency bars
   useEffect(() => {

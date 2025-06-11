@@ -10,7 +10,7 @@ interface PropertyPanelProps {
 const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
   const store = useAudioGraphStore()
   const selectedNode = store.selectedNodeId
-    ? store.visualNodes.find(n => n.id === store.selectedNodeId)
+    ? store.adaptedNodes.find(n => n.id === store.selectedNodeId)
     : null
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
@@ -114,8 +114,8 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     step?: number
     options?: unknown[]
   }) => {
-    const currentValue = selectedNode?.data.properties
-      ? (getPropertyValue(selectedNode.data.properties, property.name) ?? property.defaultValue)
+    const currentValue = selectedNode?.properties
+      ? (getPropertyValue(selectedNode.properties, property.name) ?? property.defaultValue)
       : property.defaultValue
 
     // If property has options, render as dropdown
@@ -299,39 +299,37 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">Type:</span>{' '}
-                  <span className="text-gray-700 dark:text-gray-300">
-                    {selectedNode.data.nodeType}
-                  </span>
+                  <span className="text-gray-700 dark:text-gray-300">{selectedNode.nodeType}</span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">Category:</span>{' '}
                   <span className="text-gray-700 dark:text-gray-300">
-                    {selectedNode.data.metadata.category}
+                    {selectedNode.metadata.category}
                   </span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">ID:</span>{' '}
                   <span className="text-gray-700 dark:text-gray-300">{selectedNode.id}</span>
                 </div>
-                {selectedNode.data.metadata.description && (
+                {selectedNode.metadata.description && (
                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border-l-4 border-blue-200 dark:border-blue-600">
                     <div className="text-xs font-medium text-blue-800 dark:text-blue-200 mb-1">
                       Description
                     </div>
-                    {renderDescription(selectedNode.data.metadata.description)}
+                    {renderDescription(selectedNode.metadata.description)}
                   </div>
                 )}
               </div>
             </div>
 
             {/* Inputs */}
-            {selectedNode.data.metadata.inputs.length > 0 && (
+            {selectedNode.metadata.inputs.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Inputs
                 </h3>
                 <div className="space-y-2">
-                  {selectedNode.data.metadata.inputs.map(input => (
+                  {selectedNode.metadata.inputs.map(input => (
                     <div
                       key={input.name}
                       className="flex items-center justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded-md"
@@ -355,13 +353,13 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
             )}
 
             {/* Outputs */}
-            {selectedNode.data.metadata.outputs.length > 0 && (
+            {selectedNode.metadata.outputs.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Outputs
                 </h3>
                 <div className="space-y-2">
-                  {selectedNode.data.metadata.outputs.map(output => (
+                  {selectedNode.metadata.outputs.map(output => (
                     <div
                       key={output.name}
                       className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/20 rounded-md"
@@ -385,13 +383,13 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
             )}
 
             {/* Properties */}
-            {selectedNode.data.metadata.properties.length > 0 && (
+            {selectedNode.metadata.properties.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Parameters
                 </h3>
                 <div className="space-y-4">
-                  {selectedNode.data.metadata.properties.map(prop => (
+                  {selectedNode.metadata.properties.map(prop => (
                     <div key={prop.name}>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         {prop.name}
@@ -412,13 +410,13 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
             )}
 
             {/* Methods */}
-            {selectedNode.data.metadata.methods.length > 0 && (
+            {selectedNode.metadata.methods.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Methods
                 </h3>
                 <div className="space-y-2">
-                  {selectedNode.data.metadata.methods.map(method => (
+                  {selectedNode.metadata.methods.map(method => (
                     <button
                       key={method}
                       onClick={() => {
@@ -434,13 +432,13 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
             )}
 
             {/* Events */}
-            {selectedNode.data.metadata.events.length > 0 && (
+            {selectedNode.metadata.events.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
                   Events
                 </h3>
                 <div className="space-y-1">
-                  {selectedNode.data.metadata.events.map(event => (
+                  {selectedNode.metadata.events.map(event => (
                     <div
                       key={event}
                       className="text-sm text-gray-600 dark:text-gray-400 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md"

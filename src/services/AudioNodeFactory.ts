@@ -1,5 +1,4 @@
-import type { NodeMetadata } from '~/types'
-import { INodeMetadata } from '~/models/NodeModels.ts'
+import type { INodeMetadata } from '~/stores/NodeModels'
 
 export class AudioNodeFactory {
   public audioContext: AudioContext
@@ -9,7 +8,7 @@ export class AudioNodeFactory {
 
   createAudioNode(
     nodeType: string,
-    metadata: NodeMetadata,
+    metadata: INodeMetadata,
     properties: Record<string, unknown> = {}
   ): AudioNode {
     let audioNode: AudioNode
@@ -53,7 +52,8 @@ export class AudioNodeFactory {
     })
 
     // Start source nodes automatically
-    if (this.isSourceNode(nodeType)) {
+    // Use the provided metadata to check if this is a source node
+    if (this.isSourceNodeFromMetadata(metadata)) {
       this.startSourceNode(audioNode, nodeType)
     }
 
@@ -93,13 +93,10 @@ export class AudioNodeFactory {
     }
   }
 
-  private isSourceNode(nodeType: string): boolean {
-    return [
-      'OscillatorNode',
-      'AudioBufferSourceNode',
-      'MediaElementAudioSourceNode',
-      'MediaStreamAudioSourceNode',
-    ].includes(nodeType)
+  private isSourceNodeFromMetadata(metadata: INodeMetadata): boolean {
+    // Check if this node has a 'start' method in the provided metadata
+    // Source nodes are characterized by having start/stop methods
+    return metadata?.methods?.includes('start') ?? false
   }
 
   private startSourceNode(audioNode: AudioNode, nodeType: string): void {

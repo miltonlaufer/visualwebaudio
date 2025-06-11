@@ -35,46 +35,46 @@ export const useExamples = () => {
         'Classic analog synthesizer with multiple oscillators, resonant filter, delay, and automated sequences',
       create: createExample(() => {
         // Timer for automated triggering
-        const timerId = store.addNode('TimerNode', { x: 50, y: 50 })
+        const timerId = store.addAdaptedNode('TimerNode', { x: 50, y: 50 })
 
         // Note control using MIDI to Frequency conversion
-        const noteSlider = store.addNode('SliderNode', { x: 50, y: 200 })
-        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 300, y: 200 })
+        const noteSlider = store.addAdaptedNode('SliderNode', { x: 50, y: 200 })
+        const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', { x: 300, y: 200 })
 
         // Envelope gain node controlled by timer
-        const envelopeGainId = store.addNode('GainNode', { x: 800, y: 50 })
+        const envelopeGainId = store.addAdaptedNode('GainNode', { x: 800, y: 50 })
 
         // Multiple oscillators for rich vintage sound
-        const osc1Id = store.addNode('OscillatorNode', { x: 550, y: 100 })
-        const osc2Id = store.addNode('OscillatorNode', { x: 550, y: 200 })
-        const osc3Id = store.addNode('OscillatorNode', { x: 550, y: 300 })
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 550, y: 100 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 550, y: 200 })
+        const osc3Id = store.addAdaptedNode('OscillatorNode', { x: 550, y: 300 })
 
         // Individual gain controls for oscillators (sound generator rule)
-        const osc1GainId = store.addNode('GainNode', { x: 800, y: 100 })
-        const osc2GainId = store.addNode('GainNode', { x: 800, y: 200 })
-        const osc3GainId = store.addNode('GainNode', { x: 800, y: 300 })
+        const osc1GainId = store.addAdaptedNode('GainNode', { x: 800, y: 100 })
+        const osc2GainId = store.addAdaptedNode('GainNode', { x: 800, y: 200 })
+        const osc3GainId = store.addAdaptedNode('GainNode', { x: 800, y: 300 })
 
         // Mixer for combining oscillators
-        const mixerId = store.addNode('GainNode', { x: 1050, y: 200 })
+        const mixerId = store.addAdaptedNode('GainNode', { x: 1050, y: 200 })
 
         // Resonant filter (the heart of vintage analog sound!)
-        const filterId = store.addNode('BiquadFilterNode', { x: 1300, y: 200 })
+        const filterId = store.addAdaptedNode('BiquadFilterNode', { x: 1300, y: 200 })
 
         // LFO for filter modulation
-        const lfoId = store.addNode('OscillatorNode', { x: 1050, y: 400 })
-        const lfoGainId = store.addNode('GainNode', { x: 1300, y: 400 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 1050, y: 400 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 1300, y: 400 })
 
         // Delay for vintage echo
-        const delayId = store.addNode('DelayNode', { x: 1550, y: 200 })
-        const feedbackId = store.addNode('GainNode', { x: 1550, y: 400 })
+        const delayId = store.addAdaptedNode('DelayNode', { x: 1550, y: 200 })
+        const feedbackId = store.addAdaptedNode('GainNode', { x: 1550, y: 400 })
 
         // Final output gain
-        const outputGainId = store.addNode('GainNode', { x: 1800, y: 200 })
-        const destId = store.addNode('AudioDestinationNode', { x: 2050, y: 200 })
+        const outputGainId = store.addAdaptedNode('GainNode', { x: 1800, y: 200 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 2050, y: 200 })
 
         // User controls
-        const filterCutoffSliderId = store.addNode('SliderNode', { x: 50, y: 350 })
-        const filterResSliderId = store.addNode('SliderNode', { x: 50, y: 500 })
+        const filterCutoffSliderId = store.addAdaptedNode('SliderNode', { x: 50, y: 350 })
+        const filterResSliderId = store.addAdaptedNode('SliderNode', { x: 50, y: 500 })
 
         // Timer settings for automatic note triggering
         store.updateNodeProperty(timerId, 'mode', 'loop')
@@ -190,27 +190,27 @@ export const useExamples = () => {
       name: 'MIDI to Frequency',
       description: 'Control oscillator frequency with a slider via MIDI note conversion',
       create: createExample(() => {
-        const sliderId = store.addNode('SliderNode', {
+        const sliderId = store.addAdaptedNode('SliderNode', {
           x: -2.6200660464996304,
           y: -27.92407649604229,
         })
-        const displayNode1Id = store.addNode('DisplayNode', {
+        const displayNode1Id = store.addAdaptedNode('DisplayNode', {
           x: -0.683888634989259,
           y: 194.5119899292198,
         })
-        const midiToFreqId = store.addNode('MidiToFreqNode', {
+        const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', {
           x: 255.03647005056547,
           y: -12.888551203235835,
         })
-        const displayNode2Id = store.addNode('DisplayNode', {
+        const displayNode2Id = store.addAdaptedNode('DisplayNode', {
           x: 283.60216452982104,
           y: 200.40628596561203,
         })
-        const oscId = store.addNode('OscillatorNode', {
+        const oscId = store.addAdaptedNode('OscillatorNode', {
           x: 543.047959716879,
           y: -28.436677674416615,
         })
-        const destId = store.addNode('AudioDestinationNode', {
+        const destId = store.addAdaptedNode('AudioDestinationNode', {
           x: 520.3458360566071,
           y: 263.8463363195132,
         })
@@ -246,15 +246,15 @@ export const useExamples = () => {
       description: 'Complex delay effect with MIDI-controlled oscillator and feedback loops',
       create: createExample(async () => {
         // Fallback: create a simpler version manually
-        const sliderId = store.addNode('SliderNode', { x: 385, y: 261 })
-        const displayId = store.addNode('DisplayNode', { x: 150, y: 263 })
-        const midiToFreqId = store.addNode('MidiToFreqNode', { x: 117, y: 71 })
-        const freqDisplayId = store.addNode('DisplayNode', { x: 331, y: 58 })
-        const oscId = store.addNode('OscillatorNode', { x: 543, y: -28 })
-        const gainId = store.addNode('GainNode', { x: 785, y: -20 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1025, y: 54 })
-        const delayId = store.addNode('DelayNode', { x: 1025, y: 200 })
-        const feedbackId = store.addNode('GainNode', { x: 800, y: 200 })
+        const sliderId = store.addAdaptedNode('SliderNode', { x: 385, y: 261 })
+        const displayId = store.addAdaptedNode('DisplayNode', { x: 150, y: 263 })
+        const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', { x: 117, y: 71 })
+        const freqDisplayId = store.addAdaptedNode('DisplayNode', { x: 331, y: 58 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 543, y: -28 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 785, y: -20 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1025, y: 54 })
+        const delayId = store.addAdaptedNode('DelayNode', { x: 1025, y: 200 })
+        const feedbackId = store.addAdaptedNode('GainNode', { x: 800, y: 200 })
 
         // Configure nodes with labels
         store.updateNodeProperty(sliderId, 'min', 48)
@@ -283,13 +283,176 @@ export const useExamples = () => {
       }),
     },
     {
+      id: 'midi-pentatonic',
+      name: 'MIDI Pentatonic',
+      description:
+        'Pentatonic scale synthesizer with multiple oscillators, resonant filter, and delay effects',
+      create: createExample(() => {
+        // Note control slider
+        const noteSlider = store.addAdaptedNode('SliderNode', { x: -216, y: 118 })
+
+        // Scale to MIDI converter for pentatonic scale
+        const scaleToMidiId = store.addAdaptedNode('ScaleToMidiNode', { x: 22, y: 112 })
+
+        // MIDI to frequency converter
+        const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', { x: 272, y: 138 })
+
+        // Multiple oscillators for rich sound
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 776, y: -4 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 706, y: 176 })
+        const osc3Id = store.addAdaptedNode('OscillatorNode', { x: 360, y: 442 })
+
+        // Individual gain controls for oscillators
+        const osc1GainId = store.addAdaptedNode('GainNode', { x: 1084, y: -26 })
+        const osc2GainId = store.addAdaptedNode('GainNode', { x: 698, y: 420 })
+        const osc3GainId = store.addAdaptedNode('GainNode', { x: 598, y: 706 })
+
+        // Mixer for combining oscillators
+        const mixerId = store.addAdaptedNode('GainNode', { x: 980, y: 586 })
+        const mainGainId = store.addAdaptedNode('GainNode', { x: 1012, y: 410 })
+
+        // Resonant filter
+        const filterId = store.addAdaptedNode('BiquadFilterNode', { x: 1338, y: 138 })
+
+        // LFO for filter modulation
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 378, y: -112 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 968, y: -252 })
+
+        // Delay effect
+        const delayId = store.addAdaptedNode('DelayNode', { x: 1566, y: 206 })
+        const delayGainId = store.addAdaptedNode('GainNode', { x: 1558, y: -54 })
+        const feedbackId = store.addAdaptedNode('GainNode', { x: 1556, y: 458 })
+
+        // Output
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1836, y: 296 })
+
+        // User control sliders
+        const filterCutoffSlider = store.addAdaptedNode('SliderNode', { x: -111, y: 396 })
+        const filterResSlider = store.addAdaptedNode('SliderNode', { x: -46, y: 658 })
+
+        // Configure note slider
+        store.updateNodeProperty(noteSlider, 'min', -10)
+        store.updateNodeProperty(noteSlider, 'max', 10)
+        store.updateNodeProperty(noteSlider, 'value', 0)
+        store.updateNodeProperty(noteSlider, 'step', 1)
+        store.updateNodeProperty(noteSlider, 'label', 'Note (MIDI)')
+
+        // Configure scale to MIDI converter for pentatonic minor
+        store.updateNodeProperty(scaleToMidiId, 'scaleDegree', 0)
+        store.updateNodeProperty(scaleToMidiId, 'key', 'C')
+        store.updateNodeProperty(scaleToMidiId, 'mode', 'pentatonic_minor')
+        store.updateNodeProperty(scaleToMidiId, 'midiNote', 60)
+
+        // Configure MIDI to frequency converter
+        store.updateNodeProperty(midiToFreqId, 'midiNote', 60)
+        store.updateNodeProperty(midiToFreqId, 'frequency', 261.63)
+        store.updateNodeProperty(midiToFreqId, 'baseFreq', 440)
+        store.updateNodeProperty(midiToFreqId, 'baseMidi', 69)
+
+        // Configure oscillators
+        store.updateNodeProperty(osc1Id, 'frequency', 110)
+        store.updateNodeProperty(osc1Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc1Id, 'detune', null)
+
+        store.updateNodeProperty(osc2Id, 'frequency', 110.5)
+        store.updateNodeProperty(osc2Id, 'type', 'sawtooth')
+        store.updateNodeProperty(osc2Id, 'detune', null)
+
+        store.updateNodeProperty(osc3Id, 'frequency', 220)
+        store.updateNodeProperty(osc3Id, 'type', 'square')
+        store.updateNodeProperty(osc3Id, 'detune', null)
+
+        // Configure oscillator gains
+        store.updateNodeProperty(osc1GainId, 'gain', 0.3)
+        store.updateNodeProperty(osc2GainId, 'gain', 0.2)
+        store.updateNodeProperty(osc3GainId, 'gain', 0.15)
+
+        // Configure mixer and main gain
+        store.updateNodeProperty(mixerId, 'gain', 1)
+        store.updateNodeProperty(mainGainId, 'gain', 0.8)
+
+        // Configure resonant filter
+        store.updateNodeProperty(filterId, 'type', 'lowpass')
+        store.updateNodeProperty(filterId, 'frequency', 800)
+        store.updateNodeProperty(filterId, 'Q', 15)
+        store.updateNodeProperty(filterId, 'gain', 1)
+        store.updateNodeProperty(filterId, 'detune', null)
+
+        // Configure LFO for filter modulation
+        store.updateNodeProperty(lfoId, 'frequency', 0.3)
+        store.updateNodeProperty(lfoId, 'type', 'sine')
+        store.updateNodeProperty(lfoId, 'detune', null)
+        store.updateNodeProperty(lfoGainId, 'gain', 400)
+
+        // Configure delay
+        store.updateNodeProperty(delayId, 'delayTime', 0.25)
+        store.updateNodeProperty(delayGainId, 'gain', 0.4)
+        store.updateNodeProperty(feedbackId, 'gain', 0.2)
+
+        // Configure user control sliders
+        store.updateNodeProperty(filterCutoffSlider, 'min', 200)
+        store.updateNodeProperty(filterCutoffSlider, 'max', 4000)
+        store.updateNodeProperty(filterCutoffSlider, 'value', 3185)
+        store.updateNodeProperty(filterCutoffSlider, 'step', 1)
+        store.updateNodeProperty(filterCutoffSlider, 'label', 'Filter Cutoff')
+
+        store.updateNodeProperty(filterResSlider, 'min', 1)
+        store.updateNodeProperty(filterResSlider, 'max', 30)
+        store.updateNodeProperty(filterResSlider, 'value', 30)
+        store.updateNodeProperty(filterResSlider, 'step', 1)
+        store.updateNodeProperty(filterResSlider, 'label', 'Resonance')
+
+        // Connect note control chain
+        store.addEdge(noteSlider, scaleToMidiId, 'value', 'scaleDegree')
+        store.addEdge(scaleToMidiId, midiToFreqId, 'midiNote', 'midiNote')
+
+        // Connect frequency to oscillators
+        store.addEdge(midiToFreqId, osc1Id, 'frequency', 'frequency')
+        store.addEdge(midiToFreqId, osc2Id, 'frequency', 'frequency')
+        store.addEdge(midiToFreqId, osc3Id, 'frequency', 'frequency')
+
+        // Connect oscillators to their gain nodes
+        store.addEdge(osc1Id, osc1GainId, 'output', 'input')
+        store.addEdge(osc2Id, osc2GainId, 'output', 'input')
+        store.addEdge(osc3Id, osc3GainId, 'output', 'input')
+
+        // Mix oscillators
+        store.addEdge(osc1GainId, mixerId, 'output', 'input')
+        store.addEdge(osc2GainId, mixerId, 'output', 'input')
+        store.addEdge(osc3GainId, mixerId, 'output', 'input')
+
+        // Through main gain
+        store.addEdge(mixerId, mainGainId, 'output', 'input')
+
+        // Through filter
+        store.addEdge(mainGainId, filterId, 'output', 'input')
+
+        // LFO modulation of filter
+        store.addEdge(lfoId, lfoGainId, 'output', 'input')
+        store.addEdge(lfoGainId, filterId, 'output', 'frequency')
+
+        // User control of filter
+        store.addEdge(filterCutoffSlider, filterId, 'value', 'frequency')
+        store.addEdge(filterResSlider, filterId, 'value', 'Q')
+
+        // Through delay
+        store.addEdge(filterId, delayId, 'output', 'input')
+        store.addEdge(delayId, delayGainId, 'output', 'input')
+        store.addEdge(delayGainId, delayId, 'output', 'input') // Feedback loop
+        store.addEdge(delayId, feedbackId, 'output', 'input')
+
+        // To output
+        store.addEdge(feedbackId, destId, 'output', 'input')
+      }),
+    },
+    {
       id: 'basic-oscillator',
       name: 'Basic Oscillator',
       description: 'Simple sine wave connected to output',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const gainId = store.addNode('GainNode', { x: 350, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 600, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 350, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 600, y: 150 })
 
         store.updateNodeProperty(gainId, 'gain', 0.5)
         store.addEdge(oscId, gainId, 'output', 'input')
@@ -303,10 +466,10 @@ export const useExamples = () => {
       create: createExample(async () => {
         try {
           // Use the store's microphone input action which handles permissions
-          const micGainId = store.addNode('GainNode', { x: 350, y: 150 })
-          const delayId = store.addNode('DelayNode', { x: 650, y: 150 })
-          const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
-          const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 350, y: 150 })
+          const delayId = store.addAdaptedNode('DelayNode', { x: 650, y: 150 })
+          const feedbackId = store.addAdaptedNode('GainNode', { x: 650, y: 350 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 950, y: 150 })
           const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
           // Set microphone gain to 0.5 (sound generator rule)
@@ -336,9 +499,9 @@ export const useExamples = () => {
       name: 'Sound File Player',
       description: 'Button-triggered sound file playback with sample audio',
       create: createExample(async () => {
-        const soundFileId = store.addNode('SoundFileNode', { x: 629, y: 117 })
-        const buttonId = store.addNode('ButtonNode', { x: 350, y: 100 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
+        const soundFileId = store.addAdaptedNode('SoundFileNode', { x: 629, y: 117 })
+        const buttonId = store.addAdaptedNode('ButtonNode', { x: 350, y: 100 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1015, y: 162 })
 
         store.updateNodeProperty(buttonId, 'label', 'Play Sound')
         store.updateNodeProperty(buttonId, 'outputValue', 1)
@@ -379,9 +542,9 @@ export const useExamples = () => {
       name: 'Auto File Player',
       description: 'Timer-triggered automatic sound file playback with sample audio',
       create: createExample(async () => {
-        const soundFileId = store.addNode('SoundFileNode', { x: 629, y: 117 })
-        const timerId = store.addNode('TimerNode', { x: 350, y: 100 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1015, y: 162 })
+        const soundFileId = store.addAdaptedNode('SoundFileNode', { x: 629, y: 117 })
+        const timerId = store.addAdaptedNode('TimerNode', { x: 350, y: 100 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1015, y: 162 })
 
         store.updateNodeProperty(timerId, 'mode', 'loop')
         store.updateNodeProperty(timerId, 'delay', 1000) // 1 second initial delay
@@ -425,11 +588,11 @@ export const useExamples = () => {
       name: 'Delay Effect',
       description: 'Oscillator with delay and feedback',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 350, y: 150 })
-        const delayId = store.addNode('DelayNode', { x: 650, y: 150 })
-        const feedbackId = store.addNode('GainNode', { x: 650, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 950, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 350, y: 150 })
+        const delayId = store.addAdaptedNode('DelayNode', { x: 650, y: 150 })
+        const feedbackId = store.addAdaptedNode('GainNode', { x: 650, y: 350 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 950, y: 150 })
 
         // Set oscillator gain to 0.5 (sound generator rule)
         store.updateNodeProperty(oscGainId, 'gain', 0.5)
@@ -451,12 +614,12 @@ export const useExamples = () => {
       name: 'Filter Sweep',
       description: 'Oscillator with animated lowpass filter',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 100 })
-        const filterId = store.addNode('BiquadFilterNode', { x: 700, y: 100 })
-        const lfoId = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const lfoGainId = store.addNode('GainNode', { x: 400, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 100 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+        const filterId = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 100 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 100 })
 
         // Set up the main oscillator
         store.updateNodeProperty(oscId, 'type', 'sawtooth')
@@ -488,12 +651,12 @@ export const useExamples = () => {
       name: 'Stereo Panning',
       description: 'Oscillator with automated stereo panning effect',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const pannerId = store.addNode('StereoPannerNode', { x: 700, y: 150 })
-        const lfoId = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const lfoGainId = store.addNode('GainNode', { x: 400, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const pannerId = store.addAdaptedNode('StereoPannerNode', { x: 700, y: 150 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 150 })
 
         // Set up the main oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -523,10 +686,10 @@ export const useExamples = () => {
       name: 'Compressor Effect',
       description: 'Oscillator with dynamic range compression',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const compressorId = store.addNode('DynamicsCompressorNode', { x: 700, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const compressorId = store.addAdaptedNode('DynamicsCompressorNode', { x: 700, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 150 })
 
         // Set oscillator properties
         store.updateNodeProperty(oscId, 'frequency', 220)
@@ -552,12 +715,12 @@ export const useExamples = () => {
       name: 'Tremolo Effect',
       description: 'Oscillator with amplitude modulation',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 100 })
-        const gainId = store.addNode('GainNode', { x: 700, y: 100 })
-        const lfoId = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const lfoGainId = store.addNode('GainNode', { x: 400, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 100 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 700, y: 100 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 100 })
 
         // Set up the main oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -587,12 +750,12 @@ export const useExamples = () => {
       name: 'Ring Modulation',
       description: 'Two oscillators with ring modulation effect',
       create: createExample(() => {
-        const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const osc1GainId = store.addNode('GainNode', { x: 400, y: 100 })
-        const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const osc2GainId = store.addNode('GainNode', { x: 400, y: 350 })
-        const gainId = store.addNode('GainNode', { x: 700, y: 225 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 225 })
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+        const osc1GainId = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const osc2GainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 700, y: 225 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 225 })
 
         // Set up the carrier oscillator
         store.updateNodeProperty(osc1Id, 'frequency', 440)
@@ -622,14 +785,14 @@ export const useExamples = () => {
       name: 'Chord Synthesis',
       description: 'Multiple oscillators creating a chord',
       create: createExample(() => {
-        const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 50 })
-        const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 225 })
-        const osc3Id = store.addNode('OscillatorNode', { x: 100, y: 400 })
-        const gain1Id = store.addNode('GainNode', { x: 400, y: 50 })
-        const gain2Id = store.addNode('GainNode', { x: 400, y: 225 })
-        const gain3Id = store.addNode('GainNode', { x: 400, y: 400 })
-        const mixerId = store.addNode('GainNode', { x: 700, y: 225 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 225 })
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 50 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 225 })
+        const osc3Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 400 })
+        const gain1Id = store.addAdaptedNode('GainNode', { x: 400, y: 50 })
+        const gain2Id = store.addAdaptedNode('GainNode', { x: 400, y: 225 })
+        const gain3Id = store.addAdaptedNode('GainNode', { x: 400, y: 400 })
+        const mixerId = store.addAdaptedNode('GainNode', { x: 700, y: 225 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 225 })
 
         // Set up C major chord (C4, E4, G4)
         store.updateNodeProperty(osc1Id, 'frequency', 261.63) // C4
@@ -664,12 +827,12 @@ export const useExamples = () => {
       name: 'Waveshaper Distortion',
       description: 'Oscillator with waveshaper distortion effect',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const gainId = store.addNode('GainNode', { x: 700, y: 150 })
-        const waveshaperId = store.addNode('WaveShaperNode', { x: 1000, y: 150 })
-        const outputGainId = store.addNode('GainNode', { x: 1300, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 700, y: 150 })
+        const waveshaperId = store.addAdaptedNode('WaveShaperNode', { x: 1000, y: 150 })
+        const outputGainId = store.addAdaptedNode('GainNode', { x: 1300, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 150 })
 
         // Set up the oscillator
         store.updateNodeProperty(oscId, 'frequency', 220)
@@ -696,14 +859,14 @@ export const useExamples = () => {
       name: 'Phaser Effect',
       description: 'Oscillator with phaser effect using multiple filters',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const filter1Id = store.addNode('BiquadFilterNode', { x: 700, y: 100 })
-        const filter2Id = store.addNode('BiquadFilterNode', { x: 700, y: 200 })
-        const lfoId = store.addNode('OscillatorNode', { x: 100, y: 400 })
-        const lfoGainId = store.addNode('GainNode', { x: 400, y: 400 })
-        const mixerId = store.addNode('GainNode', { x: 1000, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const filter1Id = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 100 })
+        const filter2Id = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 200 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 400 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 400, y: 400 })
+        const mixerId = store.addAdaptedNode('GainNode', { x: 1000, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1300, y: 150 })
 
         // Set up the main oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -746,11 +909,11 @@ export const useExamples = () => {
       description: 'White noise generator with filter',
       create: createExample(() => {
         // Note: We'll use an AudioBufferSourceNode with noise data
-        const noiseId = store.addNode('AudioBufferSourceNode', { x: 100, y: 150 })
-        const noiseGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const filterId = store.addNode('BiquadFilterNode', { x: 700, y: 150 })
-        const gainId = store.addNode('GainNode', { x: 1000, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 150 })
+        const noiseId = store.addAdaptedNode('AudioBufferSourceNode', { x: 100, y: 150 })
+        const noiseGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const filterId = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 150 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 1000, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1300, y: 150 })
 
         // Set noise gain to 0.5 (sound generator rule)
         store.updateNodeProperty(noiseGainId, 'gain', 0.5)
@@ -775,12 +938,12 @@ export const useExamples = () => {
       name: 'Amplitude Envelope',
       description: 'Oscillator with LFO envelope modulation',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 100 })
-        const envelopeId = store.addNode('GainNode', { x: 700, y: 100 })
-        const lfoId = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const lfoGainId = store.addNode('GainNode', { x: 400, y: 350 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 100 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+        const envelopeId = store.addAdaptedNode('GainNode', { x: 700, y: 100 })
+        const lfoId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const lfoGainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 100 })
 
         // Set up the main oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -810,12 +973,12 @@ export const useExamples = () => {
       name: 'Beat Frequency',
       description: 'Two slightly detuned oscillators creating beats',
       create: createExample(() => {
-        const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 })
-        const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 350 })
-        const gain1Id = store.addNode('GainNode', { x: 400, y: 100 })
-        const gain2Id = store.addNode('GainNode', { x: 400, y: 350 })
-        const mixerId = store.addNode('GainNode', { x: 700, y: 225 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1000, y: 225 })
+        const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+        const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+        const gain1Id = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+        const gain2Id = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+        const mixerId = store.addAdaptedNode('GainNode', { x: 700, y: 225 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1000, y: 225 })
 
         // Set up slightly detuned oscillators for beat frequency
         store.updateNodeProperty(osc1Id, 'frequency', 440) // A4
@@ -845,14 +1008,14 @@ export const useExamples = () => {
       name: 'Convolution Reverb',
       description: 'Oscillator with convolution reverb effect',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 150 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 150 })
-        const gainId = store.addNode('GainNode', { x: 700, y: 150 })
-        const reverbId = store.addNode('ConvolverNode', { x: 1000, y: 200 })
-        const dryGainId = store.addNode('GainNode', { x: 1000, y: 50 })
-        const wetGainId = store.addNode('GainNode', { x: 1000, y: 350 })
-        const mixerId = store.addNode('GainNode', { x: 1300, y: 150 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 150 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 150 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+        const gainId = store.addAdaptedNode('GainNode', { x: 700, y: 150 })
+        const reverbId = store.addAdaptedNode('ConvolverNode', { x: 1000, y: 200 })
+        const dryGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 50 })
+        const wetGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 350 })
+        const mixerId = store.addAdaptedNode('GainNode', { x: 1300, y: 150 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 150 })
 
         // Set up the oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -893,13 +1056,13 @@ export const useExamples = () => {
       description: 'Live microphone input with convolution reverb effect',
       create: createExample(async () => {
         try {
-          const micGainId = store.addNode('GainNode', { x: 400, y: 150 })
-          const gainId = store.addNode('GainNode', { x: 700, y: 150 })
-          const reverbId = store.addNode('ConvolverNode', { x: 1000, y: 200 })
-          const dryGainId = store.addNode('GainNode', { x: 1000, y: 50 })
-          const wetGainId = store.addNode('GainNode', { x: 1000, y: 350 })
-          const mixerId = store.addNode('GainNode', { x: 1300, y: 150 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 150 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+          const gainId = store.addAdaptedNode('GainNode', { x: 700, y: 150 })
+          const reverbId = store.addAdaptedNode('ConvolverNode', { x: 1000, y: 200 })
+          const dryGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 50 })
+          const wetGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 350 })
+          const mixerId = store.addAdaptedNode('GainNode', { x: 1300, y: 150 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 150 })
           // Use the store's microphone input action which handles permissions
           const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
@@ -945,13 +1108,13 @@ export const useExamples = () => {
       name: 'Stereo Effects',
       description: 'Stereo processing with channel splitting and merging',
       create: createExample(() => {
-        const oscId = store.addNode('OscillatorNode', { x: 100, y: 200 })
-        const oscGainId = store.addNode('GainNode', { x: 400, y: 200 })
-        const splitterId = store.addNode('ChannelSplitterNode', { x: 700, y: 200 })
-        const leftGainId = store.addNode('GainNode', { x: 1000, y: 100 })
-        const rightGainId = store.addNode('GainNode', { x: 1000, y: 300 })
-        const mergerId = store.addNode('ChannelMergerNode', { x: 1300, y: 200 })
-        const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 200 })
+        const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 200 })
+        const oscGainId = store.addAdaptedNode('GainNode', { x: 400, y: 200 })
+        const splitterId = store.addAdaptedNode('ChannelSplitterNode', { x: 700, y: 200 })
+        const leftGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 100 })
+        const rightGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 300 })
+        const mergerId = store.addAdaptedNode('ChannelMergerNode', { x: 1300, y: 200 })
+        const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 200 })
 
         // Set up the oscillator
         store.updateNodeProperty(oscId, 'frequency', 440)
@@ -987,12 +1150,12 @@ export const useExamples = () => {
       description: 'Transform your voice into a robot using ring modulation',
       create: createExample(async () => {
         try {
-          const micGainId = store.addNode('GainNode', { x: 400, y: 150 })
-          const carrierOscId = store.addNode('OscillatorNode', { x: 100, y: 400 })
-          const carrierGainId = store.addNode('GainNode', { x: 400, y: 400 })
-          const ringModId = store.addNode('GainNode', { x: 700, y: 275 })
-          const outputGainId = store.addNode('GainNode', { x: 1000, y: 275 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 275 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 400, y: 150 })
+          const carrierOscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 400 })
+          const carrierGainId = store.addAdaptedNode('GainNode', { x: 400, y: 400 })
+          const ringModId = store.addAdaptedNode('GainNode', { x: 700, y: 275 })
+          const outputGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 275 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1300, y: 275 })
           // Use microphone input
           const micId = await store.addMicrophoneInput({ x: 100, y: 150 })
 
@@ -1030,31 +1193,31 @@ export const useExamples = () => {
       description: 'Multi-band vocoder effect using multiple filters',
       create: createExample(async () => {
         try {
-          const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 400, y: 200 })
 
           // Create multiple band-pass filters for vocoder bands
-          const filter1Id = store.addNode('BiquadFilterNode', { x: 700, y: 100 })
-          const filter2Id = store.addNode('BiquadFilterNode', { x: 700, y: 200 })
-          const filter3Id = store.addNode('BiquadFilterNode', { x: 700, y: 300 })
+          const filter1Id = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 100 })
+          const filter2Id = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 200 })
+          const filter3Id = store.addAdaptedNode('BiquadFilterNode', { x: 700, y: 300 })
 
           // Create oscillators for each band
-          const osc1Id = store.addNode('OscillatorNode', { x: 100, y: 100 })
-          const osc2Id = store.addNode('OscillatorNode', { x: 100, y: 350 })
-          const osc3Id = store.addNode('OscillatorNode', { x: 100, y: 600 })
+          const osc1Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+          const osc2Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 350 })
+          const osc3Id = store.addAdaptedNode('OscillatorNode', { x: 100, y: 600 })
 
           // Create gain nodes for oscillators (sound generator rule)
-          const osc1GainId = store.addNode('GainNode', { x: 400, y: 100 })
-          const osc2GainId = store.addNode('GainNode', { x: 400, y: 350 })
-          const osc3GainId = store.addNode('GainNode', { x: 400, y: 600 })
+          const osc1GainId = store.addAdaptedNode('GainNode', { x: 400, y: 100 })
+          const osc2GainId = store.addAdaptedNode('GainNode', { x: 400, y: 350 })
+          const osc3GainId = store.addAdaptedNode('GainNode', { x: 400, y: 600 })
 
           // Create gain nodes for each band (controlled by filtered voice)
-          const band1GainId = store.addNode('GainNode', { x: 1000, y: 100 })
-          const band2GainId = store.addNode('GainNode', { x: 1000, y: 200 })
-          const band3GainId = store.addNode('GainNode', { x: 1000, y: 300 })
+          const band1GainId = store.addAdaptedNode('GainNode', { x: 1000, y: 100 })
+          const band2GainId = store.addAdaptedNode('GainNode', { x: 1000, y: 200 })
+          const band3GainId = store.addAdaptedNode('GainNode', { x: 1000, y: 300 })
 
           // Create mixer and output
-          const mixerId = store.addNode('GainNode', { x: 1300, y: 200 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 200 })
+          const mixerId = store.addAdaptedNode('GainNode', { x: 1300, y: 200 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 200 })
           // Use microphone input
           const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 
@@ -1139,22 +1302,22 @@ export const useExamples = () => {
       description: 'Layer your voice with musical harmonies',
       create: createExample(async () => {
         try {
-          const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 400, y: 200 })
 
           // Create harmony oscillators (3rd and 5th intervals)
-          const harmony3rdId = store.addNode('OscillatorNode', { x: 100, y: 400 })
-          const harmony5thId = store.addNode('OscillatorNode', { x: 100, y: 600 })
+          const harmony3rdId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 400 })
+          const harmony5thId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 600 })
 
           // Create gain nodes for oscillators (sound generator rule)
-          const harmony3rdGainId = store.addNode('GainNode', { x: 400, y: 400 })
-          const harmony5thGainId = store.addNode('GainNode', { x: 400, y: 600 })
+          const harmony3rdGainId = store.addAdaptedNode('GainNode', { x: 400, y: 400 })
+          const harmony5thGainId = store.addAdaptedNode('GainNode', { x: 400, y: 600 })
 
           // Create gain node for voice level control
-          const voiceGainId = store.addNode('GainNode', { x: 700, y: 200 })
+          const voiceGainId = store.addAdaptedNode('GainNode', { x: 700, y: 200 })
 
           // Create mixer and output
-          const mixerId = store.addNode('GainNode', { x: 1000, y: 400 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1300, y: 400 })
+          const mixerId = store.addAdaptedNode('GainNode', { x: 1000, y: 400 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1300, y: 400 })
           // Use microphone input
           const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 
@@ -1205,18 +1368,18 @@ export const useExamples = () => {
       description: 'Pitch shift your voice using delay-based modulation',
       create: createExample(async () => {
         try {
-          const micGainId = store.addNode('GainNode', { x: 400, y: 200 })
+          const micGainId = store.addAdaptedNode('GainNode', { x: 400, y: 200 })
 
           // Create delay-based pitch shifting
-          const delayId = store.addNode('DelayNode', { x: 700, y: 200 })
-          const lfoId = store.addNode('OscillatorNode', { x: 700, y: 400 })
-          const lfoGainId = store.addNode('GainNode', { x: 1000, y: 400 })
+          const delayId = store.addAdaptedNode('DelayNode', { x: 700, y: 200 })
+          const lfoId = store.addAdaptedNode('OscillatorNode', { x: 700, y: 400 })
+          const lfoGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 400 })
 
           // Create dry/wet mix
-          const dryGainId = store.addNode('GainNode', { x: 1000, y: 100 })
-          const wetGainId = store.addNode('GainNode', { x: 1000, y: 300 })
-          const mixerId = store.addNode('GainNode', { x: 1300, y: 200 })
-          const destId = store.addNode('AudioDestinationNode', { x: 1600, y: 200 })
+          const dryGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 100 })
+          const wetGainId = store.addAdaptedNode('GainNode', { x: 1000, y: 300 })
+          const mixerId = store.addAdaptedNode('GainNode', { x: 1300, y: 200 })
+          const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1600, y: 200 })
           // Use microphone input
           const micId = await store.addMicrophoneInput({ x: 100, y: 200 })
 

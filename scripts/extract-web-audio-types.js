@@ -88,6 +88,12 @@ function extractWebAudioTypes() {
       const nodeType = node.name.text
       //console.log(`Extracting ${nodeType}...`)
 
+      const extractedMethods = extractMethodsFromInterface(node, checker)
+      const fallbackMethods = getNodeMethods(nodeType)
+
+      // Merge extracted methods with fallback methods, removing duplicates
+      const allMethods = [...new Set([...extractedMethods, ...fallbackMethods])]
+
       nodeMetadata[nodeType] = {
         name: nodeType,
         description: extractDescription(node),
@@ -95,7 +101,7 @@ function extractWebAudioTypes() {
         inputs: getNodeInputs(nodeType),
         outputs: getNodeOutputs(nodeType),
         properties: extractPropertiesFromInterface(node, checker),
-        methods: extractMethodsFromInterface(node, checker),
+        methods: allMethods,
         events: extractEventsFromInterface(node, checker),
       }
     }

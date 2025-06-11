@@ -52,10 +52,10 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have only the explicitly requested oscillator node
-      expect(store.visualNodes.length).toBe(1)
+      expect(store.adaptedNodes.length).toBe(1)
 
-      const hasOscillator = store.visualNodes.some(
-        (node: any) => node.data.nodeType === 'OscillatorNode'
+      const hasOscillator = store.adaptedNodes.some(
+        (node: any) => node.nodeType === 'OscillatorNode'
       )
 
       expect(hasOscillator).toBe(true)
@@ -87,16 +87,13 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have exactly the requested nodes and connections
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
       expect(store.visualEdges.length).toBe(1)
 
       const oscillatorToDestination = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return (
-          source?.data.nodeType === 'OscillatorNode' &&
-          target?.data.nodeType === 'AudioDestinationNode'
-        )
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
+        return source?.nodeType === 'OscillatorNode' && target?.nodeType === 'AudioDestinationNode'
       })
 
       expect(oscillatorToDestination).toBeDefined()
@@ -121,12 +118,12 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have exactly the requested nodes
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
 
-      const hasOscillator = store.visualNodes.some(
-        (node: any) => node.data.nodeType === 'OscillatorNode'
+      const hasOscillator = store.adaptedNodes.some(
+        (node: any) => node.nodeType === 'OscillatorNode'
       )
-      const hasGain = store.visualNodes.some((node: any) => node.data.nodeType === 'GainNode')
+      const hasGain = store.adaptedNodes.some((node: any) => node.nodeType === 'GainNode')
 
       expect(hasOscillator).toBe(true)
       expect(hasGain).toBe(true)
@@ -134,7 +131,7 @@ describe('LangChainService', () => {
 
     it('should not create duplicate nodes when they already exist', async () => {
       // First add a destination node manually
-      store.addNode('AudioDestinationNode', { x: 500, y: 100 })
+      store.addAdaptedNode('AudioDestinationNode', { x: 500, y: 100 })
 
       const actions: AudioGraphAction[] = [
         {
@@ -148,10 +145,10 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have oscillator and existing destination (no duplicate)
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
 
-      const destinationNodes = store.visualNodes.filter(
-        (node: any) => node.data.nodeType === 'AudioDestinationNode'
+      const destinationNodes = store.adaptedNodes.filter(
+        (node: any) => node.nodeType === 'AudioDestinationNode'
       )
       expect(destinationNodes.length).toBe(1)
     })
@@ -185,7 +182,7 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have oscillator and destination
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
       expect(store.visualEdges.length).toBe(1)
 
       const explicitConnection = store.visualEdges.find(
@@ -246,22 +243,20 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have all requested nodes
-      expect(store.visualNodes.length).toBe(4)
+      expect(store.adaptedNodes.length).toBe(4)
       expect(store.visualEdges.length).toBe(3)
 
       // Check MIDI control chain connections exist
       const sliderToMidi = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return source?.data.nodeType === 'SliderNode' && target?.data.nodeType === 'MidiToFreqNode'
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
+        return source?.nodeType === 'SliderNode' && target?.nodeType === 'MidiToFreqNode'
       })
 
       const midiToOscillator = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return (
-          source?.data.nodeType === 'MidiToFreqNode' && target?.data.nodeType === 'OscillatorNode'
-        )
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
+        return source?.nodeType === 'MidiToFreqNode' && target?.nodeType === 'OscillatorNode'
       })
 
       expect(sliderToMidi).toBeDefined()
@@ -308,21 +303,19 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have all requested nodes and connections
-      expect(store.visualNodes.length).toBe(3)
+      expect(store.adaptedNodes.length).toBe(3)
       expect(store.visualEdges.length).toBe(2)
 
       const oscillatorToGain = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return source?.data.nodeType === 'OscillatorNode' && target?.data.nodeType === 'GainNode'
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
+        return source?.nodeType === 'OscillatorNode' && target?.nodeType === 'GainNode'
       })
 
       const gainToDestination = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
-        return (
-          source?.data.nodeType === 'GainNode' && target?.data.nodeType === 'AudioDestinationNode'
-        )
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
+        return source?.nodeType === 'GainNode' && target?.nodeType === 'AudioDestinationNode'
       })
 
       expect(oscillatorToGain).toBeDefined()
@@ -366,13 +359,13 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have the slider with updated properties
-      expect(store.visualNodes.length).toBe(1)
+      expect(store.adaptedNodes.length).toBe(1)
 
-      const slider = store.visualNodes.find((node: any) => node.data.nodeType === 'SliderNode')
-      expect(slider?.data.properties.get('min')).toBe(20)
-      expect(slider?.data.properties.get('max')).toBe(20000)
-      expect(slider?.data.properties.get('value')).toBe(440)
-      expect(slider?.data.properties.get('label')).toBe('Frequency (Hz)')
+      const slider = store.adaptedNodes.find((node: any) => node.nodeType === 'SliderNode')
+      expect(slider?.properties.get('min')).toBe(20)
+      expect(slider?.properties.get('max')).toBe(20000)
+      expect(slider?.properties.get('value')).toBe(440)
+      expect(slider?.properties.get('label')).toBe('Frequency (Hz)')
     })
   })
 
@@ -402,10 +395,10 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have 3 nodes
-      expect(store.visualNodes.length).toBe(3)
+      expect(store.adaptedNodes.length).toBe(3)
 
       // Check that nodes are not overlapping (minimum distance should be 200px)
-      const nodes = store.visualNodes
+      const nodes = store.adaptedNodes
       const minDistance = 200
 
       for (let i = 0; i < nodes.length; i++) {
@@ -441,10 +434,10 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Should have 2 nodes
-      expect(store.visualNodes.length).toBe(2)
+      expect(store.adaptedNodes.length).toBe(2)
 
       // Find the gain node and check it's at the requested position
-      const gainNode = store.visualNodes.find((n: any) => n.data.nodeType === 'GainNode')
+      const gainNode = store.adaptedNodes.find((n: any) => n.nodeType === 'GainNode')
       expect(gainNode).toBeDefined()
       expect(gainNode?.position.x).toBe(600)
       expect(gainNode?.position.y).toBe(100)
@@ -453,24 +446,24 @@ describe('LangChainService', () => {
 
   describe('findNodeByIdOrType', () => {
     it('should find nodes by exact ID', async () => {
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const node = store.visualNodes[0]
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const node = store.adaptedNodes[0]
 
       const foundNode = (service as any).findNodeByIdOrType(store, node.id)
       expect(foundNode).toBe(node)
     })
 
     it('should find nodes by type when ID not found', async () => {
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const node = store.visualNodes[0]
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const node = store.adaptedNodes[0]
 
       const foundNode = (service as any).findNodeByIdOrType(store, 'OscillatorNode')
       expect(foundNode).toBe(node)
     })
 
     it('should find nodes by partial ID match', async () => {
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-      const node = store.visualNodes[0]
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      const node = store.adaptedNodes[0]
 
       const foundNode = (service as any).findNodeByIdOrType(store, 'oscillator')
       expect(foundNode).toBe(node)
@@ -478,17 +471,17 @@ describe('LangChainService', () => {
 
     it('should find nodes by numbered identifiers (osc1, midiToFreq1)', () => {
       // Create nodes
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
-      store.addNode('MidiToFreqNode', { x: 200, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('MidiToFreqNode', { x: 200, y: 100 })
 
       // Test numbered identifiers
       const oscNode = service['findNodeByIdOrType'](store, 'osc1')
       const midiNode = service['findNodeByIdOrType'](store, 'midiToFreq1')
 
       expect(oscNode).toBeDefined()
-      expect(oscNode?.data.nodeType).toBe('OscillatorNode')
+      expect(oscNode?.nodeType).toBe('OscillatorNode')
       expect(midiNode).toBeDefined()
-      expect(midiNode?.data.nodeType).toBe('MidiToFreqNode')
+      expect(midiNode?.nodeType).toBe('MidiToFreqNode')
     })
   })
 
@@ -548,10 +541,10 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Check that SliderNodes keep their default "Slider" labels
-      const sliders = store.visualNodes.filter((n: any) => n.data.nodeType === 'SliderNode')
+      const sliders = store.adaptedNodes.filter((n: any) => n.nodeType === 'SliderNode')
       expect(sliders.length).toBe(2)
       sliders.forEach((slider: any) => {
-        expect(slider.data.properties.get('label')).toBe('Slider')
+        expect(slider.properties.get('label')).toBe('Slider')
       })
     })
 
@@ -575,8 +568,8 @@ describe('LangChainService', () => {
       await service.executeActions(actions, store)
 
       // Check that custom label is preserved
-      const slider = store.visualNodes.find((n: any) => n.data.nodeType === 'SliderNode')
-      expect(slider?.data.properties.get('label')).toBe('Custom Filter Control')
+      const slider = store.adaptedNodes.find((n: any) => n.nodeType === 'SliderNode')
+      expect(slider?.properties.get('label')).toBe('Custom Filter Control')
     })
   })
 
@@ -628,11 +621,11 @@ describe('LangChainService', () => {
 
       // Verify the specific connection between oscillator and gain is gone
       const oscToGainConnection = store.visualEdges.find((edge: any) => {
-        const source = store.visualNodes.find((n: any) => n.id === edge.source)
-        const target = store.visualNodes.find((n: any) => n.id === edge.target)
+        const source = store.adaptedNodes.find((n: any) => n.id === edge.source)
+        const target = store.adaptedNodes.find((n: any) => n.id === edge.target)
         return (
-          source?.data.nodeType === 'OscillatorNode' &&
-          target?.data.nodeType === 'GainNode' &&
+          source?.nodeType === 'OscillatorNode' &&
+          target?.nodeType === 'GainNode' &&
           edge.sourceHandle === 'output' &&
           edge.targetHandle === 'input'
         )

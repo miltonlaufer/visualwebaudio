@@ -96,7 +96,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
     it('should show confirmation dialog when project is modified and user confirms', async () => {
       // Add a node to modify the project
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       expect(store.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(true)
@@ -126,7 +126,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
     it('should not load example when project is modified and user cancels', async () => {
       // Add a node to modify the project
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       expect(store.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(false) // User cancels
@@ -182,7 +182,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
     it('should show confirmation dialog when project is modified and user confirms', async () => {
       // Add a node to modify the project
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       expect(store.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(true)
@@ -212,7 +212,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
     it('should not load example when project is modified and user cancels', async () => {
       // Add a node to modify the project
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       expect(store.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(false) // User cancels
@@ -299,7 +299,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
       const onCloseMock = vi.fn()
 
       // Add a node to modify the project
-      store.addNode('OscillatorNode', { x: 100, y: 100 })
+      store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       mockConfirm.mockReturnValue(false) // User cancels
 
       render(

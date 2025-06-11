@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "full-tests": "npm run test && npx lint-staged && npm run type-check",
     "extract-types": "node scripts/extract-web-audio-types.js",
-    "type-check": "tsc --noEmit",
+    "type-check": "tsc --noEmit --project tsconfig.app.json",
     "prepare": "husky",
     "generate-icons": "pwa-asset-generator public/logo.png public/icons --icon-only --opaque false --purpose any --type png"
   },

@@ -16,7 +16,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "AudioBufferSourceNode": {
@@ -59,9 +59,7 @@
         "defaultValue": null
       }
     ],
-    "methods": [
-      "start"
-    ],
+    "methods": ["start", "connect", "disconnect", "stop"],
     "events": []
   },
   "AudioContext": {
@@ -76,7 +74,20 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": [
+      "createOscillator",
+      "createGain",
+      "createBiquadFilter",
+      "createDelay",
+      "createAnalyser",
+      "createConstantSource",
+      "createIIRFilter",
+      "createPanner",
+      "createMediaStreamDestination",
+      "resume",
+      "suspend",
+      "close"
+    ],
     "events": []
   },
   "AudioDestinationNode": {
@@ -91,7 +102,7 @@
     ],
     "outputs": [],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "AudioWorkletNode": {
@@ -117,10 +128,8 @@
         "defaultValue": null
       }
     ],
-    "methods": [],
-    "events": [
-      "processorerror"
-    ]
+    "methods": ["connect", "disconnect"],
+    "events": ["processorerror"]
   },
   "BiquadFilterNode": {
     "name": "BiquadFilterNode",
@@ -185,7 +194,7 @@
         "defaultValue": "lowpass"
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "ChannelMergerNode": {
@@ -225,7 +234,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "ChannelSplitterNode": {
@@ -265,7 +274,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "ConstantSourceNode": {
@@ -293,7 +302,7 @@
         "max": 100
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect", "start", "stop"],
     "events": []
   },
   "ConvolverNode": {
@@ -313,7 +322,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "DelayNode": {
@@ -345,7 +354,7 @@
         "max": 1
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "DynamicsCompressorNode": {
@@ -421,7 +430,7 @@
         "max": 0
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "GainNode": {
@@ -453,7 +462,7 @@
         "max": 100
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "IIRFilterNode": {
@@ -473,7 +482,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "MediaElementAudioSourceNode": {
@@ -488,7 +497,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "MediaStreamAudioDestinationNode": {
@@ -503,7 +512,7 @@
     ],
     "outputs": [],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "MediaStreamAudioSourceNode": {
@@ -518,7 +527,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "OscillatorNode": {
@@ -562,7 +571,7 @@
         "defaultValue": "sine"
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect", "start", "stop"],
     "events": []
   },
   "PannerNode": {
@@ -649,7 +658,7 @@
         "max": 1000
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "ScriptProcessorNode": {
@@ -669,10 +678,8 @@
       }
     ],
     "properties": [],
-    "methods": [],
-    "events": [
-      "audioprocess"
-    ]
+    "methods": ["connect", "disconnect"],
+    "events": ["audioprocess"]
   },
   "StereoPannerNode": {
     "name": "StereoPannerNode",
@@ -703,7 +710,7 @@
         "max": 1
       }
     ],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   },
   "WaveShaperNode": {
@@ -723,7 +730,7 @@
       }
     ],
     "properties": [],
-    "methods": [],
+    "methods": ["connect", "disconnect"],
     "events": []
   }
 }

@@ -13,13 +13,12 @@ import {
 } from '@xyflow/react'
 import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '@xyflow/react'
 import { observer } from 'mobx-react-lite'
-import { getSnapshot } from 'mobx-state-tree'
 
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
-import AudioNode from '~/components/AudioNode'
+import AdaptedAudioNode from '~/components/AdaptedAudioNode'
 
 const nodeTypes: NodeTypes = {
-  audioNode: AudioNode,
+  adaptedNode: AdaptedAudioNode,
 }
 
 // Component to handle auto-fit functionality from within ReactFlow context
@@ -30,7 +29,7 @@ const AutoFitHandler: React.FC = observer(() => {
 
   // Auto-fit view when nodes are loaded (examples, projects, imports)
   useEffect(() => {
-    const currentNodeCount = store.visualNodes.length
+    const currentNodeCount = store.adaptedNodes.length
 
     // Only auto-fit if:
     // 1. We have nodes (not clearing)
@@ -48,12 +47,12 @@ const AutoFitHandler: React.FC = observer(() => {
     }
 
     setPreviousNodeCount(currentNodeCount)
-  }, [store.visualNodes.length, fitView, previousNodeCount])
+  }, [store.adaptedNodes.length, fitView, previousNodeCount])
 
   // Auto-fit view when project loading finishes
   useEffect(() => {
     // When loading finishes and we have nodes, auto-fit the view
-    if (!store.isLoadingProject && store.visualNodes.length > 0) {
+    if (!store.isLoadingProject && store.adaptedNodes.length > 0) {
       // Small delay to ensure nodes are rendered
       setTimeout(() => {
         fitView({
@@ -63,7 +62,7 @@ const AutoFitHandler: React.FC = observer(() => {
         })
       }, 150) // Slightly longer delay for project loading
     }
-  }, [store.isLoadingProject, store.visualNodes.length, fitView])
+  }, [store.isLoadingProject, store.adaptedNodes.length, fitView])
 
   return null // This component doesn't render anything
 })
@@ -177,25 +176,24 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       document.removeEventListener('keydown', handleKeyDown, true)
     }
   }, [selectedNodeIds, selectedEdgeIds, store])
-  // Sync store with React Flow state
+  // Sync store with React Flow state - Support both systems
   useEffect(() => {
     // Prevent concurrent syncing
     if (syncingRef.current) {
       return
     }
 
+    const totalNodes = store.adaptedNodes.length
+
     // Skip if we've already synced this exact state
-    if (
-      store.visualNodes.length === lastSyncedNodesLength.current &&
-      nodes.length === store.visualNodes.length
-    ) {
+    if (totalNodes === lastSyncedNodesLength.current && nodes.length === totalNodes) {
       return
     }
 
     syncingRef.current = true
 
     try {
-      if (store.visualNodes.length === 0) {
+      if (totalNodes === 0) {
         if (nodes.length > 0) {
           setNodes([])
         }
@@ -203,32 +201,23 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         return
       }
 
-      const storeNodes: Node[] = store.visualNodes.map(node => {
-        // Create a simple, clean React Flow node
+      const storeNodes: Node[] = []
+
+      // Add adapted nodes (unified system)
+      store.adaptedNodes.forEach(node => {
         const reactFlowNode: Node = {
           id: node.id,
-          type: 'audioNode',
+          type: 'adaptedNode',
           position: {
             x: node.position.x,
             y: node.position.y,
           },
           data: {
-            nodeType: node.data.nodeType,
-            metadata: {
-              name: node.data.metadata.name,
-              category: node.data.metadata.category,
-              inputs: [...node.data.metadata.inputs],
-              outputs: [...node.data.metadata.outputs],
-              properties: [...node.data.metadata.properties],
-              methods: [...node.data.metadata.methods],
-              events: [...node.data.metadata.events],
-            },
-            properties: getSnapshot(node.data.properties),
+            nodeAdapter: node, // Pass the NodeAdapter instance
           },
           selected: store.selectedNodeId === node.id,
         }
-
-        return reactFlowNode
+        storeNodes.push(reactFlowNode)
       })
 
       // Force React Flow to update by always setting new array
@@ -244,21 +233,21 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       }, 0)
     }
   }, [
-    store.visualNodes.length,
+    store.adaptedNodes.length,
     store.selectedNodeId,
     store.propertyChangeCounter,
     store.graphChangeCounter,
     forceUpdate,
     setNodes,
     nodes.length,
-    store.visualNodes,
+    store.adaptedNodes,
   ])
 
   useEffect(() => {
     const storeEdges: Edge[] = store.visualEdges.map(edge => {
       // Determine connection type by looking at the source and target handles
-      const sourceNode = store.visualNodes.find(node => node.id === edge.source)
-      const targetNode = store.visualNodes.find(node => node.id === edge.target)
+      const sourceNode = store.adaptedNodes.find(node => node.id === edge.source)
+      const targetNode = store.adaptedNodes.find(node => node.id === edge.target)
 
       let connectionType = 'audio' // default
       let edgeColor = '#059669' // emerald-600 for audio
@@ -268,12 +257,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         const sourceHandle = edge.sourceHandle || 'output'
         const targetHandle = edge.targetHandle || 'input'
 
-        const sourceOutput = sourceNode.data.metadata.outputs.find(
-          output => output.name === sourceHandle
-        )
-        const targetInput = targetNode.data.metadata.inputs.find(
-          input => input.name === targetHandle
-        )
+        // Handle adapted nodes
+        const sourceMetadata = sourceNode.metadata
+        const targetMetadata = targetNode.metadata
+
+        const sourceOutput = sourceMetadata.outputs.find(output => output.name === sourceHandle)
+        const targetInput = targetMetadata.inputs.find(input => input.name === targetHandle)
 
         if (sourceOutput && targetInput) {
           // Determine connection type based on target input type
@@ -311,7 +300,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     setEdges,
     store.graphChangeCounter,
     store.visualEdges,
-    store.visualNodes,
+    store.adaptedNodes,
   ])
 
   const onConnect = useCallback(
@@ -377,7 +366,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
       // Add automatic spacing to prevent overlapping
       const nodeSpacing = 400 // Increased from 250 to 400 for better spacing
-      const existingNodes = store.visualNodes
+      const existingNodes = [...store.adaptedNodes]
 
       // Check if position is too close to existing nodes
       let attempts = 0
@@ -411,7 +400,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         attempts++
       }
 
-      store.addNode(nodeType, position)
+      // Use NodeAdapter system for ALL nodes (both WebAudio and Custom)
+      store.addAdaptedNode(nodeType, position)
     },
     [store]
   )

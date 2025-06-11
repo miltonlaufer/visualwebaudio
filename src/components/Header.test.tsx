@@ -7,7 +7,7 @@ import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
 // Mock the AudioGraphStore hook
 const mockStore = {
   isProjectModified: false,
-  visualNodes: [],
+  adaptedNodes: [],
   visualEdges: [],
 }
 
