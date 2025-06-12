@@ -47,6 +47,16 @@ Visual Web Audio offers a unique **Graphical Programming Interface** that transf
 - **Real-time Validation**: Visual feedback ensures valid connections and properties
 - **Code Generation**: Export visual graphs as clean, executable JavaScript code
 - **Copy-to-Clipboard**: One-click copying with syntax highlighting
+- **Exports to Fully Functional and Dependency-Free JS Code**: ![image](https://github.com/user-attachments/assets/4cdb833a-b0be-46b2-8d6e-ee49e8f1446e)
+
+Just copy the generated code in a basic HTML file:
+```html
+<body>
+   <script>
+    // Paste here the generated code
+   </script>
+</body>
+```
 
 ## Key Features
 
