@@ -34,9 +34,6 @@ export const useExamples = () => {
       description:
         'Classic analog synthesizer with multiple oscillators, resonant filter, delay, and automated sequences',
       create: createExample(() => {
-        // Timer for automated triggering
-        const timerId = store.addAdaptedNode('TimerNode', { x: 50, y: 50 })
-
         // Note control using MIDI to Frequency conversion
         const noteSlider = store.addAdaptedNode('SliderNode', { x: 50, y: 200 })
         const midiToFreqId = store.addAdaptedNode('MidiToFreqNode', { x: 300, y: 200 })
@@ -75,12 +72,6 @@ export const useExamples = () => {
         // User controls
         const filterCutoffSliderId = store.addAdaptedNode('SliderNode', { x: 50, y: 350 })
         const filterResSliderId = store.addAdaptedNode('SliderNode', { x: 50, y: 500 })
-
-        // Timer settings for automatic note triggering
-        store.updateNodeProperty(timerId, 'mode', 'loop')
-        store.updateNodeProperty(timerId, 'delay', 500)
-        store.updateNodeProperty(timerId, 'interval', 2000)
-        store.updateNodeProperty(timerId, 'startMode', 'auto')
 
         // Note slider (MIDI note range)
         store.updateNodeProperty(noteSlider, 'min', 36) // C2
@@ -148,9 +139,6 @@ export const useExamples = () => {
         store.addEdge(midiToFreqId, osc2Id, 'frequency', 'frequency') // Will add slight detune
         store.addEdge(midiToFreqId, osc3Id, 'frequency', 'frequency') // Will be doubled for octave
 
-        // Connect timer to create rhythmic filter sweeps - timer triggers will add to the LFO modulation
-        store.addEdge(timerId, filterId, 'trigger', 'frequency')
-
         // Connect oscillators to their gain nodes
         store.addEdge(osc1Id, osc1GainId, 'output', 'input')
         store.addEdge(osc2Id, osc2GainId, 'output', 'input')
@@ -161,7 +149,6 @@ export const useExamples = () => {
         store.addEdge(osc2GainId, mixerId, 'output', 'input')
         store.addEdge(osc3GainId, mixerId, 'output', 'input')
 
-        // Through envelope (controlled by timer)
         store.addEdge(mixerId, envelopeGainId, 'output', 'input')
 
         // Through filter
@@ -547,24 +534,13 @@ export const useExamples = () => {
       description: 'Timer-triggered automatic sound file playback with sample audio',
       create: createExample(async () => {
         const soundFileId = store.addAdaptedNode('SoundFileNode', { x: 629, y: 117 })
-        const timerId = store.addAdaptedNode('TimerNode', { x: 350, y: 100 })
         const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1015, y: 162 })
-
-        store.updateNodeProperty(timerId, 'mode', 'loop')
-        store.updateNodeProperty(timerId, 'delay', 1000) // 1 second initial delay
-        store.updateNodeProperty(timerId, 'interval', 3000) // Play every 3 seconds
-        store.updateNodeProperty(timerId, 'startMode', 'auto')
-        store.updateNodeProperty(timerId, 'enabled', true)
 
         store.updateNodeProperty(soundFileId, 'gain', 1)
         store.updateNodeProperty(soundFileId, 'loop', false)
         store.updateNodeProperty(soundFileId, 'playbackRate', 1)
         // Set the filename property early so it shows in the UI
         store.updateNodeProperty(soundFileId, 'fileName', 'test-sound.wav')
-
-        // Connect the nodes
-        store.addEdge(timerId, soundFileId, 'trigger', 'trigger')
-
         store.addEdge(soundFileId, destId, 'output', 'input')
 
         // Load the sample audio file
