@@ -29,18 +29,48 @@ const ExportJSButton: React.FC = observer(() => {
 
   // Helper function to get properties from both old and new node structures
   const getNodeProperties = (node: any): Map<string, unknown> => {
+    // Handle NodeAdapter with MST map properties
+    if (node.properties && typeof node.properties.get === 'function') {
+      // MST map - convert to regular Map for iteration
+      const regularMap = new Map()
+      try {
+        // MST maps have entries() method that returns an iterator
+        if (typeof node.properties.entries === 'function') {
+          for (const [key, value] of node.properties.entries()) {
+            regularMap.set(key, value)
+          }
+        } else {
+          // Fallback: try to access keys if available
+          if (node.properties.keys && typeof node.properties.keys === 'function') {
+            for (const key of node.properties.keys()) {
+              regularMap.set(key, node.properties.get(key))
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Error accessing MST map properties:', error)
+      }
+      return regularMap
+    }
+
+    // Handle regular Map
     if (node.properties && node.properties instanceof Map) {
       return node.properties
     }
+
+    // Handle nested data.properties
     if (node.data?.properties && node.data.properties instanceof Map) {
       return node.data.properties
     }
     if (node.data?.properties && typeof node.data.properties === 'object') {
       return new Map(Object.entries(node.data.properties))
     }
+
+    // Handle plain object properties
     if (node.properties && typeof node.properties === 'object') {
       return new Map(Object.entries(node.properties))
     }
+
     return new Map()
   }
 
@@ -927,6 +957,7 @@ class ${nodeType} {
       'SoundFileNode',
       'RandomNode',
       'TimerNode',
+      'ScaleToMidiNode',
     ]
 
     return edges
@@ -938,8 +969,8 @@ class ${nodeType} {
 
         if (!sourceNode || !targetNode) return ''
 
-        const isSourceCustom = customNodeTypes.includes(sourceNode.nodeType)
-        const isTargetCustom = customNodeTypes.includes(targetNode.nodeType)
+        const isSourceCustom = customNodeTypes.includes(getNodeType(sourceNode))
+        const isTargetCustom = customNodeTypes.includes(getNodeType(targetNode))
 
         const sourceHandle = edge.sourceHandle || 'output'
         const targetHandle = edge.targetHandle || 'input'
@@ -949,7 +980,7 @@ class ${nodeType} {
           return `${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
         } else if (isSourceCustom && !isTargetCustom) {
           // Custom to Web Audio connection
-          if (sourceNode.nodeType === 'SoundFileNode') {
+          if (getNodeType(sourceNode) === 'SoundFileNode') {
             // SoundFileNode has audio output
             return `${sourceId}.connect(${targetId});`
           } else {
@@ -957,9 +988,9 @@ class ${nodeType} {
             return `${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
           }
         } else if (!isSourceCustom && isTargetCustom) {
-          // Web Audio to Custom connection
-          return `// Web Audio to Custom connection - requires manual bridging
-// ${sourceId}.connect(${targetId}); // This connection needs custom implementation`
+          // Web Audio to Custom connection - this should work now with ScaleToMidiNode included
+          return `// Connect ${getNodeType(sourceNode)} output to ${getNodeType(targetNode)} input
+${sourceId}.connect(${targetId}, '${sourceHandle}', '${targetHandle}');`
         } else {
           // Web Audio to Web Audio connection
           if (targetHandle !== 'input') {
@@ -987,10 +1018,7 @@ class ${nodeType} {
 
     const hasOscillators = allNodes.some(node => node.nodeType === 'OscillatorNode')
 
-    if (interactiveNodes.length === 0 && !hasOscillators) {
-      return '// No interactive UI controls needed'
-    }
-
+    // Always generate UI controls to include the play button
     return `// Create UI controls for interactive nodes
 function createAudioControls() {
   // Create main controls container
@@ -1019,7 +1047,7 @@ ${interactiveNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
     const nodeType = node.nodeType
-    const properties = node.properties
+    const properties = getNodeProperties(node)
 
     switch (nodeType) {
       case 'SliderNode': {
@@ -1074,12 +1102,16 @@ ${interactiveNodes
         const targetNodeId = idMap.get(conn.target)
         const targetHandle = conn.targetHandle
 
-        if (targetNode && targetNodeId && targetNode.nodeType !== 'SliderNode') {
+        if (targetNode && targetNodeId && getNodeType(targetNode) !== 'SliderNode') {
           // Check if it's a custom node that needs receiveInput
           if (
-            ['MidiToFreqNode', 'GreaterThanNode', 'EqualsNode', 'SelectNode'].includes(
-              targetNode.nodeType
-            )
+            [
+              'MidiToFreqNode',
+              'GreaterThanNode',
+              'EqualsNode',
+              'SelectNode',
+              'ScaleToMidiNode',
+            ].includes(getNodeType(targetNode))
           ) {
             return `${targetNodeId}.receiveInput('${targetHandle}', value);`
           }
@@ -1180,45 +1212,37 @@ ${interactiveNodes
   ${nodeId}Stop.textContent = 'Stop';
   ${nodeId}Stop.style.cssText = 'padding: 6px 12px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer;';
   
-  const ${nodeId}Count = document.createElement('span');
-  ${nodeId}Count.id = '${nodeId}-count';
-  ${nodeId}Count.textContent = '0';
-  ${nodeId}Count.style.cssText = 'font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px; min-width: 40px; text-align: center;';
+  const ${nodeId}Display = document.createElement('span');
+  ${nodeId}Display.id = '${nodeId}-display';
+  ${nodeId}Display.textContent = 'Stopped';
+  ${nodeId}Display.style.cssText = 'font-family: monospace; background: #fff; padding: 4px 8px; border-radius: 4px; min-width: 80px; text-align: center;';
   
   ${nodeId}Controls.appendChild(${nodeId}Start);
   ${nodeId}Controls.appendChild(${nodeId}Stop);
-  ${nodeId}Controls.appendChild(${nodeId}Count);
+  ${nodeId}Controls.appendChild(${nodeId}Display);
   ${nodeId}Container.appendChild(${nodeId}Label);
   ${nodeId}Container.appendChild(${nodeId}Controls);
   controlsWrapper.appendChild(${nodeId}Container);
   
-  // Add event listeners for timer controls
+  // Add event listeners for timer
   ${nodeId}Start.addEventListener('click', () => {
     ${nodeId}.startTimer();
+    ${nodeId}Display.textContent = 'Running';
   });
   
   ${nodeId}Stop.addEventListener('click', () => {
     ${nodeId}.stopTimer();
-  });
-  
-  // Update display periodically
-  setInterval(() => {
-    const count = ${nodeId}.properties.get('count') || 0;
-    ${nodeId}Count.textContent = count;
-  }, 100);`
+    ${nodeId}Display.textContent = 'Stopped';
+  });`
       }
 
       default:
         return ''
     }
   })
-  .filter(Boolean)
   .join('')}
-
-  ${
-    hasOscillators || interactiveNodes.length > 0
-      ? `
-  // Add Start Audio button
+  
+  // Add Start Audio button (always present)
   const startAudioContainer = document.createElement('div');
   startAudioContainer.style.cssText = 'display: flex; justify-content: center; margin-bottom: 15px;';
   
@@ -1238,16 +1262,20 @@ ${interactiveNodes
         }
         
         // Start any oscillators or other nodes that need to be started
-        ${allNodes
-          .filter(node => node.nodeType === 'OscillatorNode')
-          .map(node => {
-            const nodeId = idMap.get(node.id)
-            return `if (${nodeId} && typeof ${nodeId}.start === 'function' && !${nodeId}._started) {
+        ${
+          hasOscillators
+            ? allNodes
+                .filter(node => node.nodeType === 'OscillatorNode')
+                .map(node => {
+                  const nodeId = idMap.get(node.id)
+                  return `if (${nodeId} && typeof ${nodeId}.start === 'function' && !${nodeId}._started) {
           ${nodeId}.start();
           ${nodeId}._started = true;
         }`
-          })
-          .join('\n        ')}
+                })
+                .join('\n        ')
+            : '// No oscillators to start'
+        }
         
         startAudioButton.textContent = '⏹️ Stop Audio';
         startAudioButton.style.background = '#ef4444';
@@ -1267,15 +1295,11 @@ ${interactiveNodes
   });
   
   startAudioContainer.appendChild(startAudioButton);
-  controlsContainer.insertBefore(startAudioContainer, controlsWrapper);`
-      : '// No Start Audio button needed - no oscillators or interactive nodes'
-  }
+  controlsContainer.insertBefore(startAudioContainer, controlsWrapper);
 
   // Add controls to the page
   document.body.insertBefore(controlsContainer, document.body.firstChild);
-}
-
-// UI controls are now connected directly when created above`
+}`
   }
 
   const generateJavaScriptCode = (nodes: AudioNode[], edges: Edge[]) => {
@@ -1312,52 +1336,59 @@ ${interactiveNodes
 
     const code = `// Generated Audio Graph Code
 ${customNodeClasses.length > 0 ? `${customNodeClasses}\n` : ''}${
-      hasMicrophoneInput || hasMidiInput
-        ? `// Note: This code includes ${hasMicrophoneInput ? 'microphone input' : ''}${
-            hasMicrophoneInput && hasMidiInput ? ' and ' : ''
-          }${hasMidiInput ? 'MIDI input' : ''}. To use it:
-${hasMicrophoneInput ? '// 1. Request microphone permission using getUserMedia\n' : ''}${
-            hasMidiInput
-              ? `// ${hasMicrophoneInput ? '2' : '1'}. Request MIDI access using requestMIDIAccess\n`
-              : ''
-          }// ${hasMicrophoneInput && hasMidiInput ? '3' : '2'}. Wrap the code in an async function
+      hasMicrophoneInput
+        ? `
+// Note: This code includes microphone input. To use it:
+// 1. Request microphone permission using getUserMedia
+// 2. Wrap the code in an async function
+
+// Create AudioContext globally so UI controls can access it
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
 async function createAudioGraph() {
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  ${hasMicrophoneInput ? '\n  // Request microphone access\n  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });' : ''}${
-    hasMidiInput
-      ? '\n  // Request MIDI access\n  const midiAccess = await navigator.requestMIDIAccess();'
-      : ''
-  }
+  // Request microphone access
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 `
-        : 'const audioContext = new (window.AudioContext || window.webkitAudioContext)();'
+        : hasMidiInput
+          ? `
+// Note: This code includes MIDI input. To use it:
+// 1. Request MIDI access using requestMIDIAccess
+// 2. Wrap the code in an async function
+
+// Create AudioContext globally so UI controls can access it
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+async function createAudioGraph() {
+  // Request MIDI access
+  const midiAccess = await navigator.requestMIDIAccess();
+`
+          : `
+const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+`
     }
 
 // Create Web Audio nodes
 ${webAudioNodes
   .map(node => {
     const nodeId = idMap.get(node.id)
-    const fullNodeType = getNodeType(node)
-    const nodeType = fullNodeType.replace('Node', '') || 'Unknown' // Remove 'Node' suffix for cleaner code
+    const nodeType = getNodeType(node)
 
-    // Special case for destination node
-    if (fullNodeType === 'AudioDestinationNode') {
+    // Handle special cases that don't follow the pattern
+    if (nodeType === 'AudioDestinationNode') {
       return `const ${nodeId} = audioContext.destination;`
     }
 
-    // Special case for MediaStreamAudioSourceNode - requires getUserMedia
-    if (fullNodeType === 'MediaStreamAudioSourceNode') {
+    if (nodeType === 'MicrophoneInput' || nodeType === 'MediaStreamAudioSourceNode') {
       return `const ${nodeId} = audioContext.createMediaStreamSource(stream);`
     }
 
-    // Special cases for nodes that require parameters in constructor
-    if (fullNodeType === 'DelayNode') {
-      // DelayNode requires maxDelayTime parameter, use a reasonable default
-      return `const ${nodeId} = audioContext.create${nodeType}(1.0);`
+    if (nodeType === 'DelayNode') {
+      return `const ${nodeId} = audioContext.createDelay(1.0);`
     }
 
-    // For all other nodes, create with no parameters
-    return `const ${nodeId} = audioContext.create${nodeType}();`
+    // For all other nodes, just remove 'Node' suffix to get the method name
+    const methodName = nodeType.replace('Node', '')
+    return `const ${nodeId} = audioContext.create${methodName}();`
   })
   .join('\n')}
 
@@ -1381,14 +1412,58 @@ ${customNodes
 ${webAudioNodes
   .map(node => {
     const properties = getNodeProperties(node)
-    const audioProperties = properties
-      ? Array.from(properties.entries())
-          .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
-          .filter(([, value]) => value !== null) // Filter out null values
-      : []
-
     const nodeId = idMap.get(node.id)
     const nodeType = getNodeType(node)
+
+    // Filter properties to only include actual audio properties, not MobX internals
+    const audioProperties = properties
+      ? Array.from(properties.entries())
+          .filter(([key]) => {
+            // Filter out MobX internal properties
+            if (key.startsWith('_') || key.endsWith('_')) return false
+            if (
+              [
+                'enhancer_',
+                'name_',
+                'data_',
+                'hasMap_',
+                'keysAtom_',
+                'interceptors_',
+                'changeListeners_',
+                'dehancer',
+              ].includes(key)
+            )
+              return false
+            // Only include known audio properties
+            const validAudioProperties = [
+              'frequency',
+              'detune',
+              'gain',
+              'delayTime',
+              'Q',
+              'type',
+              'threshold',
+              'knee',
+              'ratio',
+              'attack',
+              'release',
+              'pan',
+              'offset',
+              'loop',
+              'loopStart',
+              'loopEnd',
+              'playbackRate',
+              'autostart',
+            ]
+            return validAudioProperties.includes(key)
+          })
+          .filter(([, value]) => value !== null && value !== undefined) // Filter out null/undefined values
+      : []
+
+    // Skip nodes with no meaningful properties to export
+    if (audioProperties.length === 0) {
+      return ''
+    }
 
     // Set all properties after creation
     const paramSetters = audioProperties
@@ -1398,8 +1473,27 @@ ${webAudioNodes
           return `${nodeId}.${key} = '${value}';`
         }
         // AudioParam properties (frequency, gain, delayTime, etc.)
-        if (['frequency', 'detune', 'gain', 'delayTime', 'Q'].includes(key)) {
+        if (
+          [
+            'frequency',
+            'detune',
+            'gain',
+            'delayTime',
+            'Q',
+            'threshold',
+            'knee',
+            'ratio',
+            'attack',
+            'release',
+            'pan',
+            'offset',
+          ].includes(key)
+        ) {
           return `${nodeId}.${key}.value = ${value};`
+        }
+        // Boolean properties
+        if (key === 'loop' || key === 'autostart') {
+          return `${nodeId}.${key} = ${value};`
         }
         // Other properties
         return `${nodeId}.${key} = ${JSON.stringify(value)};`
@@ -1415,11 +1509,51 @@ ${webAudioNodes
 ${customNodes
   .map(node => {
     const properties = getNodeProperties(node)
-    const customProperties = Array.from(properties.entries())
-      .filter(([key]) => !key.startsWith('_')) // Filter out internal MST properties
-      .filter(([, value]) => value !== null) // Filter out null values
-
     const nodeId = idMap.get(node.id)
+
+    // Filter properties to only include meaningful custom node properties
+    const customProperties = Array.from(properties.entries())
+      .filter(([key]) => {
+        // Filter out MobX internal properties
+        if (key.startsWith('_') || key.endsWith('_')) return false
+        if (
+          [
+            'enhancer_',
+            'name_',
+            'data_',
+            'hasMap_',
+            'keysAtom_',
+            'interceptors_',
+            'changeListeners_',
+            'dehancer',
+          ].includes(key)
+        )
+          return false
+        // Include common custom node properties
+        const validCustomProperties = [
+          'value',
+          'min',
+          'max',
+          'step',
+          'label',
+          'scaleDegree',
+          'key',
+          'mode',
+          'baseFreq',
+          'baseMidi',
+          'currentValue',
+          'channel',
+          'deviceName',
+          'fileName',
+          'duration',
+          'interval',
+          'count',
+          'midiNote',
+          'frequency',
+        ]
+        return validCustomProperties.includes(key)
+      })
+      .filter(([, value]) => value !== null && value !== undefined) // Filter out null/undefined values
 
     const paramSetters = customProperties
       .map(([key, value]) => {
@@ -1437,6 +1571,14 @@ ${generateConnections(edges, nodes, idMap)}
 
 // Note: Oscillators will be started by the "Start Audio" button
 // This is required by browser autoplay policies
+${
+  hasMicrophoneInput || hasMidiInput
+    ? `}
+
+// Call the function to create the audio graph
+createAudioGraph().catch(console.error);`
+    : ''
+}
 
 // Create UI controls for interactive nodes
 ${generateUIControls(customNodes, idMap, nodes, edges)}
@@ -1448,14 +1590,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Note: AudioContext will be started when user clicks "Start Audio" button
 // This is required by browser autoplay policies
-${
-  hasMicrophoneInput || hasMidiInput
-    ? `}
-
-// Call the function to create the audio graph
-createAudioGraph().catch(console.error);`
-    : ''
-}
 `
     return code
   }
