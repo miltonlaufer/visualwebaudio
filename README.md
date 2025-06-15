@@ -32,6 +32,8 @@ https://github.com/user-attachments/assets/919c4a86-6ff8-468a-a6d2-2eaa60518154
 
 A **type-driven React TypeScript application** for visual Web Audio API editing that bridges visual audio engineering with code generation. This project demonstrates innovative type-driven development by extracting all node information directly from TypeScript's Web Audio API definitions.
 
+> 📖 **For a detailed technical analysis of how this application works**, including architecture diagrams and data flow, see our **[Architecture Documentation](ARCHITECTURE.md)**.
+
 ### Core Innovation: Type-Driven Development
 
 Unlike traditional audio editors that hardcode node definitions, this project:
@@ -145,6 +147,16 @@ GitHub Actions automatically runs type checking, tests, and linting on all PRs.
 
 ## Architecture
 
+Visual Web Audio uses a sophisticated type-driven architecture that automatically extracts metadata from TypeScript's Web Audio API definitions. For a detailed technical deep-dive, see our **[Architecture Documentation](ARCHITECTURE.md)**.
+
+### Key Architectural Components
+
+- **[Type-Driven Development](ARCHITECTURE.md#type-driven-development-core)**: Automatic extraction of Web Audio API metadata from TypeScript definitions
+- **[MST State Management](ARCHITECTURE.md#mobx-state-tree-mst-architecture)**: Hierarchical state management with MobX State Tree
+- **[Service Layer](ARCHITECTURE.md#service-layer)**: AudioNodeFactory and CustomNodeFactory for node creation
+- **[React Components](ARCHITECTURE.md#react-component-architecture)**: Modular component architecture with React Flow
+- **[Data Flow](ARCHITECTURE.md#data-flow)**: Comprehensive data flow from user actions to audio output
+
 ### Type-Driven Workflow
 
 ```
@@ -160,6 +172,8 @@ TypeScript Web Audio API Definitions (@types/web)
                     ↓
          React Components (Visual Layer)
 ```
+
+For implementation details, architecture diagrams, and design patterns, please refer to the **[Architecture Documentation](ARCHITECTURE.md)**.
 
 ### Tech Stack
 
