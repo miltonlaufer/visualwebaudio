@@ -213,10 +213,10 @@ graph LR
         RF["React Flow"]
         UI["UI Update"]
         
-        USER -->|"1. addAdaptedNode()"| AGS
+        USER -->|"1. addAdaptedNode"| AGS
         AGS -->|"2. Creates"| NA
-        NA -->|"3. afterCreate() hook"| ANF
-        ANF -->|"4. createAudioNode()"| WA
+        NA -->|"3. afterCreate hook"| ANF
+        ANF -->|"4. createAudioNode"| WA
         AGS -->|"5. Updates state"| RF
         RF -->|"6. Re-renders"| UI
     end
