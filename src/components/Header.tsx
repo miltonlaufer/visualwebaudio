@@ -169,6 +169,11 @@ const Header: React.FC<HeaderProps> = observer(
       handleMenuAction(() => store.redo())
     }
 
+    const handleMenuActionHelp = () => {
+      handleHelpClick()
+      setIsMobileMenuOpen(false)
+    }
+
     const handleGitHubClick = async () => {
       // Check if there are unsaved changes
       if (
@@ -177,6 +182,19 @@ const Header: React.FC<HeaderProps> = observer(
         return
       }
       window.open('https://github.com/miltonlaufer/visualwebaudio', '_blank')
+    }
+
+    const handleHelpClick = async () => {
+      // Check if there are unsaved changes
+      if (
+        !confirmUnsavedChanges(store, 'You will lose your changes. Are you sure you want to leave?')
+      ) {
+        return
+      }
+      window.open(
+        'https://github.com/miltonlaufer/visualwebaudio/blob/main/USER_GUIDE.md',
+        '_blank'
+      )
     }
 
     const handleExampleSelect = useCallback(
@@ -381,6 +399,22 @@ const Header: React.FC<HeaderProps> = observer(
                 </button>
               </div>
 
+              {/* Help Button */}
+              <button
+                onClick={handleHelpClick}
+                className="p-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                title="User Guide & Help"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </button>
+
               {/* Dark Mode Toggle */}
               <DarkModeToggle />
             </div>
@@ -548,6 +582,27 @@ const Header: React.FC<HeaderProps> = observer(
 
                     {/* Divider */}
                     <div className="border-t border-gray-200 dark:border-gray-700 my-2"></div>
+
+                    {/* Help Link */}
+                    <button
+                      onClick={handleMenuActionHelp}
+                      className="w-full flex items-center px-3 py-2 text-left text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                    >
+                      <svg
+                        className="w-4 h-4 mr-3"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      User Guide & Help
+                    </button>
 
                     {/* GitHub Link */}
                     <a

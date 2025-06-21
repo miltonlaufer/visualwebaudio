@@ -11,6 +11,7 @@
 ## Table of Contents
 
 - [Live Demo](#live-demo)
+- [User Guide](#user-guide)
 - [Overview](#overview)
 - [Graphical Programming Interface: Exportable to JavaScript Code](#graphical-programming-interface-exportable-to-javascript-code)
 - [Key Features](#key-features)
@@ -27,6 +28,19 @@ https://github.com/user-attachments/assets/919c4a86-6ff8-468a-a6d2-2eaa60518154
 ## Live Demo
 
 🌐 **[Try Visual Web Audio Online](https://www.miltonlaufer.com.ar/visualwebaudio/)** - Experience the application in your browser!
+
+## User Guide
+
+📚 **[Complete User Guide](USER_GUIDE.md)** - Comprehensive documentation covering all features, from basic usage to advanced techniques. Perfect for both beginners and experienced users.
+
+The user guide includes:
+- **Getting Started**: System requirements and first steps
+- **Interface Overview**: Detailed explanation of all UI components
+- **Node Types & Connections**: Complete reference for all audio nodes
+- **Recording & Project Management**: How to save and manage your work
+- **Keyboard Shortcuts**: Efficiency tips and shortcuts
+- **Troubleshooting**: Solutions to common issues
+- **Tips & Best Practices**: Expert advice for creating great audio graphs
 
 ## Overview
 
