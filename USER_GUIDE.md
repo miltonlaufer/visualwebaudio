@@ -33,12 +33,13 @@ Visual Web Audio is a web-based application that runs entirely in your browser. 
 3. You'll see the main interface with an empty canvas
 4. Start by adding your first audio node from the Node Palette
 
+> **⚠️ IMPORTANT: To hear any sound, you MUST connect your audio chain to an AudioDestination node!** Without this final connection, no audio will be output to your speakers/headphones.
+
 ## Interface Overview
 
 ### Main Components
 
 #### Header Bar
-- **Logo & Title**: Visual Web Audio branding
 - **Play/Stop Button**: Controls audio playback (green = play, red = stop)
 - **Record Button**: Start/stop audio recording (only available during playback)
 - **Quick Examples**: Dropdown with pre-built audio setups
@@ -63,6 +64,8 @@ The main workspace where you:
 - Add and arrange audio nodes
 - Create connections between nodes
 - Visualize your audio graph
+
+> **💡 Remember**: All audio paths must end at an AudioDestination node to produce sound!
 
 #### Property Panel (Right Panel)
 - View and edit properties of selected nodes
@@ -111,12 +114,7 @@ On mobile devices:
 - **MIDI Input**: MIDI device integration
 
 ### Node Properties
-Each node has configurable properties:
-- **Frequency**: Oscillator pitch, filter cutoff
-- **Gain**: Volume levels
-- **Type**: Waveform shapes, filter types
-- **Timing**: Delay times, attack/release
-- **Q Factor**: Filter resonance
+Each node has different configurable properties depending on its type. These appear in the Property Panel when you select a node and can be adjusted in real-time.
 
 ### Selecting and Editing Nodes
 1. **Click** a node to select it
@@ -125,6 +123,8 @@ Each node has configurable properties:
 4. **Delete**: Select node and press Delete key
 
 ## Making Connections
+
+> **🔊 CRITICAL: For any audio to be heard, your audio chain MUST end with a connection to an AudioDestination node!** This is the final output that sends audio to your speakers/headphones.
 
 ### Audio Connections
 Connect audio outputs to audio inputs:
@@ -322,6 +322,7 @@ Access via Project → Recordings tab:
 ## Tips and Best Practices
 
 ### Audio Graph Design
+- **🎯 ESSENTIAL RULE**: Always end with AudioDestination node for sound output
 - **Start Simple**: Begin with basic oscillator → gain → destination
 - **Add Gradually**: Build complexity step by step
 - **Use Gain Nodes**: Control volume at multiple points
@@ -349,9 +350,9 @@ Access via Project → Recordings tab:
 
 ### Audio Issues
 **No Sound Output**:
+- **🚨 FIRST CHECK**: Ensure your audio chain connects to an AudioDestination node
 - Check browser audio permissions
 - Verify system volume and audio device
-- Ensure audio graph connects to destination node
 - Check for muted gain nodes
 
 **Distorted Audio**:
