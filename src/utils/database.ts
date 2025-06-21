@@ -9,13 +9,25 @@ export interface SavedProject {
   description?: string
 }
 
+export interface AudioRecording {
+  id?: number
+  name: string
+  projectName: string
+  audioData: Blob
+  duration: number // duration in seconds
+  createdAt: Date
+  size: number // file size in bytes
+}
+
 export class ProjectDatabase extends Dexie {
   projects!: Table<SavedProject>
+  recordings!: Table<AudioRecording>
 
   constructor() {
     super('VisualWebAudioDB')
-    this.version(1).stores({
+    this.version(2).stores({
       projects: '++id, name, createdAt, updatedAt',
+      recordings: '++id, name, projectName, createdAt, duration, size',
     })
   }
 }
@@ -68,5 +80,51 @@ export const projectOperations = {
       return projects.some(p => p.id !== excludeId)
     }
     return projects.length > 0
+  },
+}
+
+// Recording operations
+export const recordingOperations = {
+  // Save a new recording
+  async saveRecording(
+    name: string,
+    projectName: string,
+    audioData: Blob,
+    duration: number
+  ): Promise<number> {
+    const now = new Date()
+    return await db.recordings.add({
+      name,
+      projectName,
+      audioData,
+      duration,
+      size: audioData.size,
+      createdAt: now,
+    })
+  },
+
+  // Get all recordings
+  async getAllRecordings(): Promise<AudioRecording[]> {
+    return await db.recordings.orderBy('createdAt').reverse().toArray()
+  },
+
+  // Get recording by ID
+  async getRecording(id: number): Promise<AudioRecording | undefined> {
+    return await db.recordings.get(id)
+  },
+
+  // Delete recording
+  async deleteRecording(id: number): Promise<void> {
+    await db.recordings.delete(id)
+  },
+
+  // Get recordings by project name
+  async getRecordingsByProject(projectName: string): Promise<AudioRecording[]> {
+    return await db.recordings.where('projectName').equals(projectName).toArray()
+  },
+
+  // Update recording name
+  async updateRecordingName(id: number, newName: string): Promise<void> {
+    await db.recordings.update(id, { name: newName })
   },
 }

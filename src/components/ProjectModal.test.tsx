@@ -33,6 +33,13 @@ vi.mock('~/utils/database', () => ({
     deleteProject: vi.fn(() => Promise.resolve()),
     projectNameExists: vi.fn(() => Promise.resolve(false)),
   },
+  recordingOperations: {
+    getAllRecordings: vi.fn(() => Promise.resolve([])),
+    saveRecording: vi.fn(() => Promise.resolve(1)),
+    updateRecordingName: vi.fn(() => Promise.resolve()),
+    deleteRecording: vi.fn(() => Promise.resolve()),
+    getRecordingsByProject: vi.fn(() => Promise.resolve([])),
+  },
 }))
 
 // Mock MST functions
@@ -83,15 +90,16 @@ describe('ProjectModal - Basic Rendering', () => {
     expect(screen.getByText('Project Manager')).toBeInTheDocument()
   })
 
-  it('should render all three tabs', () => {
+  it('should render all four tabs', () => {
     render(<ProjectModal {...defaultProps} />)
 
-    expect(screen.getByText('Storage')).toBeInTheDocument()
+    expect(screen.getByText('Projects')).toBeInTheDocument()
+    expect(screen.getByText('Recordings')).toBeInTheDocument()
     expect(screen.getByText('Export')).toBeInTheDocument()
     expect(screen.getByText('Import')).toBeInTheDocument()
   })
 
-  it('should show storage tab content by default', () => {
+  it('should show projects tab content by default', () => {
     render(<ProjectModal {...defaultProps} />)
 
     expect(screen.getByText('Current Project')).toBeInTheDocument()
@@ -105,6 +113,14 @@ describe('ProjectModal - Basic Rendering', () => {
     fireEvent.click(screen.getByText('Export'))
 
     expect(screen.getByText('Download Project File')).toBeInTheDocument()
+  })
+
+  it('should switch to recordings tab when clicked', () => {
+    render(<ProjectModal {...defaultProps} />)
+
+    fireEvent.click(screen.getByText('Recordings'))
+
+    expect(screen.getByText('Audio Recordings')).toBeInTheDocument()
   })
 
   it('should switch to import tab when clicked', () => {

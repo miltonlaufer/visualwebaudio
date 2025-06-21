@@ -8,6 +8,7 @@ import ExamplesDropdown from './ExamplesDropdown'
 import DarkModeToggle from './DarkModeToggle'
 import { useExamples } from './Examples'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
+import { recordingOperations } from '~/utils/database'
 
 interface HeaderProps {
   isNodePaletteOpen?: boolean
@@ -46,8 +47,82 @@ const Header: React.FC<HeaderProps> = observer(
       setIsProjectModalOpen(false)
     }, [])
 
-    const handleTogglePlayback = () => {
+    // Helper function to stop recording and save/download
+    const stopRecordingAndSave = async () => {
+      if (!store.isRecording) return
+
+      try {
+        // Stop recording
+        const recordingBlob = await store.stopRecording()
+
+        if (recordingBlob) {
+          // Calculate duration
+          const duration = store.recordingStartTime
+            ? (Date.now() - store.recordingStartTime) / 1000
+            : 0
+
+          // Generate recording name with project name and timestamp
+          const now = new Date()
+          const projectName = 'Untitled Project' // Default project name
+          const recordingName = `${projectName} - ${now.toLocaleString()}`
+
+          // Save to IndexedDB
+          try {
+            await recordingOperations.saveRecording(
+              recordingName,
+              projectName,
+              recordingBlob,
+              duration
+            )
+            // Recording saved to database successfully
+          } catch (dbError) {
+            console.error('Failed to save recording to database:', dbError)
+          }
+
+          // Prompt user to download
+          const shouldDownload = confirm(
+            `Recording saved! Duration: ${Math.round(duration)}s\n\nWould you like to download the audio file?`
+          )
+
+          if (shouldDownload) {
+            // Create download
+            const url = URL.createObjectURL(recordingBlob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `${recordingName}.wav`
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
+          }
+        }
+      } catch (error) {
+        console.error('Recording error:', error)
+        alert('Recording failed: ' + (error as Error).message)
+      }
+    }
+
+    const handleTogglePlayback = async () => {
+      // If recording is active and we're about to stop/pause playback, stop recording first
+      if (store.isRecording && store.isPlaying) {
+        await stopRecordingAndSave()
+      }
+
       store.togglePlayback()
+    }
+
+    const handleToggleRecording = async () => {
+      try {
+        if (store.isRecording) {
+          await stopRecordingAndSave()
+        } else {
+          // Start recording
+          await store.startRecording()
+        }
+      } catch (error) {
+        console.error('Recording error:', error)
+        alert('Recording failed: ' + (error as Error).message)
+      }
     }
 
     const handleOpenProjectModal = () => {
@@ -168,8 +243,8 @@ const Header: React.FC<HeaderProps> = observer(
             </div>
           </div>
 
-          {/* Center - Play Button */}
-          <div className="flex items-center">
+          {/* Center - Play and Record Buttons */}
+          <div className="flex items-center space-x-2">
             <button
               onClick={handleTogglePlayback}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
@@ -188,6 +263,30 @@ const Header: React.FC<HeaderProps> = observer(
                 </svg>
               )}
               <span className="ml-2 hidden sm:inline">{store.isPlaying ? 'Stop' : 'Play'}</span>
+            </button>
+
+            <button
+              onClick={handleToggleRecording}
+              disabled={!store.isPlaying && !store.isRecording}
+              className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                store.isRecording
+                  ? 'bg-red-600 text-white hover:bg-red-500'
+                  : 'bg-gray-600 text-white hover:bg-gray-500'
+              }`}
+              title={store.isRecording ? 'Stop Recording' : 'Start Recording'}
+            >
+              {store.isRecording ? (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <circle cx="12" cy="12" r="8" />
+                </svg>
+              )}
+              <span className="ml-2 hidden sm:inline">
+                {store.isRecording ? 'Stop Rec' : 'Record'}
+              </span>
             </button>
           </div>
 

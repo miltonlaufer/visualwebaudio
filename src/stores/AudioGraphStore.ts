@@ -28,6 +28,54 @@ const getAllNodesMetadata = (): Record<string, INodeMetadata> => {
   }
 }
 
+// Helper function to encode Float32Array to WAV format
+const encodeWAV = (
+  leftChannel: Float32Array,
+  rightChannel: Float32Array,
+  sampleRate: number
+): Blob => {
+  const length = leftChannel.length
+  const buffer = new ArrayBuffer(44 + length * 4) // WAV header (44 bytes) + stereo data (4 bytes per sample)
+  const view = new DataView(buffer)
+
+  // Write WAV header
+  const writeString = (offset: number, string: string) => {
+    for (let i = 0; i < string.length; i++) {
+      view.setUint8(offset + i, string.charCodeAt(i))
+    }
+  }
+
+  writeString(0, 'RIFF')
+  view.setUint32(4, 36 + length * 4, true) // File size
+  writeString(8, 'WAVE')
+  writeString(12, 'fmt ')
+  view.setUint32(16, 16, true) // Subchunk1Size
+  view.setUint16(20, 1, true) // AudioFormat (PCM)
+  view.setUint16(22, 2, true) // NumChannels (stereo)
+  view.setUint32(24, sampleRate, true) // SampleRate
+  view.setUint32(28, sampleRate * 4, true) // ByteRate
+  view.setUint16(32, 4, true) // BlockAlign
+  view.setUint16(34, 16, true) // BitsPerSample
+  writeString(36, 'data')
+  view.setUint32(40, length * 4, true) // Subchunk2Size
+
+  // Convert float samples to 16-bit PCM
+  let offset = 44
+  for (let i = 0; i < length; i++) {
+    // Left channel
+    const leftSample = Math.max(-1, Math.min(1, leftChannel[i]))
+    view.setInt16(offset, leftSample * 0x7fff, true)
+    offset += 2
+
+    // Right channel
+    const rightSample = Math.max(-1, Math.min(1, rightChannel[i]))
+    view.setInt16(offset, rightSample * 0x7fff, true)
+    offset += 2
+  }
+
+  return new Blob([buffer], { type: 'audio/wav' })
+}
+
 export const AudioGraphStore = types
   .model('AudioGraphStore', {
     adaptedNodes: types.array(NodeAdapter), // Unified node system
@@ -86,6 +134,11 @@ export const AudioGraphStore = types
     sourceNodeReactionDisposers: null as Map<string, () => void> | null,
     // Node runtime state (for tracking individual node states like isRunning)
     nodeStates: new Map<string, { isRunning?: boolean; [key: string]: any }>(),
+    // Recording state
+    isRecording: false,
+    recordingProcessor: null as ScriptProcessorNode | null,
+    recordingBuffers: [[], []] as Float32Array[][],
+    recordingStartTime: null as number | null,
   }))
   .preProcessSnapshot((snapshot: any) => {
     // Apply migration logic when loading snapshots
@@ -1736,6 +1789,136 @@ export const AudioGraphStore = types
           })
         }
       }),
+
+      startRecording() {
+        try {
+          if (!self.audioContext) {
+            throw new Error('Audio context not available')
+          }
+
+          // Check if there are any connections to the destination
+          const destinationConnections = self.audioConnections.filter(conn => {
+            const targetNode = self.adaptedNodes.find(node => node.id === conn.targetNodeId)
+            return targetNode?.nodeType === 'AudioDestinationNode'
+          })
+
+          if (destinationConnections.length === 0) {
+            throw new Error(
+              'No audio connections to destination node. Connect some audio sources first.'
+            )
+          }
+
+          // Create ScriptProcessorNode for WAV recording (deprecated but still works)
+          // Use a buffer size of 4096 samples
+          const bufferSize = 4096
+          self.recordingProcessor = self.audioContext.createScriptProcessor(bufferSize, 2, 2)
+
+          // Initialize recording buffers
+          self.recordingBuffers = [[], []] // Left and right channels
+
+          // Set up audio processing
+          self.recordingProcessor.onaudioprocess = event => {
+            if (!self.isRecording) return
+
+            const inputBuffer = event.inputBuffer
+            const leftChannel = inputBuffer.getChannelData(0)
+            const rightChannel =
+              inputBuffer.numberOfChannels > 1 ? inputBuffer.getChannelData(1) : leftChannel
+
+            // Copy audio data to recording buffers
+            self.recordingBuffers[0].push(new Float32Array(leftChannel))
+            self.recordingBuffers[1].push(new Float32Array(rightChannel))
+          }
+
+          // Connect all sources that were going to destination to also go to recording processor
+          destinationConnections.forEach(conn => {
+            const sourceId = conn.sourceNodeId
+            const sourceNode = self.audioNodes.get(sourceId)
+            const sourceCustomNode = self.customNodes.get(sourceId)
+
+            if (sourceNode) {
+              sourceNode.connect(self.recordingProcessor!)
+            } else if (sourceCustomNode && sourceCustomNode.getAudioOutput) {
+              const audioOutput = sourceCustomNode.getAudioOutput()
+              if (audioOutput) {
+                audioOutput.connect(self.recordingProcessor!)
+              }
+            }
+          })
+
+          // Connect processor to destination to avoid issues with some browsers
+          self.recordingProcessor.connect(self.audioContext.destination)
+
+          // Start recording
+          self.isRecording = true
+          self.recordingStartTime = Date.now()
+
+          // Recording started successfully
+        } catch (error) {
+          console.error('Error starting recording:', error)
+          throw error
+        }
+      },
+
+      stopRecording() {
+        try {
+          if (!self.recordingProcessor || !self.isRecording) {
+            return null
+          }
+
+          // Stop recording
+          self.isRecording = false
+
+          // Flatten the recorded buffers
+          const leftBuffers = self.recordingBuffers[0]
+          const rightBuffers = self.recordingBuffers[1]
+
+          if (leftBuffers.length === 0) {
+            throw new Error('No audio data recorded')
+          }
+
+          // Calculate total length
+          const totalLength = leftBuffers.reduce((sum, buffer) => sum + buffer.length, 0)
+
+          // Create final arrays
+          const leftChannel = new Float32Array(totalLength)
+          const rightChannel = new Float32Array(totalLength)
+
+          let offset = 0
+          for (let i = 0; i < leftBuffers.length; i++) {
+            leftChannel.set(leftBuffers[i], offset)
+            rightChannel.set(rightBuffers[i], offset)
+            offset += leftBuffers[i].length
+          }
+
+          // Encode to WAV format
+          const sampleRate = self.audioContext?.sampleRate || 44100
+          const recordingBlob = encodeWAV(leftChannel, rightChannel, sampleRate)
+
+          // Clean up state within the action context
+          self.recordingStartTime = null
+          self.recordingBuffers = [[], []]
+
+          // Disconnect recording processor
+          if (self.recordingProcessor) {
+            self.recordingProcessor.disconnect()
+            self.recordingProcessor = null
+          }
+
+          return recordingBlob
+        } catch (error) {
+          console.error('Error stopping recording:', error)
+          // Clean up on error (within action context)
+          self.isRecording = false
+          self.recordingStartTime = null
+          self.recordingBuffers = [[], []]
+          if (self.recordingProcessor) {
+            self.recordingProcessor.disconnect()
+            self.recordingProcessor = null
+          }
+          throw error
+        }
+      },
 
       addMicrophoneInput: flow(function* (position: { x: number; y: number }) {
         try {

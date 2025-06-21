@@ -4,7 +4,12 @@ import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { customNodeStore } from '~/stores/CustomNodeStore'
-import { projectOperations, type SavedProject } from '~/utils/database'
+import {
+  projectOperations,
+  recordingOperations,
+  type SavedProject,
+  type AudioRecording,
+} from '~/utils/database'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
 // Deduplication functions for cleaning up corrupted project files
@@ -53,7 +58,9 @@ interface ProjectModalProps {
 const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose }) => {
   // Now we can safely call all hooks knowing the component will render normally
   const store = useAudioGraphStore()
-  const [activeTab, setActiveTab] = useState<'storage' | 'export' | 'import'>('storage')
+  const [activeTab, setActiveTab] = useState<'storage' | 'export' | 'import' | 'recordings'>(
+    'storage'
+  )
   const [importError, setImportError] = useState<string | null>(null)
   const [importSuccess, setImportSuccess] = useState<boolean>(false)
   const [storageError, setStorageError] = useState<string | null>(null)
@@ -64,6 +71,12 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   const [showSaveAsDialog, setShowSaveAsDialog] = useState<boolean>(false)
   const [newProjectName, setNewProjectName] = useState<string>('')
   const [loadingProjects, setLoadingProjects] = useState<boolean>(false)
+  const [recordings, setRecordings] = useState<AudioRecording[]>([])
+  const [loadingRecordings, setLoadingRecordings] = useState<boolean>(false)
+  const [recordingsError, setRecordingsError] = useState<string | null>(null)
+  const [recordingsSuccess, setRecordingsSuccess] = useState<string | null>(null)
+  const [editingRecordingId, setEditingRecordingId] = useState<number | null>(null)
+  const [editingRecordingName, setEditingRecordingName] = useState<string>('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -91,6 +104,13 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   useEffect(() => {
     if (isOpen && activeTab === 'storage') {
       loadSavedProjects()
+    }
+  }, [isOpen, activeTab])
+
+  // Load recordings when recordings tab opens
+  useEffect(() => {
+    if (isOpen && activeTab === 'recordings') {
+      loadRecordings()
     }
   }, [isOpen, activeTab])
 
@@ -128,6 +148,19 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       setStorageError('Failed to load projects: ' + (error as Error).message)
     } finally {
       setLoadingProjects(false)
+    }
+  }
+
+  const loadRecordings = async () => {
+    try {
+      setLoadingRecordings(true)
+      setRecordingsError(null)
+      const allRecordings = await recordingOperations.getAllRecordings()
+      setRecordings(allRecordings)
+    } catch (error) {
+      setRecordingsError('Failed to load recordings: ' + (error as Error).message)
+    } finally {
+      setLoadingRecordings(false)
     }
   }
 
@@ -472,6 +505,96 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     loadSavedProjects()
   }
 
+  // Recording handlers
+  const handleDownloadRecording = (recording: AudioRecording) => {
+    try {
+      const url = URL.createObjectURL(recording.audioData)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${recording.name}.wav`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      setRecordingsError('Failed to download recording: ' + (error as Error).message)
+    }
+  }
+
+  const handleDeleteRecording = async (recording: AudioRecording) => {
+    if (!recording.id) {
+      setRecordingsError('Cannot delete recording: Invalid recording ID')
+      return
+    }
+
+    if (
+      !confirm(`Are you sure you want to delete "${recording.name}"? This action cannot be undone.`)
+    ) {
+      return
+    }
+
+    try {
+      setRecordingsError(null)
+      await recordingOperations.deleteRecording(recording.id)
+      await loadRecordings()
+      setRecordingsSuccess(`Recording "${recording.name}" deleted successfully!`)
+      setTimeout(() => setRecordingsSuccess(null), 3000)
+    } catch (error) {
+      setRecordingsError('Failed to delete recording: ' + (error as Error).message)
+    }
+  }
+
+  const handleStartEditRecording = (recording: AudioRecording) => {
+    setEditingRecordingId(recording.id || null)
+    setEditingRecordingName(recording.name)
+  }
+
+  const handleSaveRecordingName = async () => {
+    if (!editingRecordingId || !editingRecordingName.trim()) {
+      setRecordingsError('Please enter a valid recording name')
+      return
+    }
+
+    try {
+      setRecordingsError(null)
+      await recordingOperations.updateRecordingName(editingRecordingId, editingRecordingName.trim())
+      setEditingRecordingId(null)
+      setEditingRecordingName('')
+      await loadRecordings()
+      setRecordingsSuccess('Recording renamed successfully!')
+      setTimeout(() => setRecordingsSuccess(null), 3000)
+    } catch (error) {
+      setRecordingsError('Failed to rename recording: ' + (error as Error).message)
+    }
+  }
+
+  const handleCancelEditRecording = () => {
+    setEditingRecordingId(null)
+    setEditingRecordingName('')
+  }
+
+  const handleRefreshRecordings = () => {
+    loadRecordings()
+  }
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B'
+    const k = 1024
+    const sizes = ['B', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const handleSetActiveTabRecordings = () => {
+    setActiveTab('recordings')
+  }
+
   if (!isOpen) {
     return null
   }
@@ -507,7 +630,17 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                 : 'text-gray-500 hover:text-gray-700'
             }`}
           >
-            Storage
+            Projects
+          </button>
+          <button
+            onClick={handleSetActiveTabRecordings}
+            className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
+              activeTab === 'recordings'
+                ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            Recordings
           </button>
           <button
             onClick={handleSetActiveTabExport}
@@ -656,6 +789,151 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {savedProjects.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-xs text-blue-700">
+                      💡 Tip: Projects are stored locally in your browser. Export important projects
+                      to keep them safe.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'recordings' && (
+            <div className="space-y-4">
+              {/* Error/Success Messages */}
+              {recordingsError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-sm text-red-600">{recordingsError}</p>
+                </div>
+              )}
+
+              {recordingsSuccess && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                  <p className="text-sm text-green-600">{recordingsSuccess}</p>
+                </div>
+              )}
+
+              {/* Recordings List */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-700">Audio Recordings</h4>
+                  <button
+                    onClick={handleRefreshRecordings}
+                    className="text-xs text-blue-600 hover:text-blue-800"
+                  >
+                    Refresh
+                  </button>
+                </div>
+
+                {loadingRecordings ? (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    Loading recordings...
+                  </div>
+                ) : recordings.length === 0 ? (
+                  <div className="text-sm text-gray-500 text-center py-4">
+                    No recordings found. Use the record button in the header to create audio
+                    recordings.
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {recordings.map(recording => (
+                      <div
+                        key={recording.id}
+                        className="border border-gray-200 rounded-lg p-4 bg-gray-50"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 min-w-0">
+                            {editingRecordingId === recording.id ? (
+                              <div className="space-y-2">
+                                <input
+                                  type="text"
+                                  value={editingRecordingName}
+                                  onChange={e => setEditingRecordingName(e.target.value)}
+                                  className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                                  onKeyDown={e => {
+                                    if (e.key === 'Enter') {
+                                      handleSaveRecordingName()
+                                    } else if (e.key === 'Escape') {
+                                      handleCancelEditRecording()
+                                    }
+                                  }}
+                                  autoFocus
+                                />
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={handleSaveRecordingName}
+                                    className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs hover:bg-green-200"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={handleCancelEditRecording}
+                                    className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs hover:bg-gray-200"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <h5 className="text-sm font-medium text-gray-800 truncate">
+                                  {recording.name}
+                                </h5>
+                                <div className="text-xs text-gray-500 space-y-1 mt-1">
+                                  <div>Project: {recording.projectName}</div>
+                                  <div>Duration: {formatDuration(recording.duration)}</div>
+                                  <div>Size: {formatFileSize(recording.size)}</div>
+                                  <div>
+                                    Created: {new Date(recording.createdAt).toLocaleString()}
+                                  </div>
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {editingRecordingId !== recording.id && (
+                            <div className="flex gap-1 ml-2">
+                              <button
+                                onClick={() => handleDownloadRecording(recording)}
+                                className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
+                                title="Download recording"
+                              >
+                                Download
+                              </button>
+                              <button
+                                onClick={() => handleStartEditRecording(recording)}
+                                className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs hover:bg-yellow-200"
+                                title="Rename recording"
+                              >
+                                Rename
+                              </button>
+                              <button
+                                onClick={() => handleDeleteRecording(recording)}
+                                className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs hover:bg-red-200"
+                                title="Delete recording"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {recordings.length > 0 && (
+                  <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-xs text-blue-700">
+                      💡 Tip: Recordings are stored locally in your browser. Export important
+                      recordings to keep them safe.
+                    </p>
                   </div>
                 )}
               </div>
