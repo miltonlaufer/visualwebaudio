@@ -199,6 +199,15 @@ export const NodeAdapter = types
       try {
         const root = getRoot(self) as IAudioGraphStore
 
+        // Ensure properties is properly initialized as a Map
+        if (!self.properties || typeof self.properties.get !== 'function') {
+          console.warn(
+            `[NodeAdapter] Properties not properly initialized as Map for node ${self.id}, reinitializing...`
+          )
+          // If properties is not a Map, we need to handle this case
+          // This shouldn't happen in normal operation, but let's be defensive
+        }
+
         // Check if root has the required methods (for test compatibility)
         if (!root.createAudioNode || typeof root.createAudioNode !== 'function') {
           console.warn(
@@ -240,7 +249,34 @@ export const NodeAdapter = types
                 }
               }
             },
-            getProperty: (name: string) => self.properties?.get(name) || undefined,
+            getProperty: (name: string) => {
+              try {
+                if (!self.properties) {
+                  console.warn(`[NodeAdapter] Properties not initialized for node ${self.id}`)
+                  return undefined
+                }
+
+                // Handle both Map and plain object cases
+                if (typeof self.properties.get === 'function') {
+                  return self.properties.get(name) || undefined
+                } else if (typeof self.properties === 'object') {
+                  // Fallback for plain object (shouldn't happen but let's be safe)
+                  return (self.properties as any)[name] || undefined
+                } else {
+                  console.error(
+                    `[NodeAdapter] Properties is not a Map or object for node ${self.id}:`,
+                    self.properties
+                  )
+                  return undefined
+                }
+              } catch (error) {
+                console.error(
+                  `[NodeAdapter] Error getting property ${name} for node ${self.id}:`,
+                  error
+                )
+                return undefined
+              }
+            },
             connect: (targetId: string, sourceOutput: string, targetInput: string) => {
               if (root.connectAudioNodes && typeof root.connectAudioNodes === 'function') {
                 root.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)
@@ -285,7 +321,34 @@ export const NodeAdapter = types
               // The NodeAdapter.updateProperty already handles the property update
               // Custom nodes handle their own property logic in their components
             },
-            getProperty: (name: string) => self.properties?.get(name) || undefined,
+            getProperty: (name: string) => {
+              try {
+                if (!self.properties) {
+                  console.warn(`[NodeAdapter] Properties not initialized for node ${self.id}`)
+                  return undefined
+                }
+
+                // Handle both Map and plain object cases
+                if (typeof self.properties.get === 'function') {
+                  return self.properties.get(name) || undefined
+                } else if (typeof self.properties === 'object') {
+                  // Fallback for plain object (shouldn't happen but let's be safe)
+                  return (self.properties as any)[name] || undefined
+                } else {
+                  console.error(
+                    `[NodeAdapter] Properties is not a Map or object for node ${self.id}:`,
+                    self.properties
+                  )
+                  return undefined
+                }
+              } catch (error) {
+                console.error(
+                  `[NodeAdapter] Error getting property ${name} for node ${self.id}:`,
+                  error
+                )
+                return undefined
+              }
+            },
             connect: (targetId: string, sourceOutput: string, targetInput: string) => {
               if (root.connectAudioNodes && typeof root.connectAudioNodes === 'function') {
                 root.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)

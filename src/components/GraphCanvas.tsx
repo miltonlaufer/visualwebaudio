@@ -300,33 +300,37 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     setEdges(storeEdges)
   }, [storeEdges, setEdges])
 
+  // Handle new connections
   const onConnect = useCallback(
     (params: Connection) => {
-      if (params.source && params.target) {
-        // Check if connection is valid before adding
-        const isValid = store.isValidConnection(
-          params.source,
-          params.target,
-          params.sourceHandle || undefined,
-          params.targetHandle || undefined
-        )
-
-        if (!isValid) {
-          // You could show a toast notification here
-          return
-        }
-
-        try {
-          store.addEdge(
-            params.source,
-            params.target,
-            params.sourceHandle || undefined,
-            params.targetHandle || undefined
-          )
-        } catch (error) {
-          console.error('Error in store.addEdge:', error)
-        }
+      if (!params.source || !params.target) {
+        console.warn('[GraphCanvas] Invalid connection - missing source or target:', params)
+        return
       }
+
+      store.addEdge(
+        params.source,
+        params.target,
+        params.sourceHandle || undefined,
+        params.targetHandle || undefined
+      )
+    },
+    [store]
+  )
+
+  // React Flow connection validation
+  const isValidConnection = useCallback(
+    (connection: Connection | Edge) => {
+      if (!connection.source || !connection.target) {
+        return false
+      }
+
+      return store.isValidConnection(
+        connection.source,
+        connection.target,
+        connection.sourceHandle || undefined,
+        connection.targetHandle || undefined
+      )
     },
     [store]
   )
@@ -529,12 +533,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       )}
 
       <ReactFlow
-        key={`${store.graphChangeCounter}-${nodes.length}-${edges.length}`}
+        key={`${store.graphChangeCounter}-${nodes.length}`}
         nodes={nodes}
         edges={edges}
         onNodesChange={reactFlowOnNodesChange}
         onEdgesChange={reactFlowOnEdgesChange}
         onConnect={onConnect}
+        isValidConnection={isValidConnection}
         onNodeClick={onNodeClickHandler}
         onPaneClick={onPaneClick}
         onDragOver={onDragOver}

@@ -987,9 +987,6 @@ export const AudioGraphStore = types
           console.error('Error creating audio connection:', error)
         }
 
-        // Increment graph change counter to force React re-render
-        self.graphChangeCounter += 1
-
         // Mark project as modified
         this.markProjectModified()
       },
@@ -1679,80 +1676,80 @@ export const AudioGraphStore = types
     return {
       togglePlayback: flow(function* (): Generator<Promise<unknown>, void, unknown> {
         self.setUpdatingPlayState(true)
-        
+
         try {
           if (self.isPlaying) {
             // STOP: Close the audio context
             self.setIsStoppedByTheUser(true)
 
-          if (self.audioContext) {
-            try {
-              yield self.audioContext.close()
-            } catch (error) {
-              console.error('Error closing audio context:', error)
-            }
-          }
-
-          // Clear audio nodes but keep custom nodes so we can update them
-          self.audioContext = null
-          self.audioNodeFactory = null
-          self.customNodeFactory = null
-          self.globalAnalyzer = null
-          self.audioNodes.clear()
-          // Don't clear customNodes - we'll update them with fresh context
-          self.isPlaying = false
-        } else {
-          self.setIsStoppedByTheUser(false)
-          // START: Create fresh audio context and rebuild everything
-
-          // If we have an existing context, close it first
-          if (self.audioContext) {
-            try {
-              yield self.audioContext.close()
-            } catch (error) {
-              console.error('Error closing existing audio context:', error)
-            }
-          }
-
-          // Create brand new audio context
-          self.initializeAudioContext()
-
-          if (!self.audioContext) {
-            console.error('Failed to create audio context')
-            return
-          }
-
-          // Audio nodes will be recreated automatically when audio context changes
-          // Update existing custom nodes with new audio context
-          self.customNodes.forEach(customNode => {
-            if (
-              'updateAudioContext' in customNode &&
-              typeof customNode.updateAudioContext === 'function'
-            ) {
-              ;(customNode as any).updateAudioContext(self.audioContext)
-            }
-          })
-
-          self.setIsPlaying(true)
-
-          // Explicitly start all source nodes after setting isPlaying = true
-          self.audioNodes.forEach((audioNode, nodeId) => {
-            const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
-            const nodeType = visualNode?.nodeType
-
-            if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
-              // Type guard to ensure we have a source node with start method
-              if (audioNode && typeof audioNode === 'object' && 'start' in audioNode) {
-                try {
-                  ;(audioNode as any).start()
-                } catch (error) {
-                  // Node might already be started, ignore
-                  console.warn(`Source node ${nodeId} already started or failed to start:`, error)
-                }
+            if (self.audioContext) {
+              try {
+                yield self.audioContext.close()
+              } catch (error) {
+                console.error('Error closing audio context:', error)
               }
             }
-          })
-        }
+
+            // Clear audio nodes but keep custom nodes so we can update them
+            self.audioContext = null
+            self.audioNodeFactory = null
+            self.customNodeFactory = null
+            self.globalAnalyzer = null
+            self.audioNodes.clear()
+            // Don't clear customNodes - we'll update them with fresh context
+            self.isPlaying = false
+          } else {
+            self.setIsStoppedByTheUser(false)
+            // START: Create fresh audio context and rebuild everything
+
+            // If we have an existing context, close it first
+            if (self.audioContext) {
+              try {
+                yield self.audioContext.close()
+              } catch (error) {
+                console.error('Error closing existing audio context:', error)
+              }
+            }
+
+            // Create brand new audio context
+            self.initializeAudioContext()
+
+            if (!self.audioContext) {
+              console.error('Failed to create audio context')
+              return
+            }
+
+            // Audio nodes will be recreated automatically when audio context changes
+            // Update existing custom nodes with new audio context
+            self.customNodes.forEach(customNode => {
+              if (
+                'updateAudioContext' in customNode &&
+                typeof customNode.updateAudioContext === 'function'
+              ) {
+                ;(customNode as any).updateAudioContext(self.audioContext)
+              }
+            })
+
+            self.setIsPlaying(true)
+
+            // Explicitly start all source nodes after setting isPlaying = true
+            self.audioNodes.forEach((audioNode, nodeId) => {
+              const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
+              const nodeType = visualNode?.nodeType
+
+              if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
+                // Type guard to ensure we have a source node with start method
+                if (audioNode && typeof audioNode === 'object' && 'start' in audioNode) {
+                  try {
+                    ;(audioNode as any).start()
+                  } catch (error) {
+                    // Node might already be started, ignore
+                    console.warn(`Source node ${nodeId} already started or failed to start:`, error)
+                  }
+                }
+              }
+            })
+          }
         } finally {
           self.setUpdatingPlayState(false)
         }
@@ -2990,8 +2987,10 @@ export const createAudioGraphStore = () => {
       queueMicrotask(() => {
         if (patchRecorder.length > 0) {
           // Filter out nodeStateChangeCounter patches that might have slipped through
-          const filteredPatches = patchRecorder.filter(p => p.forward.path !== '/nodeStateChangeCounter')
-          
+          const filteredPatches = patchRecorder.filter(
+            p => p.forward.path !== '/nodeStateChangeCounter'
+          )
+
           if (filteredPatches.length > 0) {
             // Add to undo stack using store action
             store.addToUndoStack({
