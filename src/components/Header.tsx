@@ -176,12 +176,6 @@ const Header: React.FC<HeaderProps> = observer(
     }
 
     const handleHelpClick = async () => {
-      // Check if there are unsaved changes
-      if (
-        !confirmUnsavedChanges(store, 'You will lose your changes. Are you sure you want to leave?')
-      ) {
-        return
-      }
       window.open(
         'https://github.com/miltonlaufer/visualwebaudio/blob/main/USER_GUIDE.md',
         '_blank'
