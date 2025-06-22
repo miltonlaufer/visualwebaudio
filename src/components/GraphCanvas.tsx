@@ -243,8 +243,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     store.adaptedNodes,
   ])
 
-  useEffect(() => {
-    const storeEdges: Edge[] = store.visualEdges.map(edge => {
+  // Force edges update whenever store changes
+  const storeEdges: Edge[] = useMemo(() => {
+    return store.visualEdges.map(edge => {
       // Determine connection type by looking at the source and target handles
       const sourceNode = store.adaptedNodes.find(node => node.id === edge.source)
       const targetNode = store.adaptedNodes.find(node => node.id === edge.target)
@@ -292,16 +293,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         },
       }
     })
+  }, [store.visualEdges, store.adaptedNodes, store.graphChangeCounter, forceUpdate])
 
+  // Update React Flow edges whenever store edges change
+  useEffect(() => {
     setEdges(storeEdges)
-  }, [
-    store.visualEdges.length,
-    forceUpdate,
-    setEdges,
-    store.graphChangeCounter,
-    store.visualEdges,
-    store.adaptedNodes,
-  ])
+  }, [storeEdges, setEdges])
 
   const onConnect = useCallback(
     (params: Connection) => {
@@ -532,6 +529,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       )}
 
       <ReactFlow
+        key={`${store.graphChangeCounter}-${nodes.length}-${edges.length}`}
         nodes={nodes}
         edges={edges}
         onNodesChange={reactFlowOnNodesChange}

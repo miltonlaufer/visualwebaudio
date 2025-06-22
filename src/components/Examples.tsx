@@ -16,14 +16,12 @@ export const useExamples = () => {
       store.setCreatingExample(true)
       store.clearAllNodes()
 
-      setTimeout(async () => {
-        try {
-          await exampleFn()
-        } finally {
-          // Always reset the flag, even if there's an error
-          store.setCreatingExample(false)
-        }
-      }, 1)
+      try {
+        await exampleFn()
+      } finally {
+        // Always reset the flag, even if there's an error
+        store.setCreatingExample(false)
+      }
     }
   }
 

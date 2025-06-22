@@ -952,7 +952,9 @@ export const AudioGraphStore = types
 
       addEdge(source: string, target: string, sourceHandle?: string, targetHandle?: string) {
         // Validate connection before creating
-        if (!this.isValidConnection(source, target, sourceHandle, targetHandle)) {
+        const isValid = this.isValidConnection(source, target, sourceHandle, targetHandle)
+
+        if (!isValid) {
           console.warn('Invalid connection attempted:', {
             source,
             target,
@@ -1153,9 +1155,6 @@ export const AudioGraphStore = types
                 sourceNode.connect(audioOutput)
                 // Notify the custom node that audio input is connected
                 targetCustomNode.receiveInput?.(targetInput, true)
-                /*console.log(
-                  `Connected audio node to logical controller ${targetVisualNode?.nodeType} audio input`
-                )*/
               } else {
                 console.error(`Custom node ${targetId} does not have audio input available`)
                 return
@@ -1213,9 +1212,6 @@ export const AudioGraphStore = types
                 } else {
                   // Direct audio connection
                   audioOutput.connect(targetNode)
-                  /*console.log(
-                    `Connected custom node audio output to ${targetVisualNode?.nodeType}`
-                  )*/
                 }
               } else {
                 console.error(`Custom node ${sourceId} does not have audio output available`)
@@ -1262,21 +1258,10 @@ export const AudioGraphStore = types
                     if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
                       // Direct frequency control - these nodes output frequency values
                       audioParam.value = 0
-                      /*   console.log(
-                        `Connected custom node ${sourceNodeType} to frequency AudioParam: direct control, set base to 0`
-                      ) */
-                    } else {
-                      // Default: keep base value for modulation
-                      /* console.log(
-                        `Connected custom node ${sourceNodeType} to frequency AudioParam: keeping base value`
-                      ) */
                     }
                   } else {
                     // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
                     audioParam.value = 0
-                    /* console.log(
-                      `Connected custom node to AudioParam: ${targetInput}, set base value to 0`
-                    ) */
                   }
 
                   // Store the bridge source for updates and cleanup
@@ -1284,10 +1269,6 @@ export const AudioGraphStore = types
                     self.customNodeBridges = new Map()
                   }
                   self.customNodeBridges.set(`${sourceId}-${targetId}`, constantSource)
-
-                  /* console.log(
-                    `Bridge created for custom node ${sourceNodeType} → ${targetInput} with initial value: ${currentValue}`
-                  ) */
 
                   // Force an immediate update to ensure the bridge has the latest value
                   // This handles the case where the custom node already has a valid output value
@@ -1381,19 +1362,6 @@ export const AudioGraphStore = types
                     if (sourceNodeType === 'SliderNode' || sourceNodeType === 'MidiToFreqNode') {
                       // Direct frequency control - these nodes output frequency values
                       audioParam.value = 0
-                      /* console.log(
-                        `Connected to frequency AudioParam from ${sourceNodeType}: direct control, set base to 0`
-                      ) */
-                    } else if (sourceNodeType === 'OscillatorNode') {
-                      // LFO modulation - oscillator output adds to base frequency
-                      /* console.log(
-                        `Connected to frequency AudioParam from ${sourceNodeType}: modulation, keeping base value`
-                      ) */
-                    } else {
-                      // Default: keep base value for modulation
-                      /* console.log(
-                        `Connected to frequency AudioParam from ${sourceNodeType}: keeping base value`
-                      ) */
                     }
                   } else {
                     // For other AudioParams (gain, detune, etc.), set base to 0 for direct control
@@ -1531,9 +1499,6 @@ export const AudioGraphStore = types
                 const audioParam = targetNodeWithParams[connection.targetInput]
                 if (audioParam && typeof audioParam.value !== 'undefined') {
                   audioParam.value = paramMetadata.defaultValue
-                  /* console.log(
-                    `Disconnected custom node: restored ${connection.targetInput} to default value: ${paramMetadata.defaultValue}`
-                  ) */
                 }
               }
             }
@@ -1584,9 +1549,6 @@ export const AudioGraphStore = types
                   )
                   if (paramMetadata && paramMetadata.defaultValue !== null) {
                     audioParam.value = paramMetadata.defaultValue
-                    /* console.log(
-                      `Disconnected from AudioParam: ${connection.targetInput}, restored default value: ${paramMetadata.defaultValue}`
-                    ) */
                   }
                 } else {
                   console.error(`AudioParam ${connection.targetInput} not found on target node`)
@@ -2080,10 +2042,6 @@ export const AudioGraphStore = types
           self.clipboardError =
             'Clipboard API not supported. Copy/paste will work within this tab only.'
         }
-
-        /* console.log(
-          `Copied ${self.clipboardNodes.length} nodes and ${self.clipboardEdges.length} edges to clipboard`
-        ) */
       }),
 
       // Cut selected nodes (copy + delete)
@@ -2360,11 +2318,6 @@ export const AudioGraphStore = types
             }
           }
         })
-
-        /* console.log(
-          `Pasted ${newNodeIds.length} nodes with ${clipboardData.edges.length} connections`
-        ) */
-
         // Don't clear clipboard state after paste - users expect to be able to paste multiple times
         // Only clear clipboard error since paste was successful
         self.clipboardError = null
@@ -2501,17 +2454,15 @@ export const AudioGraphStore = types
           const audioNode = self.audioNodeFactory.createAudioNode(nodeType, metadata, properties)
           self.audioNodes.set(nodeId, audioNode)
 
-          // Start source nodes immediately if we're currently playing AND autostart is enabled
-          if (
-            (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') &&
-            self.isPlaying
-          ) {
-            // Check autostart property for oscillators
-            const shouldAutostart = nodeType !== 'OscillatorNode' || properties.autostart !== false
+          // Auto-start source nodes if they have autostart enabled (regardless of global play state)
+          if (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode') {
+            // Check autostart property (default is true for both types)
+            const shouldAutostart = properties.autostart !== false
 
             if (shouldAutostart && 'start' in audioNode && typeof audioNode.start === 'function') {
               try {
                 ;(audioNode as OscillatorNode | AudioBufferSourceNode).start()
+                self.setNodeState(nodeId, { isRunning: true })
               } catch (error) {
                 // Node might already be started, ignore
                 console.warn(`Source node ${nodeId} already started or failed to start:`, error)
@@ -2639,10 +2590,15 @@ export const AudioGraphStore = types
           },
           // Effect: create audio nodes for nodes that don't have them yet
           observableData => {
+            // Track which nodes are created in this reaction cycle
+            const newlyCreatedNodes: string[] = []
+
+            // Only create audio nodes for nodes that don't have them yet
             observableData.nodes.forEach(nodeState => {
-              if (!nodeState.hasAudioNode) {
+              if (!nodeState.hasAudioNode && nodeState.isAttached) {
                 try {
                   this.createAudioNode(nodeState.id, nodeState.nodeType)
+                  newlyCreatedNodes.push(nodeState.id)
 
                   // Mark the visual node as having an audio node created
                   const visualNode = self.adaptedNodes.find(node => node.id === nodeState.id)
@@ -2658,72 +2614,40 @@ export const AudioGraphStore = types
               }
             })
 
-            // After creating all audio nodes, recreate audio connections
-            // For source nodes (like oscillators), we need to recreate them because
-            // they can only be started once in Web Audio API
-            self.audioNodes.forEach((audioNode, nodeId) => {
-              const visualNode = self.adaptedNodes.find(node => node.id === nodeId)
-              const nodeType = visualNode?.nodeType
+            // Only recreate connections for newly created nodes
+            // This prevents unnecessary audio disruption when adding unconnected nodes
+            if (observableData.audioContextExists && newlyCreatedNodes.length > 0) {
+              self.audioConnections.forEach(connection => {
+                try {
+                  // Only recreate connection if it involves a newly created node
+                  const involvesNewNode =
+                    newlyCreatedNodes.includes(connection.sourceNodeId) ||
+                    newlyCreatedNodes.includes(connection.targetNodeId)
 
-              if (nodeType && self.audioNodeFactory) {
-                // Check if this is a source node that needs to be recreated
-                // Source nodes are characterized by having start/stop methods
-                const nodeMetadata = self.webAudioMetadata[nodeType] as INodeMetadata
-                const isSourceNode = nodeMetadata?.methods?.includes('start') ?? false
+                  if (involvesNewNode) {
+                    // Check that both nodes have audio nodes before connecting
+                    const sourceHasAudioNode =
+                      self.audioNodes.has(connection.sourceNodeId) ||
+                      self.customNodes.has(connection.sourceNodeId)
+                    const targetHasAudioNode =
+                      self.audioNodes.has(connection.targetNodeId) ||
+                      self.customNodes.has(connection.targetNodeId)
 
-                if (isSourceNode) {
-                  try {
-                    // Stop and disconnect the old node
-                    audioNode.disconnect()
-
-                    // For source nodes, try to stop them manually
-                    if ('stop' in audioNode && typeof audioNode.stop === 'function') {
-                      try {
-                        ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
-                      } catch {
-                        // Node might already be stopped, ignore
-                      }
+                    if (sourceHasAudioNode && targetHasAudioNode) {
+                      self.connectAudioNodes(
+                        connection.sourceNodeId,
+                        connection.targetNodeId,
+                        connection.sourceOutput,
+                        connection.targetInput,
+                        true // Skip adding to array since connections already exist in the array
+                      )
                     }
-
-                    // Create a new node with the same properties
-                    const metadata = visualNode.metadata as unknown as INodeMetadata
-                    const properties = Object.fromEntries(visualNode.properties.entries())
-                    const newAudioNode = self.audioNodeFactory.createAudioNode(
-                      nodeType,
-                      metadata,
-                      properties
-                    )
-
-                    // Replace the old node with the new one
-                    self.audioNodes.set(nodeId, newAudioNode)
-                  } catch (error) {
-                    console.error(`Error recreating source node ${nodeType}:`, error)
                   }
-                } else {
-                  // For non-source nodes, just disconnect
-                  try {
-                    audioNode.disconnect()
-                  } catch {
-                    // Ignore errors from already disconnected nodes
-                  }
+                } catch (error) {
+                  console.error(`Error recreating audio connection:`, error, connection)
                 }
-              }
-            })
-
-            // Recreate connections based on the audioConnections array
-            self.audioConnections.forEach(connection => {
-              try {
-                self.connectAudioNodes(
-                  connection.sourceNodeId,
-                  connection.targetNodeId,
-                  connection.sourceOutput,
-                  connection.targetInput,
-                  true // Skip adding to array since connections already exist in the array
-                )
-              } catch (error) {
-                console.error(`Error recreating audio connection:`, error, connection)
-              }
-            })
+              })
+            }
           },
           {
             name: 'AudioNodeCreationReaction',
@@ -2878,6 +2802,26 @@ export const AudioGraphStore = types
           const metadata = self.webAudioMetadata[nodeType] as INodeMetadata
 
           if (metadata) {
+            // Special handling for autostart property on source nodes
+            if (
+              propertyName === 'autostart' &&
+              (nodeType === 'OscillatorNode' || nodeType === 'AudioBufferSourceNode')
+            ) {
+              if (value === false) {
+                // Stop the oscillator if autostart is set to false
+                try {
+                  if ('stop' in audioNode && typeof audioNode.stop === 'function') {
+                    ;(audioNode as OscillatorNode | AudioBufferSourceNode).stop()
+                    self.setNodeState(nodeId, { isRunning: false })
+                  }
+                } catch (error) {
+                  // Node might already be stopped, ignore
+                  console.warn(`Source node ${nodeId} already stopped or failed to stop:`, error)
+                }
+              }
+              return // Don't process further for autostart property
+            }
+
             // Check if this is an AudioParam with an active control connection
             const propertyDef = metadata.properties.find(p => p.name === propertyName)
             if (propertyDef?.type === 'AudioParam') {
@@ -2887,9 +2831,6 @@ export const AudioGraphStore = types
               )
 
               if (hasControlConnection) {
-                /*  console.log(
-                   `⚠️ Skipping direct AudioParam update for ${propertyName} - control connection active`
-                 ) */
                 return
               }
             }
@@ -2965,18 +2906,6 @@ export const createAudioGraphStore = () => {
     // Don't record patches when we're applying undo/redo
     if (store.isApplyingPatch) return
 
-    // Don't record patches when creating examples
-    if (store.isCreatingExample) return
-
-    // Don't record patches when clearing all nodes
-    if (store.isClearingAllNodes) return
-
-    // Don't record patches when updating play state automatically
-    if (store.isUpdatingPlayState) return
-
-    // Don't record patches when loading a project
-    if (store.isLoadingProject) return
-
     // Don't record patches to the history stacks themselves (prevents recursion)
     if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {
       return
@@ -2984,6 +2913,11 @@ export const createAudioGraphStore = () => {
 
     // Don't record play/pause state changes in undo history
     if (patch.path === '/isPlaying') {
+      return
+    }
+
+    // Don't record stopped by user state changes in undo history
+    if (patch.path === '/isStoppedByTheUser') {
       return
     }
 
@@ -2997,7 +2931,7 @@ export const createAudioGraphStore = () => {
       return
     }
 
-    // Don't record graph change counter updates
+    // Don't record graph change counter updates (these are just for React re-renders)
     if (patch.path === '/graphChangeCounter') {
       return
     }
@@ -3006,6 +2940,33 @@ export const createAudioGraphStore = () => {
     if (patch.path === '/isProjectModified') {
       return
     }
+
+    // Don't record node runtime state changes (these are transient, not project data)
+    if (patch.path.startsWith('/nodeStates')) {
+      return
+    }
+
+    // Don't record node state change counter updates (these are just for React re-renders)
+    if (patch.path === '/nodeStateChangeCounter') {
+      return
+    }
+
+    // Don't record audioNodeCreated flag changes (these are lifecycle flags, not project data)
+    if (patch.path.includes('/audioNodeCreated')) {
+      return
+    }
+
+    // Don't record patches when creating examples (after checking for re-render counters)
+    if (store.isCreatingExample) return
+
+    // Don't record patches when clearing all nodes (after checking for re-render counters)
+    if (store.isClearingAllNodes) return
+
+    // Don't record patches when updating play state automatically (after checking for re-render counters)
+    if (store.isUpdatingPlayState) return
+
+    // Don't record patches when loading a project (after checking for re-render counters)
+    if (store.isLoadingProject) return
 
     // Mark project as modified for meaningful changes
     if (!store.isProjectModified) {

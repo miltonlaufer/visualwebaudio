@@ -498,9 +498,6 @@ describe('AudioGraphStore', () => {
       await store.togglePlayback() // Start again
       await store.togglePlayback() // Stop again
 
-      // Wait for any potential patches
-      await waitFor(() => store.undoStack.length > initialUndoLength)
-
       // Verify that play/stop operations didn't add to undo history
       expect(store.undoStack.length).toBe(initialUndoLength)
       expect(store.canUndo).toBe(true) // Should still be able to undo the node addition

@@ -175,12 +175,6 @@ const Header: React.FC<HeaderProps> = observer(
     }
 
     const handleGitHubClick = async () => {
-      // Check if there are unsaved changes
-      if (
-        !confirmUnsavedChanges(store, 'You will lose your changes. Are you sure you want to leave?')
-      ) {
-        return
-      }
       window.open('https://github.com/miltonlaufer/visualwebaudio', '_blank')
     }
 
@@ -229,7 +223,7 @@ const Header: React.FC<HeaderProps> = observer(
           <div className="absolute top-0 right-0 overflow-hidden pointer-events-none z-50 w-32 h-32">
             <button
               onClick={handleGitHubClick}
-              className="pointer-events-auto -mx-14 block bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-16 transform rotate-45 translate-x-12 translate-y-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+              className="pointer-events-auto -mx-14 block bg-red-600 hover:bg-red-700 text-white text-sm font-medium py-2 px-16 transform rotate-45 translate-x-12 translate-y-6 shadow-[0_0_10px_rgba(0,0,0)]  hover:shadow-[0_1px_15px_rgba(0,0,0)]   transition-all duration-300 hover:scale-105"
               title="View on GitHub - Open Source"
             >
               <div className="flex items-center space-x-2 whitespace-nowrap">
