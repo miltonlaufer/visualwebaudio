@@ -1678,9 +1678,12 @@ export const AudioGraphStore = types
   .actions(self => {
     return {
       togglePlayback: flow(function* (): Generator<Promise<unknown>, void, unknown> {
-        if (self.isPlaying) {
-          // STOP: Close the audio context
-          self.setIsStoppedByTheUser(true)
+        self.setUpdatingPlayState(true)
+        
+        try {
+          if (self.isPlaying) {
+            // STOP: Close the audio context
+            self.setIsStoppedByTheUser(true)
 
           if (self.audioContext) {
             try {
@@ -1749,6 +1752,9 @@ export const AudioGraphStore = types
               }
             }
           })
+        }
+        } finally {
+          self.setUpdatingPlayState(false)
         }
       }),
 
@@ -2963,7 +2969,9 @@ export const createAudioGraphStore = () => {
     if (store.isClearingAllNodes) return
 
     // Don't record patches when updating play state automatically (after checking for re-render counters)
-    if (store.isUpdatingPlayState) return
+    if (store.isUpdatingPlayState) {
+      return
+    }
 
     // Don't record patches when loading a project (after checking for re-render counters)
     if (store.isLoadingProject) return
@@ -2981,11 +2989,16 @@ export const createAudioGraphStore = () => {
       // Use microtask to batch patches that happen in the same tick
       queueMicrotask(() => {
         if (patchRecorder.length > 0) {
-          // Add to undo stack using store action
-          store.addToUndoStack({
-            forward: patchRecorder.map(p => p.forward),
-            inverse: patchRecorder.map(p => p.inverse).reverse(),
-          })
+          // Filter out nodeStateChangeCounter patches that might have slipped through
+          const filteredPatches = patchRecorder.filter(p => p.forward.path !== '/nodeStateChangeCounter')
+          
+          if (filteredPatches.length > 0) {
+            // Add to undo stack using store action
+            store.addToUndoStack({
+              forward: filteredPatches.map(p => p.forward),
+              inverse: filteredPatches.map(p => p.inverse).reverse(),
+            })
+          }
         }
 
         isRecording = false
