@@ -53,13 +53,10 @@ const Header: React.FC<HeaderProps> = observer(
 
       try {
         // Stop recording
-        const recordingBlob = await store.stopRecording()
+        const recordingResult = await store.stopRecording()
 
-        if (recordingBlob) {
-          // Calculate duration
-          const duration = store.recordingStartTime
-            ? (Date.now() - store.recordingStartTime) / 1000
-            : 0
+        if (recordingResult) {
+          const { blob: recordingBlob, duration } = recordingResult
 
           // Generate recording name with project name and timestamp
           const now = new Date()

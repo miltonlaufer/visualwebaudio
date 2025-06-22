@@ -1831,6 +1831,11 @@ export const AudioGraphStore = types
             return null
           }
 
+          // Calculate duration before clearing recordingStartTime
+          const duration = self.recordingStartTime
+            ? (Date.now() - self.recordingStartTime) / 1000
+            : 0
+
           // Stop recording
           self.isRecording = false
 
@@ -1870,7 +1875,7 @@ export const AudioGraphStore = types
             self.recordingProcessor = null
           }
 
-          return recordingBlob
+          return { blob: recordingBlob, duration }
         } catch (error) {
           console.error('Error stopping recording:', error)
           // Clean up on error (within action context)
