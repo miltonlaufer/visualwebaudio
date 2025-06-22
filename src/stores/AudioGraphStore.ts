@@ -989,6 +989,9 @@ export const AudioGraphStore = types
 
         // Mark project as modified
         this.markProjectModified()
+
+        // Increment graph change counter to force React re-render
+        self.graphChangeCounter += 1
       },
 
       isValidConnection(
@@ -1083,6 +1086,9 @@ export const AudioGraphStore = types
 
           // Mark project as modified
           this.markProjectModified()
+
+          // Increment graph change counter to force React re-render
+          self.graphChangeCounter += 1
         }
       },
 

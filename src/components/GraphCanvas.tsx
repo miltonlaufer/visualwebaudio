@@ -245,6 +245,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   // Force edges update whenever store changes
   const storeEdges: Edge[] = useMemo(() => {
+    // Access the counter to ensure MobX reactivity
+    void store.graphChangeCounter
     return store.visualEdges.map(edge => {
       // Determine connection type by looking at the source and target handles
       const sourceNode = store.adaptedNodes.find(node => node.id === edge.source)
@@ -293,7 +295,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         },
       }
     })
-  }, [store.visualEdges, store.adaptedNodes])
+  }, [store.visualEdges, store.adaptedNodes, store.graphChangeCounter])
 
   // Update React Flow edges whenever store edges change
   useEffect(() => {

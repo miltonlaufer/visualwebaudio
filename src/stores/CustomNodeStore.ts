@@ -213,6 +213,11 @@ const CustomNodeState = types
       updateScaleToMidiOutput(): void {
         if (self.nodeType !== 'ScaleToMidiNode') return
 
+        if (!self.properties) {
+          console.warn(`[CustomNodeStore] Properties not initialized for node ${self.id}`)
+          return
+        }
+
         const scaleDegree = self.properties.get('scaleDegree') || 0
         const key = self.properties.get('key') || 'C'
         const mode = self.properties.get('mode') || 'major'
@@ -328,11 +333,20 @@ const CustomNodeState = types
         if (self.nodeType !== 'SoundFileNode' || !self.audioContext) return
 
         self.gainNode = self.audioContext.createGain()
-        self.gainNode.gain.value = self.properties.get('gain') || 1
+        if (self.properties) {
+          self.gainNode.gain.value = self.properties.get('gain') || 1
+        } else {
+          self.gainNode.gain.value = 1
+        }
       },
 
       async restoreAudioBufferFromProperties(): Promise<void> {
         if (self.nodeType !== 'SoundFileNode' || !self.audioContext) return
+
+        if (!self.properties) {
+          console.warn(`[CustomNodeStore] Properties not initialized for node ${self.id}`)
+          return
+        }
 
         const audioBufferData = self.properties.get('audioData')
         const fileName = self.properties.get('fileName')
@@ -408,10 +422,16 @@ const CustomNodeState = types
 
         self.bufferSource = self.audioContext.createBufferSource()
         self.bufferSource.buffer = self.audioBuffer
-        self.bufferSource.loop = self.properties.get('loop') || false
-        self.bufferSource.playbackRate.value = self.properties.get('playbackRate') || 1
 
-        self.gainNode.gain.value = self.properties.get('gain') || 1
+        if (self.properties) {
+          self.bufferSource.loop = self.properties.get('loop') || false
+          self.bufferSource.playbackRate.value = self.properties.get('playbackRate') || 1
+          self.gainNode.gain.value = self.properties.get('gain') || 1
+        } else {
+          self.bufferSource.loop = false
+          self.bufferSource.playbackRate.value = 1
+          self.gainNode.gain.value = 1
+        }
         self.bufferSource.connect(self.gainNode)
         self.bufferSource.start()
       },
@@ -447,6 +467,11 @@ const CustomNodeState = types
       startTimer(): void {
         if (self.nodeType !== 'TimerNode') return
 
+        if (!self.properties) {
+          console.warn(`[CustomNodeStore] Properties not initialized for node ${self.id}`)
+          return
+        }
+
         const isRunning = (self.properties.get('isRunning') || 'false') === 'true'
         const enabled = (self.properties.get('enabled') || 'true') === 'true'
 
@@ -464,18 +489,24 @@ const CustomNodeState = types
           // CRITICAL: Check if node is still attached to MST tree before accessing properties
           try {
             // Check if timer is still running (might have been stopped)
+            if (!self.properties) return
             if ((self.properties.get('isRunning') || 'false') === 'true') {
+              if (!self.properties) return
               const currentCount = (self.properties.get('count') || 0) + 1
               this.fireTimerTrigger(currentCount)
 
               // If loop mode, start interval
+              if (!self.properties) return
               if (mode === 'loop' && (self.properties.get('isRunning') || 'false') === 'true') {
+                if (!self.properties) return
                 const interval = self.properties.get('interval') || 1000
                 const intervalId = window.setInterval(() => {
                   // CRITICAL: Check if node is still attached to MST tree
                   try {
                     // Check if timer is still running
+                    if (!self.properties) return
                     if ((self.properties.get('isRunning') || 'false') === 'true') {
+                      if (!self.properties) return
                       const currentCount = (self.properties.get('count') || 0) + 1
                       this.fireTimerTrigger(currentCount)
                     } else {
@@ -508,6 +539,11 @@ const CustomNodeState = types
 
       stopTimer(): void {
         if (self.nodeType !== 'TimerNode') return
+
+        if (!self.properties) {
+          console.warn(`[CustomNodeStore] Properties not initialized for node ${self.id}`)
+          return
+        }
 
         try {
           // Clear any running timers
@@ -571,6 +607,11 @@ const CustomNodeState = types
 
       setupMidiListeners(): void {
         if (self.nodeType !== 'MidiInputNode' || !self.midiAccess) return
+
+        if (!self.properties) {
+          console.warn(`[CustomNodeStore] Properties not initialized for node ${self.id}`)
+          return
+        }
 
         const channel = self.properties.get('channel') || 1
 

@@ -68,6 +68,7 @@ class MobXCustomNodeAdapter implements CustomNode {
     this.mobxNode.setOutput('trigger', triggerValue)
 
     // Also update the outputValue property for display purposes
+    if (!this.properties) return
     const outputValue = this.properties.get('outputValue') || 1
     this.mobxNode.setProperty('currentValue', outputValue)
   }
@@ -77,6 +78,7 @@ class MobXCustomNodeAdapter implements CustomNode {
     // simulate what the reactive connection would do
     if (this.mobxNode.nodeType === 'MidiToFreqNode' && inputName === 'midiNote') {
       const midiNote = Number(value) || 0
+      if (!this.mobxNode.properties) return
       const baseFreq = this.mobxNode.properties.get('baseFreq') || 440
       const baseMidi = this.mobxNode.properties.get('baseMidi') || 69
       const frequency = baseFreq * Math.pow(2, (midiNote - baseMidi) / 12)
@@ -214,6 +216,7 @@ class MobXCustomNodeAdapter implements CustomNode {
 
     const sliderElement = document.createElement('input')
     sliderElement.type = 'range'
+    if (!this.mobxNode.properties) return
     sliderElement.min = String(this.mobxNode.properties.get('min') ?? 0)
     sliderElement.max = String(this.mobxNode.properties.get('max') ?? 100)
     sliderElement.step = String(this.mobxNode.properties.get('step') ?? 1)
@@ -221,6 +224,7 @@ class MobXCustomNodeAdapter implements CustomNode {
     sliderElement.style.cssText = `width: 120px; margin: 0;`
 
     const updateLabel = (): void => {
+      if (!this.mobxNode.properties) return
       const label = this.mobxNode.properties.get('label') ?? 'Slider'
       const value = this.mobxNode.properties.get('value') ?? 0
       labelElement.textContent = `${label}: ${value}`
@@ -480,11 +484,13 @@ export class ButtonNode extends BaseCustomNode {
     this.notifyConnections('trigger', triggerValue)
 
     // Also update the outputValue property for display purposes
+    if (!this.properties) return
     const outputValue = this.properties.get('outputValue') || 1
     this.properties.set('currentValue', outputValue)
   }
 
   createUIElement(container: HTMLElement): void {
+    if (!this.properties) return
     const label = this.properties.get('label') || 'Button'
 
     this.buttonElement = document.createElement('button')
@@ -535,8 +541,10 @@ export class SliderNode extends BaseCustomNode {
     super(id, type, audioContext, metadata)
 
     // Set initial output value
-    const initialValue = this.properties.get('value') || 50
-    this.outputs.set('value', initialValue)
+    if (this.properties) {
+      const initialValue = this.properties.get('value') || 50
+      this.outputs.set('value', initialValue)
+    }
   }
 
   createUIElement(container: HTMLElement): void {
@@ -557,6 +565,7 @@ export class SliderNode extends BaseCustomNode {
 
     this.sliderElement = document.createElement('input')
     this.sliderElement.type = 'range'
+    if (!this.properties) return
     this.sliderElement.min = String(this.properties.get('min') ?? 0)
     this.sliderElement.max = String(this.properties.get('max') ?? 100)
     this.sliderElement.step = String(this.properties.get('step') ?? 1)
@@ -607,6 +616,7 @@ export class SliderNode extends BaseCustomNode {
   }
 
   private updateLabel(): void {
+    if (!this.properties) return
     const label = this.properties.get('label') ?? 'Slider'
     const value = this.properties.get('value') ?? 0
     if (this.labelElement) {

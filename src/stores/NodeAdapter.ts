@@ -192,7 +192,7 @@ export const NodeAdapter = types
       self.audioNodeCreated = value
     },
 
-    // Initialize the node with appropriate implementation
+    // Initialize the node with its implementation
     initialize() {
       if (self.isInitialized) return
 
@@ -208,13 +208,16 @@ export const NodeAdapter = types
           // This shouldn't happen in normal operation, but let's be defensive
         }
 
-        // Check if root has the required methods (for test compatibility)
-        if (!root.createAudioNode || typeof root.createAudioNode !== 'function') {
+        // Check if root has the required methods (defensive programming)
+        // The store might not be fully initialized yet, so we'll handle missing methods gracefully
+        const hasCreateAudioNode =
+          root && root.createAudioNode && typeof root.createAudioNode === 'function'
+        if (!hasCreateAudioNode) {
           console.warn(
-            `[NodeAdapter] Root store missing createAudioNode method for node ${self.id}`
+            `[NodeAdapter] Root store missing createAudioNode method for node ${self.id} - store may not be fully initialized yet`
           )
           // Don't return early - still set up the implementation
-          // The reaction will handle audio node creation
+          // The reaction will handle audio node creation when store is ready
         }
 
         if (self.isWebAudioNode) {
@@ -225,28 +228,63 @@ export const NodeAdapter = types
             nodeType: self.nodeType,
             initialize: () => {},
             cleanup: () => {
-              if (root.cleanupAudioNode && typeof root.cleanupAudioNode === 'function') {
-                root.cleanupAudioNode(self.id)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.cleanupAudioNode &&
+                  typeof currentRoot.cleanupAudioNode === 'function'
+                ) {
+                  currentRoot.cleanupAudioNode(self.id)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error during cleanup for WebAudio node ${self.id}:`,
+                  error
+                )
               }
             },
             updateProperty: (name: string, value: any) => {
-              // Don't call back to root.updateNodeProperty to avoid circular dependency
-              // The NodeAdapter.updateProperty already handles the property update
-              // Just handle the audio-specific property updates here
-              const root = getRoot(self) as IAudioGraphStore
-              const audioNode = root.audioNodes.get(self.id)
+              try {
+                // Don't call back to root.updateNodeProperty to avoid circular dependency
+                // The NodeAdapter.updateProperty already handles the property update
+                // Just handle the audio-specific property updates here
 
-              if (audioNode && root.audioNodeFactory) {
-                const metadata = root.webAudioMetadata[self.nodeType] as INodeMetadata
-                if (metadata) {
-                  root.audioNodeFactory.updateNodeProperty(
-                    audioNode,
-                    self.nodeType,
-                    metadata,
-                    name,
-                    value
+                // Add null checking for properties
+                if (!self.properties) {
+                  console.warn(
+                    `[NodeAdapter] Properties not initialized for node ${self.id} during updateProperty`
                   )
+                  return
                 }
+
+                const root = getRoot(self) as IAudioGraphStore
+                if (!root || !root.audioNodes) {
+                  console.warn(
+                    `[NodeAdapter] Root store or audioNodes not available for node ${self.id}`
+                  )
+                  return
+                }
+
+                const audioNode = root.audioNodes.get(self.id)
+
+                if (audioNode && root.audioNodeFactory) {
+                  const metadata = root.webAudioMetadata[self.nodeType] as INodeMetadata
+                  if (metadata) {
+                    root.audioNodeFactory.updateNodeProperty(
+                      audioNode,
+                      self.nodeType,
+                      metadata,
+                      name,
+                      value
+                    )
+                  }
+                }
+              } catch (error) {
+                console.error(
+                  `[NodeAdapter] Error in WebAudio updateProperty for node ${self.id}:`,
+                  error
+                )
               }
             },
             getProperty: (name: string) => {
@@ -278,29 +316,63 @@ export const NodeAdapter = types
               }
             },
             connect: (targetId: string, sourceOutput: string, targetInput: string) => {
-              if (root.connectAudioNodes && typeof root.connectAudioNodes === 'function') {
-                root.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.connectAudioNodes &&
+                  typeof currentRoot.connectAudioNodes === 'function'
+                ) {
+                  currentRoot.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error connecting WebAudio node ${self.id} to ${targetId}:`,
+                  error
+                )
               }
             },
             disconnect: (targetId: string) => {
-              if (root.disconnectAudioNodes && typeof root.disconnectAudioNodes === 'function') {
-                root.disconnectAudioNodes(self.id, targetId)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.disconnectAudioNodes &&
+                  typeof currentRoot.disconnectAudioNodes === 'function'
+                ) {
+                  currentRoot.disconnectAudioNodes(self.id, targetId)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error disconnecting WebAudio node ${self.id} from ${targetId}:`,
+                  error
+                )
               }
             },
             start: () => {
-              if (root.audioNodes && root.audioNodes.get) {
-                const audioNode = root.audioNodes.get(self.id)
-                if (audioNode && 'start' in audioNode && typeof audioNode.start === 'function') {
-                  ;(audioNode as any).start()
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (currentRoot && currentRoot.audioNodes && currentRoot.audioNodes.get) {
+                  const audioNode = currentRoot.audioNodes.get(self.id)
+                  if (audioNode && 'start' in audioNode && typeof audioNode.start === 'function') {
+                    ;(audioNode as any).start()
+                  }
                 }
+              } catch (error) {
+                console.warn(`[NodeAdapter] Error starting WebAudio node ${self.id}:`, error)
               }
             },
             stop: () => {
-              if (root.audioNodes && root.audioNodes.get) {
-                const audioNode = root.audioNodes.get(self.id)
-                if (audioNode && 'stop' in audioNode && typeof audioNode.stop === 'function') {
-                  ;(audioNode as any).stop()
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (currentRoot && currentRoot.audioNodes && currentRoot.audioNodes.get) {
+                  const audioNode = currentRoot.audioNodes.get(self.id)
+                  if (audioNode && 'stop' in audioNode && typeof audioNode.stop === 'function') {
+                    ;(audioNode as any).stop()
+                  }
                 }
+              } catch (error) {
+                console.warn(`[NodeAdapter] Error stopping WebAudio node ${self.id}:`, error)
               }
             },
           })
@@ -312,14 +384,41 @@ export const NodeAdapter = types
             nodeType: self.nodeType,
             initialize: () => {},
             cleanup: () => {
-              if (root.cleanupAudioNode && typeof root.cleanupAudioNode === 'function') {
-                root.cleanupAudioNode(self.id)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.cleanupAudioNode &&
+                  typeof currentRoot.cleanupAudioNode === 'function'
+                ) {
+                  currentRoot.cleanupAudioNode(self.id)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error during cleanup for Custom node ${self.id}:`,
+                  error
+                )
               }
             },
             updateProperty: () => {
-              // Custom nodes don't need audio-specific property updates
-              // The NodeAdapter.updateProperty already handles the property update
-              // Custom nodes handle their own property logic in their components
+              try {
+                // Custom nodes don't need audio-specific property updates
+                // The NodeAdapter.updateProperty already handles the property update
+                // Custom nodes handle their own property logic in their components
+
+                // Add null checking for properties
+                if (!self.properties) {
+                  console.warn(
+                    `[NodeAdapter] Properties not initialized for node ${self.id} during updateProperty`
+                  )
+                  return
+                }
+              } catch (error) {
+                console.error(
+                  `[NodeAdapter] Error in Custom updateProperty for node ${self.id}:`,
+                  error
+                )
+              }
             },
             getProperty: (name: string) => {
               try {
@@ -350,13 +449,37 @@ export const NodeAdapter = types
               }
             },
             connect: (targetId: string, sourceOutput: string, targetInput: string) => {
-              if (root.connectAudioNodes && typeof root.connectAudioNodes === 'function') {
-                root.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.connectAudioNodes &&
+                  typeof currentRoot.connectAudioNodes === 'function'
+                ) {
+                  currentRoot.connectAudioNodes(self.id, targetId, sourceOutput, targetInput)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error connecting Custom node ${self.id} to ${targetId}:`,
+                  error
+                )
               }
             },
             disconnect: (targetId: string) => {
-              if (root.disconnectAudioNodes && typeof root.disconnectAudioNodes === 'function') {
-                root.disconnectAudioNodes(self.id, targetId)
+              try {
+                const currentRoot = getRoot(self) as IAudioGraphStore
+                if (
+                  currentRoot &&
+                  currentRoot.disconnectAudioNodes &&
+                  typeof currentRoot.disconnectAudioNodes === 'function'
+                ) {
+                  currentRoot.disconnectAudioNodes(self.id, targetId)
+                }
+              } catch (error) {
+                console.warn(
+                  `[NodeAdapter] Error disconnecting Custom node ${self.id} from ${targetId}:`,
+                  error
+                )
               }
             },
           })
@@ -542,8 +665,25 @@ export const NodeAdapter = types
           if (!props || !self.implementation) return
 
           try {
+            // Double-check that properties still exist before syncing
+            if (!self.properties) {
+              console.warn(
+                `[NodeAdapter] Properties became undefined during sync for node ${self.id}`
+              )
+              return
+            }
+
             Object.entries(props).forEach(([name, value]) => {
-              self.implementation!.updateProperty(name, value)
+              if (self.implementation) {
+                try {
+                  self.implementation.updateProperty(name, value)
+                } catch (innerError) {
+                  console.error(
+                    `[NodeAdapter] Error updating property ${name} for node ${self.id}:`,
+                    innerError
+                  )
+                }
+              }
             })
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error)
