@@ -6,7 +6,7 @@ import tseslint from 'typescript-eslint'
 import noCommentedCodeRule from './eslint-rules/no-commented-code.js' // <--- Add this line
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage'] },
+  { ignores: ['dist', 'coverage', 'dev-dist'] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ['**/*.{ts,tsx}'],

@@ -6,7 +6,7 @@ import ProjectModal from './ProjectModal'
 import ExportJSButton from './ExportJSButton'
 import ExamplesDropdown from './ExamplesDropdown'
 import DarkModeToggle from './DarkModeToggle'
-import { useExamples } from './Examples'
+import { useExamples, type Example } from './Examples'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 import { recordingOperations } from '~/utils/database'
 
@@ -192,7 +192,7 @@ const Header: React.FC<HeaderProps> = observer(
     }
 
     const handleExampleSelect = useCallback(
-      async (example: any) => {
+      async (example: Example) => {
         // Check if there are unsaved changes
         if (
           !confirmUnsavedChanges(
@@ -212,7 +212,7 @@ const Header: React.FC<HeaderProps> = observer(
       [store]
     )
 
-    const handleMobileExampleSelect = (example: any) => () => {
+    const handleMobileExampleSelect = (example: Example) => () => {
       handleExampleSelect(example)
     }
 

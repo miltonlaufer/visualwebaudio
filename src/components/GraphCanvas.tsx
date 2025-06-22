@@ -293,7 +293,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         },
       }
     })
-  }, [store.visualEdges, store.adaptedNodes, store.graphChangeCounter, forceUpdate])
+  }, [store.visualEdges, store.adaptedNodes])
 
   // Update React Flow edges whenever store edges change
   useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 
@@ -18,10 +18,45 @@ const MidiInputNodeComponent: React.FC<MidiInputNodeComponentProps> = observer((
     return <div className="text-red-500 text-xs p-2">Node not found</div>
   }
 
+  const updateAvailableDevices = useCallback(
+    (access: MIDIAccess) => {
+      const devices: MIDIInput[] = []
+      access.inputs.forEach(input => {
+        devices.push(input)
+      })
+      setAvailableDevices(devices)
+
+      // Auto-select first device if none selected
+      if (devices.length > 0 && !node.properties.get('selectedDeviceId')) {
+        node.setSelectedMidiDevice(devices[0].id)
+        node.setProperty('deviceName', devices[0].name || 'Unknown Device')
+      }
+    },
+    [node]
+  )
+
+  const checkMidiPermissionStatus = useCallback(async () => {
+    if (!navigator.requestMIDIAccess) {
+      setPermissionStatus('denied')
+      return
+    }
+
+    try {
+      // Try to get MIDI access without sysex first
+      const access = await navigator.requestMIDIAccess({ sysex: false })
+      setPermissionStatus('granted')
+      updateAvailableDevices(access)
+      node.setMidiAccess(access)
+    } catch (error) {
+      console.warn('MIDI access denied:', error)
+      setPermissionStatus('denied')
+    }
+  }, [node, updateAvailableDevices])
+
   // Check initial MIDI permission status
   useEffect(() => {
     checkMidiPermissionStatus()
-  }, [])
+  }, [checkMidiPermissionStatus])
 
   // Monitor MIDI outputs to detect connection
   useEffect(() => {
@@ -39,24 +74,6 @@ const MidiInputNodeComponent: React.FC<MidiInputNodeComponentProps> = observer((
     setIsConnected(hasRecentActivity)
   }, [node.outputs])
 
-  const checkMidiPermissionStatus = async () => {
-    if (!navigator.requestMIDIAccess) {
-      setPermissionStatus('denied')
-      return
-    }
-
-    try {
-      // Try to get MIDI access without sysex first
-      const access = await navigator.requestMIDIAccess({ sysex: false })
-      setPermissionStatus('granted')
-      updateAvailableDevices(access)
-      node.setMidiAccess(access)
-    } catch (error) {
-      console.warn('MIDI access denied:', error)
-      setPermissionStatus('denied')
-    }
-  }
-
   const requestMidiPermissions = async () => {
     if (!navigator.requestMIDIAccess) {
       setPermissionStatus('denied')
@@ -73,20 +90,6 @@ const MidiInputNodeComponent: React.FC<MidiInputNodeComponentProps> = observer((
     } catch (error) {
       console.error('Failed to get MIDI access:', error)
       setPermissionStatus('denied')
-    }
-  }
-
-  const updateAvailableDevices = (access: MIDIAccess) => {
-    const devices: MIDIInput[] = []
-    access.inputs.forEach(input => {
-      devices.push(input)
-    })
-    setAvailableDevices(devices)
-
-    // Auto-select first device if none selected
-    if (devices.length > 0 && !node.properties.get('selectedDeviceId')) {
-      node.setSelectedMidiDevice(devices[0].id)
-      node.setProperty('deviceName', devices[0].name || 'Unknown Device')
     }
   }
 
