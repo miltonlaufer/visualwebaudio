@@ -489,7 +489,6 @@ describe('AudioGraphStore', () => {
       await waitFor(() => store.undoStack.length > 0)
 
       // Record initial undo stack length
-      const initialUndoLength = store.undoStack.length
       expect(store.canUndo).toBe(true)
 
       // Toggle playback multiple times
@@ -501,18 +500,18 @@ describe('AudioGraphStore', () => {
       // Verify that play/stop operations didn't add meaningful changes to undo history
       expect(store.canUndo).toBe(true) // Should still be able to undo
       expect(store.canRedo).toBe(false) // No redo history should be created
-      
+
       // The key test: verify that we can still undo back to a clean state
       // Even if there are additional runtime patches, we should be able to undo all the way back
-      const finalUndoLength = store.undoStack.length
-      
+
       // Undo all operations to get back to empty state
       let undoCount = 0
-      while (store.canUndo && undoCount < 10) { // Safety limit to prevent infinite loop
+      while (store.canUndo && undoCount < 10) {
+        // Safety limit to prevent infinite loop
         store.undo()
         undoCount++
       }
-      
+
       // Verify we're back to empty state
       expect(store.adaptedNodes.length).toBe(0)
       expect(store.visualEdges.length).toBe(0)
