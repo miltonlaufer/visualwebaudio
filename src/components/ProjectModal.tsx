@@ -77,6 +77,8 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
   const [recordingsSuccess, setRecordingsSuccess] = useState<string | null>(null)
   const [editingRecordingId, setEditingRecordingId] = useState<number | null>(null)
   const [editingRecordingName, setEditingRecordingName] = useState<string>('')
+  const [playingRecordingId, setPlayingRecordingId] = useState<number | null>(null)
+  const [audioElement, setAudioElement] = useState<HTMLAudioElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -595,6 +597,78 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
     setActiveTab('recordings')
   }
 
+  const handlePlayRecording = async (recording: AudioRecording) => {
+    try {
+      // If this recording is already playing, pause it
+      if (playingRecordingId === recording.id && audioElement && !audioElement.paused) {
+        audioElement.pause()
+        setPlayingRecordingId(null)
+        return
+      }
+
+      // Stop any currently playing audio
+      if (audioElement) {
+        audioElement.pause()
+        audioElement.src = ''
+      }
+
+      // Create new audio element
+      const audio = new Audio()
+      const audioUrl = URL.createObjectURL(recording.audioData)
+
+      audio.src = audioUrl
+      audio.onended = () => {
+        setPlayingRecordingId(null)
+        URL.revokeObjectURL(audioUrl)
+      }
+      audio.onerror = event => {
+        console.error('Audio playback error:', event)
+        setPlayingRecordingId(null)
+        setRecordingsError('Audio playback failed - file may be corrupted')
+        URL.revokeObjectURL(audioUrl)
+      }
+
+      // Set state optimistically - if play() fails, we'll handle it in catch
+      setAudioElement(audio)
+      setPlayingRecordingId(recording.id!)
+
+      // Try to play - if it fails, we'll catch it but not necessarily show an error
+      // since the audio might still work despite the promise rejection
+      const playPromise = audio.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(error => {
+          // Only show error if audio is actually not playing
+          if (audio.paused) {
+            console.error('Play promise rejected:', error)
+            setRecordingsError('Failed to start audio playback')
+            setPlayingRecordingId(null)
+          }
+          // If audio is playing despite the promise rejection, ignore the error
+        })
+      }
+    } catch (error) {
+      console.error('Audio setup error:', error)
+      setRecordingsError('Failed to set up audio playback: ' + (error as Error).message)
+      setPlayingRecordingId(null)
+    }
+  }
+
+  const handleStopRecording = useCallback(() => {
+    if (audioElement) {
+      audioElement.pause()
+      audioElement.src = ''
+    }
+    setPlayingRecordingId(null)
+    setAudioElement(null)
+  }, [audioElement])
+
+  // Cleanup audio when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      handleStopRecording()
+    }
+  }, [isOpen, handleStopRecording])
+
   if (!isOpen) {
     return null
   }
@@ -899,6 +973,29 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
                           {editingRecordingId !== recording.id && (
                             <div className="flex gap-1 ml-2">
+                              <button
+                                onClick={() => handlePlayRecording(recording)}
+                                className={`px-2 py-1 rounded text-xs transition-colors ${
+                                  playingRecordingId === recording.id
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                    : 'bg-green-100 text-green-700 hover:bg-green-200'
+                                }`}
+                                title={
+                                  playingRecordingId === recording.id
+                                    ? 'Stop playing'
+                                    : 'Play recording'
+                                }
+                              >
+                                {playingRecordingId === recording.id ? (
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                  </svg>
+                                ) : (
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M8 5v14l11-7z" />
+                                  </svg>
+                                )}
+                              </button>
                               <button
                                 onClick={() => handleDownloadRecording(recording)}
                                 className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs hover:bg-blue-200"
