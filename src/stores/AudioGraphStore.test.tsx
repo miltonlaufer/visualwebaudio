@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createAudioGraphStore, AudioGraphStoreType } from './AudioGraphStore'
+import { rootStore } from './RootStore'
+import type { AudioGraphStoreType } from './AudioGraphStore'
 
 // Mock Web Audio API with minimal implementation
 const mockAudioContext = {
@@ -57,19 +58,29 @@ Object.defineProperty(window, 'AudioContext', {
 
 describe('AudioGraphStore - Basic Functionality', () => {
   let store: AudioGraphStoreType
+  let root: typeof rootStore
 
   beforeEach(() => {
     vi.clearAllMocks()
-    store = createAudioGraphStore()
+    store = rootStore.audioGraph
+    root = rootStore
     store.loadMetadata()
+
+    // Clean up any existing nodes from previous tests
+    if (store.adaptedNodes.length > 0) {
+      store.clearAllNodes()
+    }
+
+    // Reset project modification state
+    root.setProjectModified(false)
   })
 
   describe('Store Initialization', () => {
     it('initializes with empty state', () => {
       expect(store.adaptedNodes.length).toBe(0)
       expect(store.visualEdges.length).toBe(0)
-      expect(store.selectedNodeId).toBeUndefined()
-      expect(store.isPlaying).toBe(false)
+      expect(root.selectedNodeId).toBeUndefined()
+      expect(root.isPlaying).toBe(false)
     })
 
     it('loads metadata correctly', () => {
@@ -135,13 +146,13 @@ describe('AudioGraphStore - Basic Functionality', () => {
     it('selects and deselects nodes', () => {
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
-      expect(store.selectedNodeId).toBeUndefined()
+      expect(root.selectedNodeId).toBeUndefined()
 
-      store.selectNode(nodeId)
-      expect(store.selectedNodeId).toBe(nodeId)
+      root.selectNode(nodeId)
+      expect(root.selectedNodeId).toBe(nodeId)
 
-      store.selectNode(undefined)
-      expect(store.selectedNodeId).toBeUndefined()
+      root.selectNode(undefined)
+      expect(root.selectedNodeId).toBeUndefined()
     })
 
     it('gets selected node correctly', () => {
@@ -149,7 +160,7 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
       expect(store.selectedNode).toBeUndefined()
 
-      store.selectNode(nodeId)
+      root.selectNode(nodeId)
       expect(store.selectedNode).toBeDefined()
       expect(store.selectedNode?.id).toBe(nodeId)
     })
@@ -157,22 +168,22 @@ describe('AudioGraphStore - Basic Functionality', () => {
 
   describe('Property Management', () => {
     it('increments property change counter', () => {
-      const initialCounter = store.propertyChangeCounter
+      const initialCounter = root.propertyChangeCounter
 
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       store.updateNodeProperty(nodeId, 'frequency', 880)
 
-      expect(store.propertyChangeCounter).toBe(initialCounter + 1)
+      expect(root.propertyChangeCounter).toBe(initialCounter + 1)
     })
 
     it('increments counter on multiple property changes', () => {
-      const initialCounter = store.propertyChangeCounter
+      const initialCounter = root.propertyChangeCounter
 
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       store.updateNodeProperty(nodeId, 'frequency', 880)
       store.updateNodeProperty(nodeId, 'type', 'square')
 
-      expect(store.propertyChangeCounter).toBe(initialCounter + 2)
+      expect(root.propertyChangeCounter).toBe(initialCounter + 2)
     })
   })
 
@@ -230,11 +241,11 @@ describe('AudioGraphStore - Basic Functionality', () => {
       const targetId = store.addAdaptedNode('GainNode', { x: 200, y: 200 })
 
       // Select nodes
-      store.selectNode(sourceId)
+      root.selectNode(sourceId)
 
       // Verify state consistency
       expect(store.adaptedNodes.length).toBe(2)
-      expect(store.selectedNodeId).toBe(sourceId)
+      expect(root.selectedNodeId).toBe(sourceId)
 
       const sourceNode = store.adaptedNodes.find(n => n.id === sourceId)
       const targetNode = store.adaptedNodes.find(n => n.id === targetId)

@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, waitFor } from '@testing-library/react'
 import { useExamples } from './Examples'
-import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import { RootStore } from '~/stores/RootStore'
+import { customNodeStore } from '~/stores/CustomNodeStore'
 import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 
 // Create mock audio nodes
@@ -81,6 +82,7 @@ vi.mock('~/services/CustomNodeFactory', () => ({
         outputs: new Map([['value', defaultValue]]),
         properties: new Map([['value', defaultValue]]),
         cleanup: vi.fn(),
+        disconnect: vi.fn(),
         getAudioOutput: vi.fn(() => null),
       }
     }
@@ -181,6 +183,19 @@ Object.defineProperty(global.navigator, 'mediaDevices', {
 // Mock window.alert for error handling in examples
 global.alert = vi.fn()
 
+// Mock fetch for audio file loading in examples
+global.fetch = vi.fn().mockImplementation((url: string) => {
+  if (url.includes('test-sound.wav') || url.includes('.wav')) {
+    // Mock audio file response with empty ArrayBuffer
+    return Promise.resolve({
+      ok: true,
+      arrayBuffer: () => Promise.resolve(new ArrayBuffer(1024)),
+      blob: () => Promise.resolve(new Blob([new ArrayBuffer(1024)], { type: 'audio/wav' })),
+    })
+  }
+  return Promise.reject(new Error(`Unmocked fetch: ${url}`))
+})
+
 // Mock the store hook to return our test store
 vi.mock('~/stores/AudioGraphStore', async importOriginal => {
   const actual = (await importOriginal()) as any
@@ -195,8 +210,12 @@ describe('Examples Structure Tests', () => {
   let examples: any[]
 
   beforeEach(async () => {
-    // Create a real store instance for testing
-    store = createAudioGraphStore()
+    // Clear the custom node store
+    customNodeStore.clear()
+
+    // Create a real store instance for testing with CustomNodeStore environment
+    const rootStore = RootStore.create({ audioGraph: { history: {} } }, { customNodeStore })
+    store = rootStore.audioGraph
     store.loadMetadata()
 
     // Mock the hook to return our test store
@@ -401,7 +420,8 @@ describe('Examples UI Integration Tests', () => {
   let store: AudioGraphStoreType
 
   beforeEach(async () => {
-    store = createAudioGraphStore()
+    const rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
     store.loadMetadata()
 
     const { useAudioGraphStore } = await import('~/stores/AudioGraphStore')

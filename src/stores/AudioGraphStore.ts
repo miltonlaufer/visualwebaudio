@@ -1,11 +1,12 @@
-import { types, flow, onPatch, applyPatch, getEnv, destroy } from 'mobx-state-tree'
-import type { Instance, IJsonPatch } from 'mobx-state-tree'
+import { types, flow, getEnv, destroy, getParent } from 'mobx-state-tree'
+import type { Instance } from 'mobx-state-tree'
 import { reaction } from 'mobx'
 import { VisualEdgeModel, AudioConnectionModel, INodeMetadata } from './NodeModels'
 import { NodeAdapter } from './NodeAdapter'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import UndoManager from './UndoManager'
 import { createContext, useContext } from 'react'
 // Import the JSON metadata directly
 import webAudioMetadataJson from '~/types/web-audio-metadata.json'
@@ -81,19 +82,8 @@ export const AudioGraphStore = types
     adaptedNodes: types.array(NodeAdapter), // Unified node system
     visualEdges: types.array(VisualEdgeModel),
     audioConnections: types.array(AudioConnectionModel),
-    selectedNodeId: types.maybe(types.string),
-    isPlaying: types.optional(types.boolean, false),
-    // Move undo/redo stacks to main model so they're observable
-    undoStack: types.array(types.frozen()),
-    redoStack: types.array(types.frozen()),
-    // Add a counter to track property changes for React re-renders
-    propertyChangeCounter: types.optional(types.number, 0),
-    // Add a counter to track graph structure changes for React re-renders
-    graphChangeCounter: types.optional(types.number, 0),
-    // Track if the current project has been modified (default false for new projects)
-    isProjectModified: types.optional(types.boolean, false),
-    // Counter to force reactivity when node states change
-    nodeStateChangeCounter: types.optional(types.number, 0),
+    // UndoManager for proper undo/redo functionality
+    history: types.optional(UndoManager, {}),
   })
   .volatile(() => ({
     audioContext: null as AudioContext | null,
@@ -173,6 +163,11 @@ export const AudioGraphStore = types
 
     return migratedSnapshot
   })
+  .views(self => ({
+    get root(): any {
+      return getParent(self)
+    },
+  }))
   .actions(self => {
     return {
       loadMetadata() {
@@ -184,43 +179,17 @@ export const AudioGraphStore = types
       },
 
       undo() {
-        this.applyUndo()
+        self.history.undo()
       },
 
       redo() {
-        this.applyRedo()
-      },
-
-      addToUndoStack(patches: { forward: IJsonPatch[]; inverse: IJsonPatch[] }) {
-        self.undoStack.push(patches)
-        // Clear redo stack when new action is performed
-        self.redoStack.clear()
-      },
-
-      moveToRedoStack() {
-        if (self.undoStack.length > 0) {
-          const patches = self.undoStack.pop()
-          if (patches) {
-            self.redoStack.push(patches)
-            return patches
-          }
-        }
-        return null
-      },
-
-      moveToUndoStack() {
-        if (self.redoStack.length > 0) {
-          const patches = self.redoStack.pop()
-          if (patches) {
-            self.undoStack.push(patches)
-            return patches
-          }
-        }
-        return null
+        self.history.redo()
       },
 
       setApplyingPatch(value: boolean) {
-        self.isApplyingPatch = value
+        self.history.withoutUndo(() => {
+          self.isApplyingPatch = value
+        })
       },
 
       setCreatingExample(value: boolean) {
@@ -228,11 +197,15 @@ export const AudioGraphStore = types
       },
 
       setClearingAllNodes(value: boolean) {
-        self.isClearingAllNodes = value
+        self.history.withoutUndo(() => {
+          self.isClearingAllNodes = value
+        })
       },
 
       setUpdatingPlayState(value: boolean) {
-        self.isUpdatingPlayState = value
+        self.history.withoutUndo(() => {
+          self.isUpdatingPlayState = value
+        })
       },
 
       // Action to set/reset project loading state
@@ -245,42 +218,16 @@ export const AudioGraphStore = types
         self.isStoppedByTheUser = value
       },
 
-      // Action to set playing state
-      setIsPlaying(value: boolean) {
-        if (!self.isStoppedByTheUser) {
-          self.isPlaying = value
-        }
-      },
-
-      // Action to set project modified state
-      setProjectModified(value: boolean) {
-        self.isProjectModified = value
-      },
-
-      // Action to mark project as modified (when changes are made)
-      markProjectModified() {
-        self.isProjectModified = true
-      },
-
-      // Action to force React re-render by incrementing graph change counter
-      forceRerender() {
-        self.graphChangeCounter += 1
-      },
-
       // Set node runtime state
       setNodeState(nodeId: string, state: { isRunning?: boolean; [key: string]: any }) {
         const currentState = self.nodeStates.get(nodeId) || {}
         self.nodeStates.set(nodeId, { ...currentState, ...state })
-        // Increment counter to trigger reactivity
-        self.nodeStateChangeCounter += 1
       },
 
       // Clear node state when node is removed
       clearNodeState(nodeId: string) {
         if (self.nodeStates.has(nodeId)) {
           self.nodeStates.delete(nodeId)
-          // Increment counter to trigger reactivity
-          self.nodeStateChangeCounter += 1
         }
       },
 
@@ -441,26 +388,6 @@ export const AudioGraphStore = types
         self.clipboardError = error
       },
 
-      applyUndo() {
-        const patches = this.moveToRedoStack()
-        if (patches) {
-          this.setApplyingPatch(true)
-          applyPatch(self, patches.inverse)
-          this.setApplyingPatch(false)
-          // Audio nodes will be created/destroyed automatically by lifecycle hooks
-        }
-      },
-
-      applyRedo() {
-        const patches = this.moveToUndoStack()
-        if (patches) {
-          this.setApplyingPatch(true)
-          applyPatch(self, patches.forward)
-          this.setApplyingPatch(false)
-          // Audio nodes will be created/destroyed automatically by lifecycle hooks
-        }
-      },
-
       // DEPRECATED: Audio nodes are now created automatically by lifecycle hooks
       // recreateAudioGraph: flow(function* () {
       //   // This method is no longer needed as audio nodes are created/destroyed
@@ -539,10 +466,8 @@ export const AudioGraphStore = types
         }
 
         // Increment graph change counter to force React re-render
-        self.graphChangeCounter += 1
-
-        // Mark project as modified
-        this.markProjectModified()
+        self.root.forceRerender()
+        self.root.markProjectModified()
 
         return nodeId
       },
@@ -618,6 +543,9 @@ export const AudioGraphStore = types
           this.removeEdge(edge.id)
         })
 
+        // Explicitly cleanup audio node before destroying the visual node
+        this.cleanupAudioNode(nodeId)
+
         // Remove the adapted node (this will trigger beforeDestroy)
         const nodeIndex = self.adaptedNodes.findIndex(node => node.id === nodeId)
         if (nodeIndex !== -1) {
@@ -626,10 +554,10 @@ export const AudioGraphStore = types
         }
 
         // Increment graph change counter to force React re-render
-        self.graphChangeCounter += 1
+        self.root?.forceRerender()
 
         // Mark project as modified
-        this.markProjectModified()
+        self.root?.markProjectModified()
       },
 
       // Get custom node by ID (for external access)
@@ -801,63 +729,64 @@ export const AudioGraphStore = types
       },
 
       clearAllNodes() {
-        this.setIsStoppedByTheUser(false)
-        this.setIsPlaying(false)
-        // Set flag to prevent recording this operation in undo history
-        this.setClearingAllNodes(true)
+        self.history.withoutUndo(() => {
+          this.setIsStoppedByTheUser(false)
+          self.root?.setIsPlaying(false)
+          // Set flag to prevent recording this operation in undo history
+          this.setClearingAllNodes(true)
 
-        // Get all node IDs first to avoid modifying array while iterating
-        const visualNodeIds = self.adaptedNodes.map(node => node.id)
-        const adaptedNodeIds = self.adaptedNodes.map(node => node.id)
-        const allNodeIds = [...visualNodeIds, ...adaptedNodeIds]
+          // Get all node IDs first to avoid modifying array while iterating
+          const visualNodeIds = self.adaptedNodes.map(node => node.id)
+          const adaptedNodeIds = self.adaptedNodes.map(node => node.id)
+          const allNodeIds = [...visualNodeIds, ...adaptedNodeIds]
 
-        // Remove each node properly
-        allNodeIds.forEach(nodeId => {
-          this.removeNode(nodeId)
+          // Remove each node properly
+          allNodeIds.forEach(nodeId => {
+            this.removeNode(nodeId)
+          })
+
+          // Perform comprehensive audio cleanup
+          this.performComprehensiveAudioCleanup()
+
+          // Double-check that everything is cleared
+          if (self.adaptedNodes.length > 0) {
+            console.warn('Some visual nodes were not removed, force clearing...')
+            self.adaptedNodes.clear()
+          }
+
+          if (self.adaptedNodes.length > 0) {
+            console.warn('Some adapted nodes were not removed, force clearing...')
+            self.adaptedNodes.clear()
+          }
+
+          if (self.visualEdges.length > 0) {
+            console.warn('Some edges were not removed, force clearing...')
+            self.visualEdges.clear()
+          }
+
+          if (self.audioConnections.length > 0) {
+            console.warn('Some audio connections were not removed, force clearing...')
+            self.audioConnections.clear()
+          }
+
+          // Clear undo/redo history since there's nothing left to undo to
+          self.history.clear()
+
+          // Reset play state since no audio is playing
+          this.setUpdatingPlayState(true)
+          self.root?.setIsPlaying(false)
+          this.setUpdatingPlayState(false)
+
+          // Increment graph change counter to force React re-render
+          // (do this before resetting flag to avoid recording in undo history)
+          self.root?.forceRerender()
+
+          // Reset flag to allow recording future operations
+          this.setClearingAllNodes(false)
+
+          // Reset project modification state since we've cleared everything
+          self.root.setProjectModified(false)
         })
-
-        // Perform comprehensive audio cleanup
-        this.performComprehensiveAudioCleanup()
-
-        // Double-check that everything is cleared
-        if (self.adaptedNodes.length > 0) {
-          console.warn('Some visual nodes were not removed, force clearing...')
-          self.adaptedNodes.clear()
-        }
-
-        if (self.adaptedNodes.length > 0) {
-          console.warn('Some adapted nodes were not removed, force clearing...')
-          self.adaptedNodes.clear()
-        }
-
-        if (self.visualEdges.length > 0) {
-          console.warn('Some edges were not removed, force clearing...')
-          self.visualEdges.clear()
-        }
-
-        if (self.audioConnections.length > 0) {
-          console.warn('Some audio connections were not removed, force clearing...')
-          self.audioConnections.clear()
-        }
-
-        // Clear undo/redo history since there's nothing left to undo to
-        self.undoStack.clear()
-        self.redoStack.clear()
-
-        // Reset play state since no audio is playing
-        this.setUpdatingPlayState(true)
-        self.isPlaying = false
-        this.setUpdatingPlayState(false)
-
-        // Increment graph change counter to force React re-render
-        // (do this before resetting flag to avoid recording in undo history)
-        self.graphChangeCounter += 1
-
-        // Reset flag to allow recording future operations
-        this.setClearingAllNodes(false)
-
-        // Reset project modification state since we've cleared everything
-        self.isProjectModified = false
       },
 
       performComprehensiveAudioCleanup() {
@@ -988,10 +917,10 @@ export const AudioGraphStore = types
         }
 
         // Mark project as modified
-        this.markProjectModified()
+        self.root?.markProjectModified()
 
         // Increment graph change counter to force React re-render
-        self.graphChangeCounter += 1
+        self.root?.forceRerender()
       },
 
       isValidConnection(
@@ -1085,10 +1014,10 @@ export const AudioGraphStore = types
           self.visualEdges.splice(edgeIndex, 1)
 
           // Mark project as modified
-          this.markProjectModified()
+          self.root?.markProjectModified()
 
           // Increment graph change counter to force React re-render
-          self.graphChangeCounter += 1
+          self.root?.forceRerender()
         }
       },
 
@@ -1305,8 +1234,8 @@ export const AudioGraphStore = types
               // Only set automatically for user-initiated connections (not during reaction-based recreation)
               // Don't auto-start in test environment
               const isTestEnvironment = typeof globalThis !== 'undefined' && 'vi' in globalThis
-              if (!isTestEnvironment) {
-                this.setIsPlaying(true)
+              if (!isTestEnvironment && !self.isStoppedByTheUser) {
+                self.root?.setIsPlaying(true)
               }
             }
           } catch (error) {
@@ -1398,8 +1327,8 @@ export const AudioGraphStore = types
               // Only set automatically for user-initiated connections (not during reaction-based recreation)
               // Don't auto-start in test environment
               const isTestEnvironment = typeof globalThis !== 'undefined' && 'vi' in globalThis
-              if (!isTestEnvironment) {
-                this.setIsPlaying(true)
+              if (!isTestEnvironment && !self.isStoppedByTheUser) {
+                self.root?.setIsPlaying(true)
               }
             }
           } catch (error) {
@@ -1582,7 +1511,7 @@ export const AudioGraphStore = types
 
               if (remainingDestinationConnections.length === 0) {
                 this.setUpdatingPlayState(true)
-                self.isPlaying = false
+                self.root?.setIsPlaying(false)
                 this.setUpdatingPlayState(false)
 
                 // Disconnect analyzer from destination when no more sources
@@ -1661,7 +1590,9 @@ export const AudioGraphStore = types
       },
 
       selectNode(nodeId: string | undefined) {
-        self.selectedNodeId = nodeId
+        self.history.withoutUndo(() => {
+          self.root.selectNode(nodeId)
+        })
       },
 
       updateNodePosition(nodeId: string, position: { x: number; y: number }) {
@@ -1671,9 +1602,15 @@ export const AudioGraphStore = types
         if (visualNode) {
           visualNode.position.x = position.x
           visualNode.position.y = position.y
+
+          // Mark project as modified
+          self.root?.markProjectModified()
         } else if (adaptedNode) {
           adaptedNode.position.x = position.x
           adaptedNode.position.y = position.y
+
+          // Mark project as modified
+          self.root?.markProjectModified()
         }
       },
     }
@@ -1684,7 +1621,7 @@ export const AudioGraphStore = types
         self.setUpdatingPlayState(true)
 
         try {
-          if (self.isPlaying) {
+          if (self.root.isPlaying) {
             // STOP: Close the audio context
             self.setIsStoppedByTheUser(true)
 
@@ -1703,7 +1640,12 @@ export const AudioGraphStore = types
             self.globalAnalyzer = null
             self.audioNodes.clear()
             // Don't clear customNodes - we'll update them with fresh context
-            self.isPlaying = false
+            // Update isPlaying state in root store
+            try {
+              self.root.setIsPlaying(false)
+            } catch (error) {
+              console.warn('Failed to update isPlaying state when stopping:', error)
+            }
           } else {
             self.setIsStoppedByTheUser(false)
             // START: Create fresh audio context and rebuild everything
@@ -1736,7 +1678,12 @@ export const AudioGraphStore = types
               }
             })
 
-            self.setIsPlaying(true)
+            // Update isPlaying state in root store
+            try {
+              self.root.setIsPlaying(true)
+            } catch (error) {
+              console.warn('Failed to update isPlaying state when starting:', error)
+            }
 
             // Explicitly start all source nodes after setting isPlaying = true
             self.audioNodes.forEach((audioNode, nodeId) => {
@@ -1981,7 +1928,7 @@ export const AudioGraphStore = types
           self.mediaStreams.set(nodeId, stream)
 
           // Increment graph change counter to force React re-render
-          self.graphChangeCounter += 1
+          self.root?.forceRerender()
 
           return nodeId
         } catch (error) {
@@ -2405,10 +2352,10 @@ export const AudioGraphStore = types
                   const targetAdaptedNode = self.adaptedNodes.find(node => node.id === nodeId)
                   if (targetVisualNode) {
                     targetVisualNode.properties.set(propertyName, value)
-                    self.propertyChangeCounter += 1
+                    self.root.incrementPropertyChangeCounter()
                   } else if (targetAdaptedNode) {
                     targetAdaptedNode.updateProperty(propertyName, value)
-                    self.propertyChangeCounter += 1
+                    self.root.incrementPropertyChangeCounter()
                   }
                 }
               )
@@ -2577,6 +2524,15 @@ export const AudioGraphStore = types
         // Load metadata first
         self.loadMetadata()
 
+        // Clean up any existing volatile audio state before initialization
+        // This ensures clean state when loading projects via applySnapshot
+        // Only clear volatile/transient state, not MST model arrays
+        self.audioNodes.clear()
+        self.customNodes.clear()
+        self.customNodeBridges?.clear()
+        self.mediaStreams.clear()
+        // Note: Don't clear audioConnections as it's part of MST model
+
         // Deduplicate connections to prevent audio corruption from corrupted project files
         this.deduplicateConnections()
 
@@ -2716,13 +2672,11 @@ export const AudioGraphStore = types
   })
   .views(self => ({
     get selectedNode() {
-      if (!self.selectedNodeId) return undefined
+      // Get selectedNodeId from root store
+      const selectedNodeId = self.root.selectedNodeId
+      if (!selectedNodeId) return undefined
 
-      // Look in both visual nodes (legacy) and adapted nodes (new system)
-      const visualNode = self.adaptedNodes.find(node => node.id === self.selectedNodeId)
-      const adaptedNode = self.adaptedNodes.find(node => node.id === self.selectedNodeId)
-
-      return visualNode || adaptedNode
+      return self.adaptedNodes.find(node => node.id === selectedNodeId)
     },
 
     get availableNodeTypes() {
@@ -2730,11 +2684,11 @@ export const AudioGraphStore = types
     },
 
     get canUndo() {
-      return self.undoStack.length > 0
+      return self.history.canUndo
     },
 
     get canRedo() {
-      return self.redoStack.length > 0
+      return self.history.canRedo
     },
 
     get frequencyAnalyzer() {
@@ -2763,7 +2717,7 @@ export const AudioGraphStore = types
     // Get node runtime state (reactive computed property)
     getNodeState(nodeId: string) {
       // Access the counter to make this reactive
-      void self.nodeStateChangeCounter
+      void self.root.nodeStateChangeCounter
       return self.nodeStates.get(nodeId) || {}
     },
   }))
@@ -2780,7 +2734,10 @@ export const AudioGraphStore = types
           adaptedNode.updateProperty(propertyName, value)
 
           // Increment the property change counter to trigger React re-renders
-          self.propertyChangeCounter += 1
+          self.root.incrementPropertyChangeCounter()
+
+          // Mark project as modified
+          self.root?.markProjectModified()
         }
 
         // Handle custom node property updates using MST store
@@ -2905,123 +2862,13 @@ export type AudioGraphStoreType = Instance<typeof AudioGraphStore>
 
 // Migration helper for backward compatibility removed (was unused)
 
-// Factory function to create store with patch middleware
+// Factory function to create store with UndoManager
 export const createAudioGraphStore = () => {
   const store = AudioGraphStore.create({
-    undoStack: [],
-    redoStack: [],
+    history: {},
   })
 
-  // Set up patch middleware for automatic undo/redo tracking
-  let patchRecorder: { forward: IJsonPatch; inverse: IJsonPatch }[] = []
-  let isRecording = false
-
-  onPatch(store, (patch, reversePatch) => {
-    // Don't record patches when we're applying undo/redo
-    if (store.isApplyingPatch) return
-
-    // Don't record patches to the history stacks themselves (prevents recursion)
-    if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {
-      return
-    }
-
-    // Don't record play/pause state changes in undo history
-    if (patch.path === '/isPlaying') {
-      return
-    }
-
-    // Don't record stopped by user state changes in undo history
-    if (patch.path === '/isStoppedByTheUser') {
-      return
-    }
-
-    // Don't record node selection changes in undo history
-    if (patch.path === '/selectedNodeId') {
-      return
-    }
-
-    // Don't record property change counter updates (these are just for React re-renders)
-    if (patch.path === '/propertyChangeCounter') {
-      return
-    }
-
-    // Don't record graph change counter updates (these are just for React re-renders)
-    if (patch.path === '/graphChangeCounter') {
-      return
-    }
-
-    // Don't record modification state changes (prevents recursion)
-    if (patch.path === '/isProjectModified') {
-      return
-    }
-
-    // Don't record node runtime state changes (these are transient, not project data)
-    if (patch.path.startsWith('/nodeStates')) {
-      return
-    }
-
-    // Don't record node state change counter updates (these are just for React re-renders)
-    if (patch.path === '/nodeStateChangeCounter') {
-      return
-    }
-
-    // Don't record audioNodeCreated flag changes (these are lifecycle flags, not project data)
-    if (patch.path.includes('/audioNodeCreated')) {
-      return
-    }
-
-    // Don't record patches when creating examples (after checking for re-render counters)
-    if (store.isCreatingExample) return
-
-    // Don't record patches when clearing all nodes (after checking for re-render counters)
-    if (store.isClearingAllNodes) return
-
-    // Don't record patches when updating play state automatically (after checking for re-render counters)
-    if (store.isUpdatingPlayState) {
-      return
-    }
-
-    // Don't record patches when loading a project (after checking for re-render counters)
-    if (store.isLoadingProject) return
-
-    // Mark project as modified for meaningful changes
-    if (!store.isProjectModified) {
-      store.markProjectModified()
-    }
-
-    // Start recording if not already
-    if (!isRecording) {
-      isRecording = true
-      patchRecorder = []
-
-      // Use microtask to batch patches that happen in the same tick
-      queueMicrotask(() => {
-        if (patchRecorder.length > 0) {
-          // Filter out nodeStateChangeCounter patches that might have slipped through
-          const filteredPatches = patchRecorder.filter(
-            p => p.forward.path !== '/nodeStateChangeCounter'
-          )
-
-          if (filteredPatches.length > 0) {
-            // Add to undo stack using store action
-            store.addToUndoStack({
-              forward: filteredPatches.map(p => p.forward),
-              inverse: filteredPatches.map(p => p.inverse).reverse(),
-            })
-          }
-        }
-
-        isRecording = false
-        patchRecorder = []
-      })
-    }
-
-    // Record the patch
-    patchRecorder.push({ forward: patch, inverse: reversePatch })
-  })
-
-  // Undo/redo actions are now properly implemented in the MST model
-
+  // The UndoManager will use getRoot(self) to find the target store automatically
   return store
 }
 

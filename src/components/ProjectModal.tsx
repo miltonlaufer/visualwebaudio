@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { getSnapshot, applySnapshot } from 'mobx-state-tree'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { rootStore } from '~/stores/RootStore'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 import {
   projectOperations,
@@ -122,14 +123,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       setCurrentProjectId(null)
       setCurrentProjectName('')
       // Reset modification state when project is cleared
-      store.setProjectModified(false)
+      rootStore.setProjectModified(false)
     }
   }, [store.adaptedNodes.length, currentProjectId, currentProjectName, store])
 
   // Handle beforeunload warning
   useEffect(() => {
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (store.adaptedNodes.length > 0 && store.isProjectModified) {
+      if (store.adaptedNodes.length > 0 && rootStore.isProjectModified) {
         const message = 'You will lose your changes. Are you sure you want to leave?'
         event.preventDefault()
         event.returnValue = message
@@ -139,7 +140,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [store.adaptedNodes.length, store.isProjectModified, store])
+  }, [store.adaptedNodes.length, rootStore.isProjectModified, store])
 
   const loadSavedProjects = async () => {
     try {
@@ -201,7 +202,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       setTimeout(() => setStorageSuccess(null), 3000)
 
       // Mark project as unmodified after successful save
-      store.setProjectModified(false)
+      rootStore.setProjectModified(false)
     } catch (error) {
       setStorageError('Failed to save project: ' + (error as Error).message)
     }
@@ -239,7 +240,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
       setTimeout(() => setStorageSuccess(null), 3000)
 
       // Mark project as unmodified after successful save
-      store.setProjectModified(false)
+      rootStore.setProjectModified(false)
     } catch (error) {
       setStorageError('Failed to save project: ' + (error as Error).message)
     }
@@ -300,7 +301,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           store.init()
 
           // Force React re-render by incrementing graph change counter
-          store.forceRerender()
+          rootStore.forceRerender()
 
           // Set current project info
           setCurrentProjectId(project.id || null)
@@ -310,7 +311,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           setTimeout(() => setStorageSuccess(null), 3000)
 
           // Mark project as unmodified after successful load
-          store.setProjectModified(false)
+          rootStore.setProjectModified(false)
 
           // Close the modal after a successful load
           onClose()
@@ -466,7 +467,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           store.init()
 
           // Force React re-render by incrementing graph change counter
-          store.forceRerender()
+          rootStore.forceRerender()
 
           // Clear current project info since this is an import
           setCurrentProjectId(null)
@@ -476,7 +477,7 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
           setTimeout(() => setImportSuccess(false), 3000)
 
           // Mark project as unmodified after successful import
-          store.setProjectModified(false)
+          rootStore.setProjectModified(false)
 
           // Close the modal after successful import
           onClose()
@@ -769,14 +770,14 @@ const ProjectModal: React.FC<ProjectModalProps> = observer(({ isOpen, onClose })
               <div className="grid grid-cols-2 gap-3">
                 <button
                   onClick={handleSave}
-                  disabled={store.adaptedNodes.length === 0 || !store.isProjectModified}
+                  disabled={store.adaptedNodes.length === 0 || !rootStore.isProjectModified}
                   className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save
                 </button>
                 <button
                   onClick={handleShowSaveAsDialog}
-                  disabled={store.adaptedNodes.length === 0 || !store.isProjectModified}
+                  disabled={store.adaptedNodes.length === 0 || !rootStore.isProjectModified}
                   className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                 >
                   Save As...

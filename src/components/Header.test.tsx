@@ -11,9 +11,13 @@ const mockStore = {
   visualEdges: [],
 }
 
-vi.mock('~/stores/AudioGraphStore', () => ({
-  useAudioGraphStore: () => mockStore,
-}))
+vi.mock('~/stores/AudioGraphStore', async importOriginal => {
+  const actual = (await importOriginal()) as any
+  return {
+    ...actual,
+    useAudioGraphStore: () => mockStore,
+  }
+})
 
 // Mock the ProjectModal component
 vi.mock('./ProjectModal', () => ({

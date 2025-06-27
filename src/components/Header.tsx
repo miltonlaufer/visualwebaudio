@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { rootStore } from '~/stores/RootStore'
 import ProjectModal from './ProjectModal'
 import ExportJSButton from './ExportJSButton'
 import ExamplesDropdown from './ExamplesDropdown'
@@ -101,7 +102,7 @@ const Header: React.FC<HeaderProps> = observer(
 
     const handleTogglePlayback = async () => {
       // If recording is active and we're about to stop/pause playback, stop recording first
-      if (store.isRecording && store.isPlaying) {
+      if (store.isRecording && rootStore.isPlaying) {
         await stopRecordingAndSave()
       }
 
@@ -196,7 +197,7 @@ const Header: React.FC<HeaderProps> = observer(
 
         await example.create()
         // Mark project as unmodified after loading example (examples are a fresh starting point)
-        store.setProjectModified(false)
+        rootStore.setProjectModified(false)
         setIsMobileMenuOpen(false)
         setIsExamplesOpen(false)
       },
@@ -266,12 +267,12 @@ const Header: React.FC<HeaderProps> = observer(
             <button
               onClick={handleTogglePlayback}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors ${
-                store.isPlaying
+                rootStore.isPlaying
                   ? 'bg-red-800 text-white hover:bg-red-700'
                   : 'bg-green-800 text-white hover:bg-green-700'
               }`}
             >
-              {store.isPlaying ? (
+              {rootStore.isPlaying ? (
                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                 </svg>
@@ -280,12 +281,12 @@ const Header: React.FC<HeaderProps> = observer(
                   <path d="M8 5v14l11-7z" />
                 </svg>
               )}
-              <span className="ml-2 hidden sm:inline">{store.isPlaying ? 'Stop' : 'Play'}</span>
+              <span className="ml-2 hidden sm:inline">{rootStore.isPlaying ? 'Stop' : 'Play'}</span>
             </button>
 
             <button
               onClick={handleToggleRecording}
-              disabled={!store.isPlaying && !store.isRecording}
+              disabled={!rootStore.isPlaying && !store.isRecording}
               className={`flex items-center px-3 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 store.isRecording
                   ? 'bg-red-600 text-white hover:bg-red-500'

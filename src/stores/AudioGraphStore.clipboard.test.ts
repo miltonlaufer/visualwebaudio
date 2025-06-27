@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createAudioGraphStore } from './AudioGraphStore'
-import type { IAudioGraphStore } from './AudioGraphStore'
+import { RootStore, type IRootStore } from '~/stores/RootStore'
+import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 
 // Mock navigator.clipboard
 const mockClipboard = {
@@ -22,10 +22,12 @@ Object.defineProperty(navigator, 'permissions', {
 })
 
 describe('AudioGraphStore - Clipboard Functionality', () => {
-  let store: IAudioGraphStore
+  let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
     store.loadMetadata()
 
     // Reset clipboard mocks

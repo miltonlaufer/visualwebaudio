@@ -1,29 +1,32 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { useRootStore } from '~/stores/RootStore'
 
 const FrequencyAnalyzer: React.FC = observer(() => {
   const store = useAudioGraphStore()
+  const rootStore = useRootStore()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const animationRef = useRef<number | undefined>(undefined)
   const [isActive, setIsActive] = useState(false)
 
-  useEffect(() => {
+  const shouldShowAnalyzer = useMemo(() => {
     // Check if audio is playing and there are connections to destination
     const destinationConnections = store.audioConnections.filter(conn => {
       const targetNode = store.adaptedNodes.find(node => node.id === conn.targetNodeId)
       return targetNode?.nodeType === 'AudioDestinationNode'
     })
 
-    const hasActiveAudio =
-      store.isPlaying && destinationConnections.length > 0 && store.frequencyAnalyzer
+    return rootStore.isPlaying && destinationConnections.length > 0 && store.frequencyAnalyzer
+  }, [store.audioConnections, store.adaptedNodes, rootStore.isPlaying, store.frequencyAnalyzer])
 
-    if (hasActiveAudio) {
+  useEffect(() => {
+    if (shouldShowAnalyzer) {
       setIsActive(true)
     } else {
       setIsActive(false)
     }
-  }, [store.audioConnections, store.adaptedNodes, store.isPlaying, store.frequencyAnalyzer])
+  }, [shouldShowAnalyzer])
 
   // Animation loop for drawing the frequency bars
   useEffect(() => {
@@ -159,9 +162,11 @@ const FrequencyAnalyzer: React.FC = observer(() => {
           className="w-full h-24 bg-black rounded border border-gray-200 dark:border-gray-600"
           style={{ imageRendering: 'pixelated' }}
         />
-        {!isActive && (
+        {!shouldShowAnalyzer && (
           <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded text-white text-xs text-center">
-            {store.isPlaying ? 'No audio to destination' : 'Connect audio to destination and play'}
+            {rootStore.isPlaying
+              ? 'No audio to destination'
+              : 'Connect audio to destination and play'}
           </div>
         )}
       </div>

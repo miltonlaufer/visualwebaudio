@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import { AudioGraphStore } from './AudioGraphStore'
+import { rootStore } from './RootStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
 import { onPatch } from 'mobx-state-tree'
 import { waitFor } from '@testing-library/react'
@@ -95,44 +95,16 @@ vi.mock('~/services/CustomNodeFactory', () => ({
   },
 }))
 
-// Create a mock customNodeStore outside of beforeEach
-const createMockCustomNodeStore = () => ({
-  getNode: vi.fn(() => {
-    // Return a mock node with the expected interface
-    return {
-      setProperty: vi.fn(),
-      setOutput: vi.fn(),
-    }
-  }),
-  addNode: vi.fn(),
-  removeNode: vi.fn(),
-  connectNodes: vi.fn(),
-  disconnectNodes: vi.fn(),
-  clear: vi.fn(),
-  setBridgeUpdateCallback: vi.fn(),
-  setAudioContext: vi.fn(),
-})
+// Removed unused createMockCustomNodeStore function
 
 describe('AudioParam Connection Tests', () => {
   let store: AudioGraphStoreType
-  let mockCustomNodeStore: ReturnType<typeof createMockCustomNodeStore>
 
   beforeEach(async () => {
     vi.clearAllMocks()
 
-    // Create a fresh mock for each test
-    mockCustomNodeStore = createMockCustomNodeStore()
-
-    // Create the store with customNodeStore in the environment
-    store = AudioGraphStore.create(
-      {
-        undoStack: [],
-        redoStack: [],
-      },
-      {
-        customNodeStore: mockCustomNodeStore,
-      }
-    )
+    // Use the rootStore's audioGraph
+    store = rootStore.audioGraph
 
     // Set up patch middleware for automatic undo/redo tracking
     let patchRecorder: { forward: any; inverse: any }[] = []
@@ -147,7 +119,7 @@ describe('AudioParam Connection Tests', () => {
       if (store.isLoadingProject) return
 
       // Don't record patches to the history stacks themselves
-      if (patch.path.startsWith('/undoStack') || patch.path.startsWith('/redoStack')) {
+      if (patch.path.startsWith('/history/')) {
         return
       }
 
@@ -159,8 +131,8 @@ describe('AudioParam Connection Tests', () => {
       if (patch.path === '/isProjectModified') return
 
       // Mark project as modified for meaningful changes
-      if (!store.isProjectModified) {
-        store.markProjectModified()
+      if (!rootStore.isProjectModified) {
+        rootStore.markProjectModified()
       }
 
       // Start recording if not already
@@ -171,11 +143,8 @@ describe('AudioParam Connection Tests', () => {
         // Use microtask to batch patches that happen in the same tick
         queueMicrotask(() => {
           if (patchRecorder.length > 0) {
-            // Add to undo stack using store action
-            store.addToUndoStack({
-              forward: patchRecorder.map(p => p.forward),
-              inverse: patchRecorder.map(p => p.inverse).reverse(),
-            })
+            // Note: UndoManager now automatically tracks changes via middleware
+            // No need to manually add to undo stack
           }
 
           isRecording = false

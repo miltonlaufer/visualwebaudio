@@ -1,6 +1,7 @@
 import { types, Instance, getSnapshot, applySnapshot } from 'mobx-state-tree'
-import { AudioGraphStore, createAudioGraphStore } from './AudioGraphStore'
+import { AudioGraphStore } from './AudioGraphStore'
 import { customNodeStore } from './CustomNodeStore'
+import { createContext, useContext } from 'react'
 
 // Version migration functions
 const migrations = {
@@ -75,8 +76,7 @@ const migrations = {
         audioConnections: data.audioConnections || [],
         selectedNodeId: data.selectedNodeId,
         isPlaying: false,
-        undoStack: [],
-        redoStack: [],
+        history: {},
         propertyChangeCounter: 0,
         graphChangeCounter: 0,
         isProjectModified: false,
@@ -95,6 +95,20 @@ export const RootStore = types
   .model('RootStore', {
     version: types.optional(types.string, CURRENT_VERSION),
     audioGraph: AudioGraphStore,
+    // UI and project state properties moved from AudioGraphStore
+    selectedNodeId: types.maybe(types.string),
+    isPlaying: types.optional(types.boolean, false),
+    // Add a counter to track property changes for React re-renders
+    propertyChangeCounter: types.optional(types.number, 0),
+    // Add a counter to track graph structure changes for React re-renders
+    graphChangeCounter: types.optional(types.number, 0),
+    // Track if the current project has been modified (default false for new projects)
+    isProjectModified: types.optional(types.boolean, false),
+    // Counter to force reactivity when node states change
+    nodeStateChangeCounter: types.optional(types.number, 0),
+    // Track if undo/redo is currently in progress to avoid marking project as modified
+    isUndoRedoInProgress: types.optional(types.boolean, false),
+
     // Add other stores here as needed
     // ui: UIStore,
     // settings: SettingsStore,
@@ -111,6 +125,19 @@ export const RootStore = types
     get needsMigration(): boolean {
       return self.version !== CURRENT_VERSION
     },
+
+    get selectedNode() {
+      if (!self.selectedNodeId) return undefined
+      return self.audioGraph.adaptedNodes.find(node => node.id === self.selectedNodeId)
+    },
+
+    get canUndo() {
+      return self.audioGraph.canUndo
+    },
+
+    get canRedo() {
+      return self.audioGraph.canRedo
+    },
   }))
 
   .actions(self => {
@@ -125,9 +152,59 @@ export const RootStore = types
         self.isInitialized = true
       },
 
-      // Set up the audio graph with patch middleware
-      setupAudioGraphWithPatchMiddleware(audioGraphInstance: any) {
-        ;(self as any).audioGraph = audioGraphInstance
+      // Undo/Redo actions
+      undo() {
+        self.isUndoRedoInProgress = true
+        try {
+          self.audioGraph.undo()
+        } finally {
+          self.isUndoRedoInProgress = false
+        }
+      },
+
+      redo() {
+        self.isUndoRedoInProgress = true
+        try {
+          self.audioGraph.redo()
+        } finally {
+          self.isUndoRedoInProgress = false
+        }
+      },
+
+      // UI state actions
+      selectNode(nodeId: string | undefined) {
+        self.selectedNodeId = nodeId
+      },
+
+      setIsPlaying(value: boolean) {
+        self.isPlaying = value
+      },
+
+      setProjectModified(value: boolean) {
+        self.isProjectModified = value
+      },
+
+      markProjectModified() {
+        // Only mark as modified if we're not in the middle of undo/redo
+        if (!self.isUndoRedoInProgress) {
+          self.isProjectModified = true
+        }
+      },
+
+      setUndoRedoInProgress(value: boolean) {
+        self.isUndoRedoInProgress = value
+      },
+
+      forceRerender() {
+        self.graphChangeCounter += 1
+      },
+
+      incrementPropertyChangeCounter() {
+        self.propertyChangeCounter += 1
+      },
+
+      incrementNodeStateChangeCounter() {
+        self.nodeStateChangeCounter += 1
       },
 
       // Update version
@@ -172,22 +249,42 @@ export const RootStore = types
           // Migrate data if needed
           const migratedData = actions.migrateData(projectData)
 
-          // Extract audio graph data
+          // Extract audio graph data (only core audio data)
           const audioGraphData = migratedData.audioGraph || {
             adaptedNodes: migratedData.adaptedNodes || [],
             visualEdges: migratedData.visualEdges || [],
             audioConnections: migratedData.audioConnections || [],
-            selectedNodeId: undefined,
-            isPlaying: false,
-            undoStack: [],
-            redoStack: [],
-            propertyChangeCounter: 0,
-            graphChangeCounter: 0,
-            isProjectModified: false,
+            history: {},
+          }
+
+          // Extract UI state (moved to RootStore)
+          const uiState = {
+            selectedNodeId: migratedData.audioGraph?.selectedNodeId || migratedData.selectedNodeId,
+            isPlaying: migratedData.audioGraph?.isPlaying || migratedData.isPlaying || false,
+            propertyChangeCounter:
+              migratedData.audioGraph?.propertyChangeCounter ||
+              migratedData.propertyChangeCounter ||
+              0,
+            graphChangeCounter:
+              migratedData.audioGraph?.graphChangeCounter || migratedData.graphChangeCounter || 0,
+            isProjectModified:
+              migratedData.audioGraph?.isProjectModified || migratedData.isProjectModified || false,
+            nodeStateChangeCounter:
+              migratedData.audioGraph?.nodeStateChangeCounter ||
+              migratedData.nodeStateChangeCounter ||
+              0,
           }
 
           // Apply to audio graph store
           applySnapshot(self.audioGraph, audioGraphData)
+
+          // Apply UI state to root store
+          self.selectedNodeId = uiState.selectedNodeId
+          self.isPlaying = uiState.isPlaying
+          self.propertyChangeCounter = uiState.propertyChangeCounter
+          self.graphChangeCounter = uiState.graphChangeCounter
+          self.isProjectModified = uiState.isProjectModified
+          self.nodeStateChangeCounter = uiState.nodeStateChangeCounter
 
           // Apply custom nodes if available
           if (migratedData.customNodes) {
@@ -215,15 +312,30 @@ export const RootStore = types
         const audioGraphSnapshot = getSnapshot(self.audioGraph)
         const customNodeSnapshot = getSnapshot(customNodeStore)
 
+        // Combine audio graph data with UI state for export
+        const combinedAudioGraph = {
+          ...audioGraphSnapshot,
+          selectedNodeId: self.selectedNodeId,
+          isPlaying: self.isPlaying,
+          propertyChangeCounter: self.propertyChangeCounter,
+          graphChangeCounter: self.graphChangeCounter,
+          isProjectModified: self.isProjectModified,
+          nodeStateChangeCounter: self.nodeStateChangeCounter,
+        }
+
         return {
           version: CURRENT_VERSION,
           timestamp: new Date().toISOString(),
-          audioGraph: audioGraphSnapshot,
+          audioGraph: combinedAudioGraph,
           customNodes: customNodeSnapshot.nodes,
           // Legacy format for backward compatibility
           adaptedNodes: audioGraphSnapshot.adaptedNodes,
           visualEdges: audioGraphSnapshot.visualEdges,
           audioConnections: audioGraphSnapshot.audioConnections,
+          // UI state at root level for backward compatibility
+          selectedNodeId: self.selectedNodeId,
+          isPlaying: self.isPlaying,
+          isProjectModified: self.isProjectModified,
         }
       },
 
@@ -251,16 +363,24 @@ export const RootStore = types
 
 export interface IRootStore extends Instance<typeof RootStore> {}
 
-// Create the audio graph store with proper patch middleware for undo/redo
-const audioGraphStoreInstance = createAudioGraphStore()
-
 // Create and export the root store instance
 export const rootStore = RootStore.create({
-  audioGraph: getSnapshot(audioGraphStoreInstance),
+  audioGraph: {
+    history: {},
+  },
 })
-
-// Use the action to replace the audioGraph with the factory-created instance that has patch middleware
-rootStore.setupAudioGraphWithPatchMiddleware(audioGraphStoreInstance)
 
 // Export the audio graph store for backward compatibility
 export const audioGraphStore = rootStore.audioGraph
+
+// React Context for RootStore
+export const RootStoreContext = createContext<IRootStore | null>(null)
+
+export const useRootStore = () => {
+  const store = useContext(RootStoreContext)
+  if (!store) {
+    // Fallback to global rootStore for backward compatibility
+    return rootStore
+  }
+  return store
+}

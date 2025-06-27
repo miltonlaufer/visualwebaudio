@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { useRootStore } from '~/stores/RootStore'
 import FrequencyAnalyzer from './FrequencyAnalyzer'
 
 interface PropertyPanelProps {
@@ -9,9 +10,8 @@ interface PropertyPanelProps {
 
 const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
   const store = useAudioGraphStore()
-  const selectedNode = store.selectedNodeId
-    ? store.adaptedNodes.find(n => n.id === store.selectedNodeId)
-    : null
+  const rootStore = useRootStore()
+  const selectedNode = rootStore.selectedNode
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
 
   // Helper function to safely get property value whether properties is a Map or object

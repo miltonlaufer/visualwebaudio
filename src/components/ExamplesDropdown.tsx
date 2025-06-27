@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { useOnClickOutside } from 'usehooks-ts'
 import { useExamples, type Example } from './Examples'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { rootStore } from '~/stores/RootStore'
 import { confirmUnsavedChanges } from '~/utils/confirmUnsavedChanges'
 
 interface ExamplesDropdownProps {
@@ -44,7 +45,7 @@ const ExamplesDropdown: React.FC<ExamplesDropdownProps> = observer(
 
         await example.create()
         // Mark project as unmodified after loading example (examples are a fresh starting point)
-        store.setProjectModified(false)
+        rootStore.setProjectModified(false)
         setIsOpen(false)
         onExampleSelect?.(example)
         onClose?.()

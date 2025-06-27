@@ -1,13 +1,16 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { type INodeAdapter } from './NodeAdapter'
-import { createAudioGraphStore } from './AudioGraphStore'
+import { RootStore, type IRootStore } from './RootStore'
+import type { AudioGraphStoreType } from './AudioGraphStore'
 import { waitFor } from '@testing-library/react'
 
 describe('NodeAdapter', () => {
-  let store: any
+  let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
     store.loadMetadata()
   })
 
@@ -93,11 +96,12 @@ describe('NodeAdapter', () => {
       const oscNode = store.adaptedNodes.find((n: any) => n.id === oscId)
       const gainNode = store.adaptedNodes.find((n: any) => n.id === gainId)
 
-      oscNode.updateProperty('frequency', 880)
-      gainNode.updateProperty('gain', 0.5)
+      // Update properties
+      oscNode?.updateProperty('frequency', 880)
+      gainNode?.updateProperty('gain', 0.5)
 
-      expect(oscNode.properties.get('frequency')).toBe(880)
-      expect(gainNode.properties.get('gain')).toBe(0.5)
+      expect(oscNode?.properties.get('frequency')).toBe(880)
+      expect(gainNode?.properties.get('gain')).toBe(0.5)
     })
   })
 
@@ -134,12 +138,12 @@ describe('NodeAdapter', () => {
 
       const targetNode = store.adaptedNodes.find((n: INodeAdapter) => n.id === targetId)
 
-      targetNode.addInputConnection(sourceId, 'output', 'input')
+      targetNode?.addInputConnection(sourceId, 'output', 'input')
 
-      expect(targetNode.inputConnections.length).toBe(1)
-      expect(targetNode.inputConnections[0].sourceNodeId).toBe(sourceId)
-      expect(targetNode.inputConnections[0].sourceOutput).toBe('output')
-      expect(targetNode.inputConnections[0].targetInput).toBe('input')
+      expect(targetNode?.inputConnections.length).toBe(1)
+      expect(targetNode?.inputConnections[0].sourceNodeId).toBe(sourceId)
+      expect(targetNode?.inputConnections[0].sourceOutput).toBe('output')
+      expect(targetNode?.inputConnections[0].targetInput).toBe('input')
     })
 
     it('should handle output connections', () => {
@@ -148,12 +152,12 @@ describe('NodeAdapter', () => {
 
       const sourceNode = store.adaptedNodes.find((n: INodeAdapter) => n.id === sourceId)
 
-      sourceNode.addOutputConnection(targetId, 'output', 'input')
+      sourceNode?.addOutputConnection(targetId, 'output', 'input')
 
-      expect(sourceNode.outputConnections.length).toBe(1)
-      expect(sourceNode.outputConnections[0].targetNodeId).toBe(targetId)
-      expect(sourceNode.outputConnections[0].sourceOutput).toBe('output')
-      expect(sourceNode.outputConnections[0].targetInput).toBe('input')
+      expect(sourceNode?.outputConnections.length).toBe(1)
+      expect(sourceNode?.outputConnections[0].targetNodeId).toBe(targetId)
+      expect(sourceNode?.outputConnections[0].sourceOutput).toBe('output')
+      expect(sourceNode?.outputConnections[0].targetInput).toBe('input')
     })
 
     it('should remove connections correctly', () => {

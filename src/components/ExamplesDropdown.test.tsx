@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import { RootStore, type IRootStore } from '~/stores/RootStore'
 import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 import { AudioGraphStoreContext } from '~/stores/AudioGraphStore'
 import ExamplesDropdown from './ExamplesDropdown'
@@ -61,9 +61,11 @@ const TestWrapper: React.FC<{ store: AudioGraphStoreType; children: React.ReactN
 
 describe('ExamplesDropdown - Project Modification Tracking', () => {
   let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
     store.loadMetadata()
     vi.clearAllMocks()
     mockConfirm.mockReturnValue(true)
@@ -71,7 +73,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
   describe('Desktop variant', () => {
     it('should not show confirmation dialog when project is not modified', async () => {
-      expect(store.isProjectModified).toBe(false)
+      expect(rootStore.isProjectModified).toBe(false)
 
       render(
         <TestWrapper store={store}>
@@ -97,7 +99,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
     it('should show confirmation dialog when project is modified and user confirms', async () => {
       // Add a node to modify the project
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.isProjectModified).toBe(true)
+      expect(rootStore.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(true)
 
@@ -127,7 +129,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
     it('should not load example when project is modified and user cancels', async () => {
       // Add a node to modify the project
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.isProjectModified).toBe(true)
+      expect(rootStore.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(false) // User cancels
 
@@ -157,7 +159,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
 
   describe('Mobile variant', () => {
     it('should not show confirmation dialog when project is not modified', async () => {
-      expect(store.isProjectModified).toBe(false)
+      expect(rootStore.isProjectModified).toBe(false)
 
       render(
         <TestWrapper store={store}>
@@ -183,7 +185,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
     it('should show confirmation dialog when project is modified and user confirms', async () => {
       // Add a node to modify the project
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.isProjectModified).toBe(true)
+      expect(rootStore.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(true)
 
@@ -213,7 +215,7 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
     it('should not load example when project is modified and user cancels', async () => {
       // Add a node to modify the project
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.isProjectModified).toBe(true)
+      expect(rootStore.isProjectModified).toBe(true)
 
       mockConfirm.mockReturnValue(false) // User cancels
 
@@ -265,10 +267,12 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
       })
 
       // Should call the callback with the example after creation completes
-      expect(onExampleSelectMock).toHaveBeenCalledWith(mockExample)
+      await waitFor(() => {
+        expect(onExampleSelectMock).toHaveBeenCalledWith(mockExample)
+      })
     })
 
-    it('should call onClose callback after successful example selection', async () => {
+    it('should call onClose callback when closing dropdown', async () => {
       const onCloseMock = vi.fn()
 
       render(
@@ -281,17 +285,14 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
       const dropdownButton = screen.getByText('Quick Examples')
       fireEvent.click(dropdownButton)
 
-      // Click on the example
+      // Click on the example (which should close the dropdown)
       const exampleButton = screen.getByText('Test Example')
       fireEvent.click(exampleButton)
 
-      // Wait for the async example.create() to complete
+      // Should call the onClose callback
       await waitFor(() => {
-        expect(mockExample.create).toHaveBeenCalled()
+        expect(onCloseMock).toHaveBeenCalled()
       })
-
-      // Should call the onClose callback after creation completes
-      expect(onCloseMock).toHaveBeenCalled()
     })
 
     it('should not call callbacks when user cancels confirmation', async () => {
@@ -320,9 +321,13 @@ describe('ExamplesDropdown - Project Modification Tracking', () => {
       const exampleButton = screen.getByText('Test Example')
       fireEvent.click(exampleButton)
 
-      // Should not call callbacks since user cancelled
+      // Should show confirmation dialog
+      expect(mockConfirm).toHaveBeenCalled()
+
+      // Should NOT call any callbacks since user cancelled
       expect(onExampleSelectMock).not.toHaveBeenCalled()
       expect(onCloseMock).not.toHaveBeenCalled()
+      expect(mockExample.create).not.toHaveBeenCalled()
     })
   })
 })

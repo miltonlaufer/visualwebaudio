@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { LangChainService, type AudioGraphAction } from './LangChainService'
-import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import { RootStore, type IRootStore } from '~/stores/RootStore'
+import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 
 // Mock the ChatOpenAI
 vi.mock('@langchain/openai', () => ({
@@ -23,7 +24,8 @@ vi.mock('@langchain/openai', () => ({
 
 describe('LangChainService', () => {
   let service: LangChainService
-  let store: any
+  let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -33,7 +35,8 @@ describe('LangChainService', () => {
       model: 'gpt-4',
       temperature: 0.7,
     })
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
     store.loadMetadata()
   })
 

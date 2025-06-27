@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createAudioGraphStore } from '../stores/AudioGraphStore'
+import { RootStore, type IRootStore } from '../stores/RootStore'
 import type { AudioGraphStoreType } from '../stores/AudioGraphStore'
 
 // Mock Web Audio API
@@ -30,10 +30,12 @@ const MockAudioContext = vi.fn(() => mockAudioContext)
 
 describe('Audio Bug Fix - Adding/Removing Unconnected Nodes', () => {
   let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
     vi.clearAllMocks()
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
   })
 
   it('should not disrupt existing audio when adding unconnected nodes', async () => {

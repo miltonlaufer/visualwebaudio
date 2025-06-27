@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { createAudioGraphStore } from '~/stores/AudioGraphStore'
+import { RootStore, type IRootStore } from '~/stores/RootStore'
+import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 import customNodesMetadataJson from '~/types/custom-nodes-metadata.json'
 
 describe('Sound File Player - Basic Functionality Test', () => {
-  let store: any
+  let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
-    store = createAudioGraphStore()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
   })
 
   it('should create Sound File Player example nodes correctly', () => {
@@ -16,8 +19,7 @@ describe('Sound File Player - Basic Functionality Test', () => {
     const destId = store.addAdaptedNode('AudioDestinationNode', { x: 1015, y: 162 })
 
     // Verify nodes were created
-    expect(store.adaptedNodes.length).toBe(3)
-
+    expect(store.adaptedNodes).toHaveLength(3)
     const soundFileNode = store.adaptedNodes.find((n: any) => n.nodeType === 'SoundFileNode')
     const buttonNode = store.adaptedNodes.find((n: any) => n.nodeType === 'ButtonNode')
     const destNode = store.adaptedNodes.find((n: any) => n.nodeType === 'AudioDestinationNode')
@@ -25,9 +27,14 @@ describe('Sound File Player - Basic Functionality Test', () => {
     expect(soundFileNode).toBeDefined()
     expect(buttonNode).toBeDefined()
     expect(destNode).toBeDefined()
-    expect(soundFileNode.id).toBe(soundFileId)
-    expect(buttonNode.id).toBe(buttonId)
-    expect(destNode.id).toBe(destId)
+    expect(soundFileNode?.id).toBe(soundFileId)
+    expect(buttonNode?.id).toBe(buttonId)
+    expect(destNode?.id).toBe(destId)
+
+    // Check that we have the expected node types
+    expect(soundFileNode?.nodeType).toBe('SoundFileNode')
+    expect(buttonNode?.nodeType).toBe('ButtonNode')
+    expect(destNode?.nodeType).toBe('AudioDestinationNode')
   })
 
   it('should set properties correctly', () => {
@@ -46,12 +53,12 @@ describe('Sound File Player - Basic Functionality Test', () => {
     const buttonNode = store.adaptedNodes.find((n: any) => n.nodeType === 'ButtonNode')
 
     // Verify properties were set
-    expect(buttonNode.properties.get('label')).toBe('Play Sound')
-    expect(buttonNode.properties.get('outputValue')).toBe(1)
-    expect(soundFileNode.properties.get('gain')).toBe(1)
-    expect(soundFileNode.properties.get('loop')).toBe(false)
-    expect(soundFileNode.properties.get('playbackRate')).toBe(1)
-    expect(soundFileNode.properties.get('fileName')).toBe('test-sound.wav')
+    expect(buttonNode?.properties.get('label')).toBe('Play Sound')
+    expect(buttonNode?.properties.get('outputValue')).toBe(1)
+    expect(soundFileNode?.properties.get('gain')).toBe(1)
+    expect(soundFileNode?.properties.get('loop')).toBe(false)
+    expect(soundFileNode?.properties.get('playbackRate')).toBe(1)
+    expect(soundFileNode?.properties.get('fileName')).toBe('test-sound.wav')
   })
 
   it('should create connections correctly', () => {
@@ -63,23 +70,23 @@ describe('Sound File Player - Basic Functionality Test', () => {
     store.addEdge(buttonId, soundFileId, 'trigger', 'trigger')
     store.addEdge(soundFileId, destId, 'output', 'input')
 
-    // Verify connections were created
-    expect(store.visualEdges.length).toBe(2)
+    // Verify connections were created correctly
+    expect(store.visualEdges).toHaveLength(2)
 
     const buttonToSoundFile = store.visualEdges.find(
-      (e: any) => e.source === buttonId && e.target === soundFileId
+      (edge: any) => edge.source === buttonId && edge.target === soundFileId
     )
     const soundFileToDestination = store.visualEdges.find(
-      (e: any) => e.source === soundFileId && e.target === destId
+      (edge: any) => edge.source === soundFileId && edge.target === destId
     )
 
     expect(buttonToSoundFile).toBeDefined()
-    expect(buttonToSoundFile.sourceHandle).toBe('trigger')
-    expect(buttonToSoundFile.targetHandle).toBe('trigger')
-
     expect(soundFileToDestination).toBeDefined()
-    expect(soundFileToDestination.sourceHandle).toBe('output')
-    expect(soundFileToDestination.targetHandle).toBe('input')
+    expect(buttonToSoundFile?.sourceHandle).toBe('trigger')
+    expect(buttonToSoundFile?.targetHandle).toBe('trigger')
+
+    expect(soundFileToDestination?.sourceHandle).toBe('output')
+    expect(soundFileToDestination?.targetHandle).toBe('input')
   })
 
   it('should validate trigger connection from button to sound file', () => {

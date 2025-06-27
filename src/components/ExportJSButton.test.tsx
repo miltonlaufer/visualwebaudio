@@ -42,8 +42,7 @@ describe('ExportJSButton', () => {
     audioConnections: [],
     selectedNodeId: undefined,
     isPlaying: false,
-    undoStack: [],
-    redoStack: [],
+    history: {},
     propertyChangeCounter: 0,
   }
 

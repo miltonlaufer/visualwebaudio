@@ -1,97 +1,43 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { RootStore, type IRootStore } from '~/stores/RootStore'
+import { AudioGraphStoreContext } from '~/stores/AudioGraphStore'
+import { RootStoreContext } from '~/stores/RootStore'
+import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
 import ProjectModal from './ProjectModal'
 
-// Simple mock store
-const mockStore = {
-  adaptedNodes: [],
-  visualEdges: [],
-  setProjectModified: vi.fn(),
-  clearAllNodes: vi.fn(),
-  isProjectModified: false,
-}
-
-// Mock the store hook
-vi.mock('~/stores/AudioGraphStore', () => ({
-  useAudioGraphStore: () => mockStore,
-}))
-
-// Mock CustomNodeStore
-vi.mock('~/stores/CustomNodeStore', () => ({
-  customNodeStore: {
-    getNode: vi.fn(),
-    removeNode: vi.fn(),
-  },
-}))
-
-// Mock database operations
-vi.mock('~/utils/database', () => ({
-  projectOperations: {
-    getAllProjects: vi.fn(() => Promise.resolve([])),
-    saveProject: vi.fn(() => Promise.resolve(1)),
-    updateProject: vi.fn(() => Promise.resolve()),
-    deleteProject: vi.fn(() => Promise.resolve()),
-    projectNameExists: vi.fn(() => Promise.resolve(false)),
-  },
-  recordingOperations: {
-    getAllRecordings: vi.fn(() => Promise.resolve([])),
-    saveRecording: vi.fn(() => Promise.resolve(1)),
-    updateRecordingName: vi.fn(() => Promise.resolve()),
-    deleteRecording: vi.fn(() => Promise.resolve()),
-    getRecordingsByProject: vi.fn(() => Promise.resolve([])),
-  },
-}))
-
-// Mock MST functions
-vi.mock('mobx-state-tree', () => ({
-  getSnapshot: vi.fn(() => ({})),
-  applySnapshot: vi.fn(),
-  types: {
-    model: vi.fn(() => ({
-      props: vi.fn(() => ({
-        actions: vi.fn(() => ({})),
-      })),
-      actions: vi.fn(() => ({})),
-    })),
-    string: 'string',
-    number: 'number',
-    boolean: 'boolean',
-    map: vi.fn(() => ({})),
-    array: vi.fn(() => ({})),
-    optional: vi.fn(() => ({})),
-    frozen: vi.fn(() => ({})),
-  },
-}))
-
-// Mock useOnClickOutside
-vi.mock('usehooks-ts', () => ({
-  useOnClickOutside: vi.fn(),
-}))
-
-describe('ProjectModal - Basic Rendering', () => {
-  const defaultProps = {
-    isOpen: true,
-    onClose: vi.fn(),
-  }
+describe('ProjectModal', () => {
+  let store: AudioGraphStoreType
+  let rootStore: IRootStore
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    rootStore = RootStore.create({ audioGraph: { history: {} } })
+    store = rootStore.audioGraph
+    store.loadMetadata()
   })
 
-  it('should not render when isOpen is false', () => {
-    render(<ProjectModal isOpen={false} onClose={vi.fn()} />)
-
-    expect(screen.queryByText('Project Manager')).not.toBeInTheDocument()
-  })
+  const renderWithStore = (component: React.ReactElement) => {
+    return render(
+      <RootStoreContext.Provider value={rootStore}>
+        <AudioGraphStoreContext.Provider value={store}>{component}</AudioGraphStoreContext.Provider>
+      </RootStoreContext.Provider>
+    )
+  }
 
   it('should render when isOpen is true', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     expect(screen.getByText('Project Manager')).toBeInTheDocument()
   })
 
+  it('should not render when isOpen is false', () => {
+    renderWithStore(<ProjectModal isOpen={false} onClose={vi.fn()} />)
+
+    expect(screen.queryByText('Project Manager')).not.toBeInTheDocument()
+  })
+
   it('should render all four tabs', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     expect(screen.getByText('Projects')).toBeInTheDocument()
     expect(screen.getByText('Recordings')).toBeInTheDocument()
@@ -100,7 +46,7 @@ describe('ProjectModal - Basic Rendering', () => {
   })
 
   it('should show projects tab content by default', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     expect(screen.getByText('Current Project')).toBeInTheDocument()
     expect(screen.getByText('Save')).toBeInTheDocument()
@@ -108,7 +54,7 @@ describe('ProjectModal - Basic Rendering', () => {
   })
 
   it('should switch to export tab when clicked', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('Export'))
 
@@ -116,7 +62,7 @@ describe('ProjectModal - Basic Rendering', () => {
   })
 
   it('should switch to recordings tab when clicked', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('Recordings'))
 
@@ -124,7 +70,7 @@ describe('ProjectModal - Basic Rendering', () => {
   })
 
   it('should switch to import tab when clicked', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     fireEvent.click(screen.getByText('Import'))
 
@@ -132,7 +78,7 @@ describe('ProjectModal - Basic Rendering', () => {
   })
 
   it('should disable save buttons when no nodes exist', () => {
-    render(<ProjectModal {...defaultProps} />)
+    renderWithStore(<ProjectModal isOpen={true} onClose={vi.fn()} />)
 
     const saveButton = screen.getByText('Save')
     const saveAsButton = screen.getByText('Save As...')

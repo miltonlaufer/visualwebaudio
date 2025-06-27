@@ -15,6 +15,7 @@ import type { Connection, Node, Edge, NodeChange, EdgeChange, NodeTypes } from '
 import { observer } from 'mobx-react-lite'
 
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { useRootStore } from '~/stores/RootStore'
 import AdaptedAudioNode from '~/components/AdaptedAudioNode'
 
 const nodeTypes: NodeTypes = {
@@ -73,6 +74,7 @@ interface GraphCanvasProps {
 
 const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   const store = useAudioGraphStore()
+  const rootStore = useRootStore()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
@@ -215,7 +217,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
           data: {
             nodeAdapter: node, // Pass the NodeAdapter instance
           },
-          selected: store.selectedNodeId === node.id,
+          selected: rootStore.selectedNodeId === node.id,
         }
         storeNodes.push(reactFlowNode)
       })
@@ -234,9 +236,9 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     }
   }, [
     store.adaptedNodes.length,
-    store.selectedNodeId,
-    store.propertyChangeCounter,
-    store.graphChangeCounter,
+    rootStore.selectedNodeId,
+    rootStore.propertyChangeCounter,
+    rootStore.graphChangeCounter,
     forceUpdate,
     setNodes,
     nodes.length,
@@ -246,7 +248,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   // Force edges update whenever store changes
   const storeEdges: Edge[] = useMemo(() => {
     // Access the counter to ensure MobX reactivity
-    void store.graphChangeCounter
+    void rootStore.graphChangeCounter
     return store.visualEdges.map(edge => {
       // Determine connection type by looking at the source and target handles
       const sourceNode = store.adaptedNodes.find(node => node.id === edge.source)
@@ -295,7 +297,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         },
       }
     })
-  }, [store.visualEdges, store.adaptedNodes, store.graphChangeCounter])
+  }, [store.visualEdges, store.adaptedNodes, rootStore.graphChangeCounter])
 
   // Update React Flow edges whenever store edges change
   useEffect(() => {
@@ -535,7 +537,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       )}
 
       <ReactFlow
-        key={`${store.graphChangeCounter}-${nodes.length}`}
+        key={`${rootStore.graphChangeCounter}-${nodes.length}`}
         nodes={nodes}
         edges={edges}
         onNodesChange={reactFlowOnNodesChange}

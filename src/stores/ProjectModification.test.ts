@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { createAudioGraphStore } from './AudioGraphStore'
+import { rootStore } from './RootStore'
 import type { AudioGraphStoreType } from './AudioGraphStore'
 
 // Mock Web Audio API
@@ -46,115 +46,126 @@ const MockAudioContext = vi.fn(() => mockAudioContext)
 
 describe('AudioGraphStore - Project Modification Tracking', () => {
   let store: AudioGraphStoreType
+  let root: typeof rootStore
 
   beforeEach(() => {
-    store = createAudioGraphStore()
+    store = rootStore.audioGraph
+    root = rootStore
     store.loadMetadata()
     vi.clearAllMocks()
+
+    // Clean up any existing nodes from previous tests
+    if (store.adaptedNodes.length > 0) {
+      store.clearAllNodes()
+    }
+
+    // Reset project modification state and undo history
+    root.setProjectModified(false)
+    store.history.clear()
   })
 
   describe('Initial State', () => {
     it('should initialize with isProjectModified as false', () => {
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
     })
   })
 
   describe('setProjectModified Action', () => {
     it('should set isProjectModified to true', () => {
-      store.setProjectModified(true)
-      expect(store.isProjectModified).toBe(true)
+      root.setProjectModified(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should set isProjectModified to false', () => {
-      store.setProjectModified(true)
-      store.setProjectModified(false)
-      expect(store.isProjectModified).toBe(false)
+      root.setProjectModified(true)
+      root.setProjectModified(false)
+      expect(root.isProjectModified).toBe(false)
     })
   })
 
   describe('markProjectModified Action', () => {
     it('should mark project as modified', () => {
-      store.markProjectModified()
-      expect(store.isProjectModified).toBe(true)
+      root.markProjectModified()
+      expect(root.isProjectModified).toBe(true)
     })
   })
 
   describe('Automatic Modification Tracking', () => {
     it('should mark project as modified when adding a node', () => {
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
 
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should mark project as modified when removing a node', () => {
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.removeNode(nodeId)
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should mark project as modified when adding an edge', () => {
       const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       const targetId = store.addAdaptedNode('AudioDestinationNode', { x: 200, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.addEdge(sourceId, targetId)
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should mark project as modified when removing an edge', () => {
       const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       const targetId = store.addAdaptedNode('AudioDestinationNode', { x: 200, y: 100 })
       store.addEdge(sourceId, targetId)
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       const edgeId = `${sourceId}-${targetId}-output-input`
       store.removeEdge(edgeId)
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should mark project as modified when updating node property', () => {
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.updateNodeProperty(nodeId, 'frequency', 880)
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should mark project as modified when updating node position', () => {
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.updateNodePosition(nodeId, { x: 200, y: 200 })
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
     })
   })
 
   describe('Operations that should NOT mark project as modified', () => {
     it('should not mark project as modified when selecting a node', () => {
       const nodeId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
-      store.selectNode(nodeId)
+      root.selectNode(nodeId)
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
     })
 
     it('should not mark project as modified when toggling playback', async () => {
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       await store.togglePlayback()
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
     })
 
     it('should not mark project as modified when undoing/redoing', async () => {
@@ -164,55 +175,55 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       // Wait for patch recording
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.undo()
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
     })
 
     it('should not mark project as modified during clearAllNodes operation', () => {
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       store.clearAllNodes()
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
     })
 
     it('should not mark project as modified when changing play state automatically', () => {
       const sourceId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       const targetId = store.addAdaptedNode('AudioDestinationNode', { x: 200, y: 100 })
-      store.setProjectModified(false) // Reset
+      root.setProjectModified(false) // Reset
 
       // This should mark as modified due to edge addition
       store.addEdge(sourceId, targetId)
 
       // The edge addition should mark as modified
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
       // In test mode, isPlaying doesn't auto-start
-      expect(store.isPlaying).toBe(false)
+      expect(root.isPlaying).toBe(false)
 
-      store.setProjectModified(false) // Reset to test the disconnect
+      root.setProjectModified(false) // Reset to test the disconnect
 
       // This should mark as modified due to edge removal
       const edgeId = `${sourceId}-${targetId}-output-input`
       store.removeEdge(edgeId)
 
       // The edge removal should mark as modified
-      expect(store.isProjectModified).toBe(true)
-      expect(store.isPlaying).toBe(false)
+      expect(root.isProjectModified).toBe(true)
+      expect(root.isPlaying).toBe(false)
     })
   })
 
   describe('clearAllNodes behavior with modification tracking', () => {
     it('should reset isProjectModified to false when clearing all nodes', () => {
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
 
       store.clearAllNodes()
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
       expect(store.adaptedNodes.length).toBe(0)
     })
 
@@ -224,12 +235,12 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       store.addEdge(node1, node2)
       store.addEdge(node2, node3)
 
-      expect(store.isProjectModified).toBe(true)
+      expect(root.isProjectModified).toBe(true)
 
       // The clearAllNodes operation should not mark as modified during the clearing process
       store.clearAllNodes()
 
-      expect(store.isProjectModified).toBe(false)
+      expect(root.isProjectModified).toBe(false)
       expect(store.adaptedNodes.length).toBe(0)
       expect(store.visualEdges.length).toBe(0)
     })
@@ -242,8 +253,8 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       // Wait for patch recording
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      const initialUndoLength = store.undoStack.length
-      store.setProjectModified(false) // Reset
+      const initialUndoLength = store.history.undoLevels
+      root.setProjectModified(false) // Reset
 
       // Update property which increments the counter
       store.updateNodeProperty(nodeId, 'frequency', 880)
@@ -252,16 +263,16 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Should have recorded the property change but not the counter increment
-      expect(store.undoStack.length).toBe(initialUndoLength + 1)
-      expect(store.isProjectModified).toBe(true)
+      expect(store.history.undoLevels).toBe(initialUndoLength + 1)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should not record patches for graph change counter', async () => {
       // Wait for initial patch recording
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      const initialUndoLength = store.undoStack.length
-      store.setProjectModified(false) // Reset
+      const initialUndoLength = store.history.undoLevels
+      root.setProjectModified(false) // Reset
 
       // Add node which increments the graph counter
       store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
@@ -270,8 +281,8 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // Should have recorded the node addition but not the counter increment
-      expect(store.undoStack.length).toBe(initialUndoLength + 1)
-      expect(store.isProjectModified).toBe(true)
+      expect(store.history.undoLevels).toBe(initialUndoLength + 1)
+      expect(root.isProjectModified).toBe(true)
     })
 
     it('should not record patches for isProjectModified changes', async () => {
@@ -281,19 +292,19 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
       // Wait for patch recording
       await new Promise(resolve => setTimeout(resolve, 10))
 
-      const initialUndoLength = store.undoStack.length
+      const initialUndoLength = store.history.undoLevels
 
       // Manually change isProjectModified multiple times
-      store.setProjectModified(true)
-      store.setProjectModified(false)
-      store.markProjectModified()
-      store.setProjectModified(false)
+      root.setProjectModified(true)
+      root.setProjectModified(false)
+      root.markProjectModified()
+      root.setProjectModified(false)
 
       // Wait for potential patch recording
       await new Promise(resolve => setTimeout(resolve, 10))
 
       // No patches should be recorded for isProjectModified changes
-      expect(store.undoStack.length).toBe(initialUndoLength)
+      expect(store.history.undoLevels).toBe(initialUndoLength)
     })
   })
 })
