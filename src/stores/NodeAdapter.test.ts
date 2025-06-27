@@ -167,19 +167,22 @@ describe('NodeAdapter', () => {
       const sourceNode = store.adaptedNodes.find((n: INodeAdapter) => n.id === sourceId)
       const targetNode = store.adaptedNodes.find((n: INodeAdapter) => n.id === targetId)
 
-      // Add connections
-      sourceNode.addOutputConnection(targetId, 'output', 'input')
-      targetNode.addInputConnection(sourceId, 'output', 'input')
+      expect(sourceNode).toBeDefined()
+      expect(targetNode).toBeDefined()
 
-      expect(sourceNode.outputConnections.length).toBe(1)
-      expect(targetNode.inputConnections.length).toBe(1)
+      // Add connections
+      sourceNode!.addOutputConnection(targetId, 'output', 'input')
+      targetNode!.addInputConnection(sourceId, 'output', 'input')
+
+      expect(sourceNode!.outputConnections.length).toBe(1)
+      expect(targetNode!.inputConnections.length).toBe(1)
 
       // Remove connections
-      sourceNode.removeOutputConnection(targetId, 'output', 'input')
-      targetNode.removeInputConnection(sourceId, 'output', 'input')
+      sourceNode!.removeOutputConnection(targetId, 'output', 'input')
+      targetNode!.removeInputConnection(sourceId, 'output', 'input')
 
-      expect(sourceNode.outputConnections.length).toBe(0)
-      expect(targetNode.inputConnections.length).toBe(0)
+      expect(sourceNode!.outputConnections.length).toBe(0)
+      expect(targetNode!.inputConnections.length).toBe(0)
     })
 
     it('should prevent duplicate connections', () => {
@@ -188,12 +191,14 @@ describe('NodeAdapter', () => {
 
       const targetNode = store.adaptedNodes.find((n: INodeAdapter) => n.id === targetId)
 
+      expect(targetNode).toBeDefined()
+
       // Add the same connection twice
-      targetNode.addInputConnection(sourceId, 'output', 'input')
-      targetNode.addInputConnection(sourceId, 'output', 'input')
+      targetNode!.addInputConnection(sourceId, 'output', 'input')
+      targetNode!.addInputConnection(sourceId, 'output', 'input')
 
       // Should only have one connection
-      expect(targetNode.inputConnections.length).toBe(1)
+      expect(targetNode!.inputConnections.length).toBe(1)
     })
   })
 
