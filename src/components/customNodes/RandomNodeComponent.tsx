@@ -37,6 +37,7 @@ const RandomNodeComponent: React.FC<RandomNodeComponentProps> = observer(({ node
   const rate = isValidNode ? (node.properties.get('rate') ?? 1) : 1
   const min = isValidNode ? (node.properties.get('min') ?? 0) : 0
   const max = isValidNode ? (node.properties.get('max') ?? 100) : 100
+  const label = isValidNode ? (node.properties.get('label') ?? 'Random') : 'Random'
 
   const handleRateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {
@@ -52,7 +53,7 @@ const RandomNodeComponent: React.FC<RandomNodeComponentProps> = observer(({ node
         <div className="text-red-500 text-xs">RandomNode not found</div>
       ) : (
         <>
-          <div className="text-xs font-medium text-gray-700">Random</div>
+          <div className="text-xs font-medium text-gray-700">{label}</div>
           <div className="text-xs text-gray-500">Value: {currentValue.toFixed(2)}</div>
           <div className="space-y-1">
             <label className="text-xs text-gray-600">Rate (Hz)</label>

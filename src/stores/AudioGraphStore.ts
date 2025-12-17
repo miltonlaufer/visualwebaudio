@@ -694,7 +694,7 @@ export const AudioGraphStore = types
               const success = self.audioNodeFactory!.updateNodeProperty(
                 audioNode,
                 nodeType,
-                metadata,
+                metadata as INodeMetadata,
                 propertyName,
                 value
               )

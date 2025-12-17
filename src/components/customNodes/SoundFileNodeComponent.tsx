@@ -50,6 +50,7 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
   const isValidNode = node && node.nodeType === 'SoundFileNode'
   const fileName = isValidNode ? node.properties.get('fileName') || '' : ''
   const loaded = isValidNode ? node.outputs.get('loaded') || 0 : 0
+  const label = isValidNode ? (node.properties.get('label') ?? 'Sound') : 'Sound'
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isValidNode) {
@@ -73,7 +74,7 @@ const SoundFileNodeComponent: React.FC<SoundFileNodeComponentProps> = observer((
         <div className="text-red-500 text-xs">SoundFileNode not found</div>
       ) : (
         <>
-          <div className="text-xs font-medium text-gray-700">Sound File</div>
+          <div className="text-xs font-medium text-gray-700">{label}</div>
           <input
             ref={fileInputRef}
             type="file"

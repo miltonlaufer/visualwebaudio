@@ -46,6 +46,7 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
   const startMode = isValidNode ? (node.properties.get('startMode') ?? 'auto') : 'auto'
   const isRunning = isValidNode ? (node.properties.get('isRunning') ?? 'false') === 'true' : false
   const triggerCount = isValidNode ? node.outputs.get('count') || 0 : 0
+  const label = isValidNode ? (node.properties.get('label') ?? 'Timer') : 'Timer'
 
   const handleStart = () => {
     if (isValidNode) {
@@ -72,6 +73,9 @@ const TimerNodeComponent: React.FC<TimerNodeComponentProps> = observer(({ nodeId
         <div className="text-red-500 text-xs">TimerNode not found</div>
       ) : (
         <>
+          {/* Label */}
+          <div className="text-xs font-medium text-gray-700">{label}</div>
+
           {/* Status display */}
           <div className="text-xs">
             <span className="font-medium">Status: </span>

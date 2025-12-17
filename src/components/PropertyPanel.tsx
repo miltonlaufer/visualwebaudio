@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { useRootStore } from '~/stores/RootStore'
 import FrequencyAnalyzer from './FrequencyAnalyzer'
+import type { INodePropertyDef } from '~/stores/NodeModels'
 
 interface PropertyPanelProps {
   onClose?: () => void
@@ -113,10 +114,25 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
     max?: number
     step?: number
     options?: unknown[]
+    readOnly?: boolean
+    description?: string
   }) => {
     const currentValue = selectedNode?.properties
       ? (getPropertyValue(selectedNode.properties, property.name) ?? property.defaultValue)
       : property.defaultValue
+
+    // If property is read-only, show a non-editable display
+    // Use bracket notation to access readOnly since it might not be in MST type
+    const isReadOnly = (property as unknown as Record<string, unknown>)['readOnly'] === true
+    if (isReadOnly) {
+      const displayValue =
+        typeof currentValue === 'number' ? currentValue.toFixed(2) : currentValue?.toString() || '-'
+      return (
+        <div className="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-400 font-mono text-sm">
+          {displayValue}
+        </div>
+      )
+    }
 
     // If property has options, render as dropdown
     if (property.options && Array.isArray(property.options)) {
@@ -382,32 +398,92 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
               </div>
             )}
 
-            {/* Properties */}
-            {selectedNode.metadata.properties.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                  Parameters
-                </h3>
-                <div className="space-y-4">
-                  {selectedNode.metadata.properties.map(prop => (
-                    <div key={prop.name}>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        {prop.name}
-                        {prop.type === 'AudioParam' && (
-                          <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
-                            ({prop.min !== undefined ? `${prop.min} - ${prop.max}` : 'AudioParam'})
-                          </span>
-                        )}
-                      </label>
-                      {renderPropertyInput(prop)}
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        Default: {prop.defaultValue?.toString()}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* Properties - separate editable from read-only */}
+            {selectedNode.metadata.properties.length > 0 &&
+              (() => {
+                // Cast properties to access readOnly field (may not be in MST type)
+                // Use explicit bracket notation to access readOnly since it might not be in MST type
+                const properties = selectedNode.metadata.properties as unknown as INodePropertyDef[]
+                const isReadOnly = (p: INodePropertyDef): boolean => {
+                  // Access via bracket notation to handle MST type limitations
+                  return (p as unknown as Record<string, unknown>)['readOnly'] === true
+                }
+                const editableProps = properties.filter(p => !isReadOnly(p))
+                const readOnlyProps = properties.filter(p => isReadOnly(p))
+
+                return (
+                  <div className="mb-6">
+                    {/* Editable Parameters */}
+                    {editableProps.length > 0 && (
+                      <>
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                          Parameters
+                        </h3>
+                        <div className="space-y-4">
+                          {editableProps.map(prop => (
+                            <div key={prop.name}>
+                              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                                {prop.name}
+                                {prop.type === 'AudioParam' && (
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                                    (
+                                    {prop.min !== undefined
+                                      ? `${prop.min} - ${prop.max}`
+                                      : 'AudioParam'}
+                                    )
+                                  </span>
+                                )}
+                              </label>
+                              {renderPropertyInput(prop)}
+                              {prop.description ? (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  {prop.description}
+                                </div>
+                              ) : (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                  Default: {prop.defaultValue?.toString()}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    {/* Read-only Computed Values */}
+                    {readOnlyProps.length > 0 && (
+                      <>
+                        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 mt-6">
+                          Computed Values
+                        </h3>
+                        <div className="space-y-3">
+                          {readOnlyProps.map(prop => (
+                            <div
+                              key={prop.name}
+                              className="p-3 bg-gray-50 dark:bg-gray-800 rounded-md"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                  {prop.name}
+                                </span>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">
+                                  output
+                                </span>
+                              </div>
+                              {renderPropertyInput(prop)}
+                              {prop.description && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                  {prop.description}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )
+              })()}
 
             {/* Methods */}
             {selectedNode.metadata.methods.length > 0 && (

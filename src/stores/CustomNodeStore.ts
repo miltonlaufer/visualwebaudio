@@ -186,7 +186,10 @@ const CustomNodeState = types
           this.setProperty('currentValue', numValue)
         } else if (self.nodeType === 'MidiToFreqNode' && targetInput === 'midiNote') {
           const midiNote = Number(value) || 0
-          const frequency = this.midiToFrequency(midiNote)
+          const frequency = midiToFrequencyUtil(midiNote)
+          // Update both properties (for UI display) and outputs (for connections)
+          this.setProperty('midiNote', midiNote)
+          this.setProperty('frequency', frequency)
           this.setOutput('frequency', frequency)
         } else if (self.nodeType === 'ScaleToMidiNode' && targetInput === 'scaleDegree') {
           const scaleDegree = Number(value) || 0

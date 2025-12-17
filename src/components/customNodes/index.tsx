@@ -8,6 +8,8 @@ import SoundFileNodeComponent from './SoundFileNodeComponent'
 import RandomNodeComponent from './RandomNodeComponent'
 import TimerNodeComponent from './TimerNodeComponent'
 import MidiInputNodeComponent from './MidiInputNodeComponent'
+import MidiToFreqNodeComponent from './MidiToFreqNodeComponent'
+import ScaleToMidiNodeComponent from './ScaleToMidiNodeComponent'
 
 interface CustomNodeRendererProps {
   nodeId: string
@@ -38,10 +40,9 @@ const CustomNodeRenderer: React.FC<CustomNodeRendererProps> = observer(({ nodeId
     case 'MidiInputNode':
       return <MidiInputNodeComponent nodeId={nodeId} />
     case 'MidiToFreqNode':
-      // MidiToFreqNode doesn't need a UI component - it's a pure computation node
-      return <div className="text-gray-600 text-xs p-2 text-center">MIDI → Freq</div>
+      return <MidiToFreqNodeComponent nodeId={nodeId} />
     case 'ScaleToMidiNode':
-      return <div className="text-gray-600 text-xs p-2 text-center">Scale → MIDI</div>
+      return <ScaleToMidiNodeComponent nodeId={nodeId} />
     case 'GreaterThanNode':
     case 'EqualsNode':
     case 'SelectNode':
@@ -64,4 +65,6 @@ export {
   SoundFileNodeComponent,
   RandomNodeComponent,
   MidiInputNodeComponent,
+  MidiToFreqNodeComponent,
+  ScaleToMidiNodeComponent,
 }
