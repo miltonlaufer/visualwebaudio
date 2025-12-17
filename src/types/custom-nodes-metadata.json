@@ -254,13 +254,13 @@
   },
   "MidiToFreqNode": {
     "name": "MIDI to Frequency",
-    "description": "Converts MIDI note numbers to frequency values",
+    "description": "Converts MIDI note numbers (0-127) to frequency values in Hz. MIDI note 60 is middle C (261.63 Hz). Each octave doubles the frequency.",
     "category": "misc",
     "inputs": [
       {
         "name": "midiNote",
         "type": "control",
-        "description": "MIDI note number (0-127)"
+        "description": "MIDI note number (0-127). Connect a MIDI Input, Scale to MIDI, or Slider node."
       }
     ],
     "outputs": [
@@ -278,13 +278,14 @@
         "min": 0,
         "max": 127,
         "step": 1,
-        "description": "MIDI note number (60 = middle C)"
+        "description": "Input MIDI note number. 60 = Middle C (C4), 69 = A4 (440 Hz reference)."
       },
       {
         "name": "frequency",
         "type": "number",
         "defaultValue": 261.63,
-        "description": "Corresponding frequency in Hz"
+        "readOnly": true,
+        "description": "Computed output: Frequency in Hz. Connect this to an Oscillator's frequency input."
       }
     ],
     "methods": [],
@@ -320,6 +321,12 @@
         "type": "number",
         "defaultValue": 0,
         "description": "Duration of the loaded audio file in seconds"
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Sound",
+        "description": "Label text displayed on the node"
       }
     ],
     "methods": [],
@@ -327,20 +334,20 @@
   },
   "DisplayNode": {
     "name": "Display",
-    "description": "Displays numeric values and waveforms",
+    "description": "Displays numeric values from control signals. Useful for debugging and monitoring values in your audio graph.",
     "category": "misc",
     "inputs": [
       {
         "name": "input",
         "type": "control",
-        "description": "Value to display"
+        "description": "Value to display. Connect any control signal here."
       }
     ],
     "outputs": [
       {
         "name": "output",
         "type": "control",
-        "description": "Pass-through of input value"
+        "description": "Pass-through of input value (for chaining)"
       }
     ],
     "properties": [
@@ -348,7 +355,8 @@
         "name": "value",
         "type": "number",
         "defaultValue": 0,
-        "description": "Current displayed value"
+        "readOnly": true,
+        "description": "Current displayed value (updates from input)"
       },
       {
         "name": "precision",
@@ -356,13 +364,13 @@
         "defaultValue": 2,
         "min": 0,
         "max": 6,
-        "description": "Number of decimal places to display"
+        "description": "Decimal places to display. 0 = integers only, 2 = two decimals."
       },
       {
         "name": "label",
         "type": "string",
         "defaultValue": "Display",
-        "description": "Label text displayed above the value"
+        "description": "Label text shown above the value."
       }
     ],
     "methods": [],
@@ -370,7 +378,7 @@
   },
   "RandomNode": {
     "name": "Random",
-    "description": "Generates random values at a specified rate",
+    "description": "Generates random values between min and max at a specified rate. Useful for adding variation to parameters.",
     "category": "misc",
     "inputs": [
       {
@@ -383,7 +391,7 @@
       {
         "name": "value",
         "type": "control",
-        "description": "Random value between 0 and 1"
+        "description": "Random value between min and max"
       }
     ],
     "properties": [
@@ -394,13 +402,32 @@
         "min": 0.1,
         "max": 10,
         "step": 0.1,
-        "description": "Rate of random value generation in Hz"
+        "description": "How many times per second to generate a new random value. 1 = once per second."
       },
       {
-        "name": "value",
+        "name": "min",
         "type": "number",
         "defaultValue": 0,
-        "description": "Current random value"
+        "description": "Minimum random value (inclusive)."
+      },
+      {
+        "name": "max",
+        "type": "number",
+        "defaultValue": 100,
+        "description": "Maximum random value (inclusive)."
+      },
+      {
+        "name": "currentValue",
+        "type": "number",
+        "defaultValue": 0,
+        "readOnly": true,
+        "description": "Current random value (updates automatically)."
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Random",
+        "description": "Label text displayed on the node"
       }
     ],
     "methods": [],
@@ -408,30 +435,30 @@
   },
   "TimerNode": {
     "name": "Timer",
-    "description": "Triggers events automatically at specified intervals. Can operate in one-shot or loop mode with configurable timing.",
+    "description": "Triggers events at specified intervals. Use for rhythmic patterns, sequencing, or periodic automation.",
     "category": "control",
     "inputs": [
       {
         "name": "trigger",
         "type": "control",
-        "description": "Manual trigger input - starts the timer when start mode is 'manual'"
+        "description": "Starts the timer when startMode is 'manual'. Connect a Button here."
       },
       {
         "name": "reset",
         "type": "control",
-        "description": "Resets the timer and stops any running intervals"
+        "description": "Stops the timer and resets the count to 0."
       }
     ],
     "outputs": [
       {
         "name": "trigger",
         "type": "control",
-        "description": "Outputs a trigger pulse when timer fires"
+        "description": "Outputs a pulse each time the timer fires. Connect to trigger other nodes."
       },
       {
         "name": "count",
         "type": "control",
-        "description": "Number of times the timer has triggered"
+        "description": "Number of times fired. Useful for sequencing."
       }
     ],
     "properties": [
@@ -440,7 +467,7 @@
         "type": "string",
         "defaultValue": "loop",
         "options": ["oneshot", "loop"],
-        "description": "Timer mode: 'oneshot' fires once, 'loop' fires repeatedly"
+        "description": "oneshot = fires once then stops. loop = fires repeatedly."
       },
       {
         "name": "delay",
@@ -449,7 +476,7 @@
         "min": 10,
         "max": 60000,
         "step": 10,
-        "description": "Initial delay before first trigger (milliseconds)"
+        "description": "Initial delay before first trigger in milliseconds. 1000 = 1 second."
       },
       {
         "name": "interval",
@@ -458,27 +485,34 @@
         "min": 10,
         "max": 60000,
         "step": 10,
-        "description": "Interval between triggers in loop mode (milliseconds)"
+        "description": "Time between triggers in loop mode (ms). 1000 = 1 beat per second (60 BPM)."
       },
       {
         "name": "startMode",
         "type": "string",
         "defaultValue": "auto",
         "options": ["auto", "manual"],
-        "description": "Start mode: 'auto' starts when audio context starts, 'manual' waits for trigger input"
+        "description": "auto = starts immediately. manual = waits for trigger input."
       },
       {
         "name": "enabled",
         "type": "string",
         "defaultValue": "true",
         "options": ["true", "false"],
-        "description": "Whether the timer is enabled"
+        "description": "Enable/disable the timer."
       },
       {
         "name": "count",
         "type": "number",
         "defaultValue": 0,
-        "description": "Number of times the timer has triggered"
+        "readOnly": true,
+        "description": "Current trigger count (read-only)."
+      },
+      {
+        "name": "label",
+        "type": "string",
+        "defaultValue": "Timer",
+        "description": "Label text displayed on the node"
       }
     ],
     "methods": [],
@@ -486,13 +520,13 @@
   },
   "ScaleToMidiNode": {
     "name": "Scale to MIDI",
-    "description": "Converts scale degrees to MIDI notes based on key and mode. Supports major, minor, pentatonic, blues, and modal scales.",
+    "description": "Converts scale degrees to MIDI notes and frequencies based on key and mode. Use for melodic sequencing with musical scales.",
     "category": "misc",
     "inputs": [
       {
         "name": "scaleDegree",
         "type": "control",
-        "description": "Scale degree (0-based, can be negative or positive)"
+        "description": "Scale degree to convert. Connect a Slider, Random, or sequencer output."
       }
     ],
     "outputs": [
@@ -515,14 +549,14 @@
         "min": -24,
         "max": 24,
         "step": 1,
-        "description": "Scale degree (0 = root note)"
+        "description": "Scale degree to convert. 0 = root note, positive = higher notes, negative = lower notes. Goes across octaves."
       },
       {
         "name": "key",
         "type": "string",
         "defaultValue": "C",
         "options": ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"],
-        "description": "Root key of the scale"
+        "description": "Root key of the scale. This is the note at degree 0."
       },
       {
         "name": "mode",
@@ -542,13 +576,21 @@
           "harmonic_minor",
           "melodic_minor"
         ],
-        "description": "Scale mode/type"
+        "description": "Scale mode/type. Major and minor are most common. Pentatonic scales have 5 notes per octave."
       },
       {
         "name": "midiNote",
         "type": "number",
         "defaultValue": 60,
-        "description": "Current MIDI note output"
+        "readOnly": true,
+        "description": "Computed output: MIDI note number (60 = middle C)."
+      },
+      {
+        "name": "frequency",
+        "type": "number",
+        "defaultValue": 261.63,
+        "readOnly": true,
+        "description": "Computed output: Frequency in Hz. Connect to an Oscillator's frequency."
       }
     ],
     "methods": [],

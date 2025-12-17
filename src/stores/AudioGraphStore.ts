@@ -694,7 +694,7 @@ export const AudioGraphStore = types
               const success = self.audioNodeFactory!.updateNodeProperty(
                 audioNode,
                 nodeType,
-                metadata,
+                metadata as INodeMetadata,
                 propertyName,
                 value
               )
@@ -1583,6 +1583,17 @@ export const AudioGraphStore = types
 
               if (connection && 'offset' in bridge && bridge.offset) {
                 bridge.offset.value = value
+
+                // Also update the target node's property in the store for UI display
+                const targetAdaptedNode = self.adaptedNodes.find(
+                  node => node.id === connection.targetNodeId
+                )
+                if (targetAdaptedNode && connection.targetInput) {
+                  // Update the property so the UI reflects the new value
+                  targetAdaptedNode.properties.set(connection.targetInput, value)
+                  // Trigger a re-render
+                  self.root?.incrementPropertyChangeCounter()
+                }
               }
             }
           }

@@ -21,6 +21,7 @@ export const NodeProperty = types.model('NodeProperty', {
   step: types.maybe(types.number),
   options: types.maybe(types.array(types.frozen())),
   description: types.maybe(types.string),
+  readOnly: types.maybe(types.boolean),
 })
 
 export const NodeMetadataModel = types.model('NodeMetadata', {
@@ -47,6 +48,19 @@ export const NodeMetadataModel = types.model('NodeMetadata', {
 })
 
 export interface INodeMetadata extends Instance<typeof NodeMetadataModel> {}
+
+/** Type for individual property in metadata */
+export interface INodePropertyDef {
+  name: string
+  type: string
+  defaultValue: unknown
+  min?: number
+  max?: number
+  step?: number
+  options?: unknown[]
+  description?: string
+  readOnly?: boolean
+}
 
 export const VisualNodeData = types.model('VisualNodeData', {
   nodeType: types.string,

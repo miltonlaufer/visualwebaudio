@@ -5,6 +5,8 @@ import type { INodeAdapter } from '~/stores/NodeAdapter'
 import CustomNodeRenderer from './customNodes'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { isCustomNodeType } from '~/domain/nodes/strategies'
+import { formatPropertyValue } from '~/utils/formatPropertyValue'
 
 interface AdaptedAudioNodeProps {
   data: {
@@ -21,22 +23,8 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
   const { nodeAdapter } = data
   const { metadata, nodeType, properties, id: nodeId } = nodeAdapter
 
-  // Check if this is a custom node type
-  const customNodeTypes = [
-    'ButtonNode',
-    'SliderNode',
-    'GreaterThanNode',
-    'EqualsNode',
-    'SelectNode',
-    'MidiInputNode',
-    'MidiToFreqNode',
-    'DisplayNode',
-    'SoundFileNode',
-    'RandomNode',
-    'TimerNode',
-    'ScaleToMidiNode',
-  ]
-  const isCustomNode = customNodeTypes.includes(nodeType)
+  // Check if this is a custom node type - uses StrategyRegistry
+  const isCustomNode = isCustomNodeType(nodeType)
 
   // Get the MobX custom node state directly from customNodeStore
   const mobxCustomNode = isCustomNode && nodeId ? customNodeStore.getNode(nodeId) : null
@@ -313,12 +301,13 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
             {['type', 'frequency'].map(propName => {
               const prop = metadata.properties.find((p: any) => p.name === propName)
               if (!prop) return null
+              const value = getPropertyValue(properties, prop.name)
               return (
                 <div key={prop.name} className="text-xs text-gray-600 text-center">
                   <span className="font-medium">{prop.name}:</span>{' '}
                   <span className="text-gray-500">
-                    {getPropertyValue(properties, prop.name)?.toString() ||
-                      prop.defaultValue?.toString()}
+                    {formatPropertyValue(value, prop.name) ||
+                      formatPropertyValue(prop.defaultValue, prop.name)}
                   </span>
                 </div>
               )
@@ -334,15 +323,18 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
         (maxHandles <= 3 ||
           metadata.properties.some((p: any) => p.name === 'type' || p.name === 'frequency')) && (
           <div className="space-y-1 mt-4">
-            {metadata.properties.slice(0, maxHandles > 3 ? 1 : 2).map((prop: any) => (
-              <div key={prop.name} className="text-xs text-gray-600 text-center">
-                <span className="font-medium">{prop.name}:</span>{' '}
-                <span className="text-gray-500">
-                  {getPropertyValue(properties, prop.name)?.toString() ||
-                    prop.defaultValue?.toString()}
-                </span>
-              </div>
-            ))}
+            {metadata.properties.slice(0, maxHandles > 3 ? 1 : 2).map((prop: any) => {
+              const value = getPropertyValue(properties, prop.name)
+              return (
+                <div key={prop.name} className="text-xs text-gray-600 text-center">
+                  <span className="font-medium">{prop.name}:</span>{' '}
+                  <span className="text-gray-500">
+                    {formatPropertyValue(value, prop.name) ||
+                      formatPropertyValue(prop.defaultValue, prop.name)}
+                  </span>
+                </div>
+              )
+            })}
             {metadata.properties.length > (maxHandles > 3 ? 1 : 2) && (
               <div className="text-xs text-gray-400 text-center">
                 +{metadata.properties.length - (maxHandles > 3 ? 1 : 2)} more...
