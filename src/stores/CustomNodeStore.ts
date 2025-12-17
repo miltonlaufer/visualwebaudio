@@ -1,5 +1,13 @@
 import { types, Instance, getRoot, IDisposer } from 'mobx-state-tree'
 import { reaction } from 'mobx'
+import {
+  midiToFrequency as midiToFrequencyUtil,
+  scaleToMidi as scaleToMidiUtil,
+  isValidKey,
+  isValidMode,
+  type Key,
+  type Mode,
+} from '~/domain/music'
 
 // MobX State Tree model for custom node connection
 const CustomNodeConnection = types
@@ -202,11 +210,9 @@ const CustomNodeState = types
         this.updateScaleToMidiOutput()
       },
 
-      // MIDI to frequency conversion
+      // MIDI to frequency conversion - delegates to domain utility
       midiToFrequency(midiNote: number): number {
-        // MIDI note 69 (A4) = 440 Hz
-        // Formula: f = 440 * 2^((n-69)/12)
-        return 440 * Math.pow(2, (midiNote - 69) / 12)
+        return midiToFrequencyUtil(midiNote)
       },
 
       // Scale to MIDI conversion and output update
@@ -231,55 +237,12 @@ const CustomNodeState = types
         this.setOutput('frequency', frequency)
       },
 
+      // Scale to MIDI conversion - delegates to domain utility
       scaleToMidi(scaleDegree: number, key: string, mode: string): number {
-        // Scale intervals for different modes
-        const SCALE_INTERVALS: Record<string, number[]> = {
-          major: [0, 2, 4, 5, 7, 9, 11],
-          minor: [0, 2, 3, 5, 7, 8, 10],
-          dorian: [0, 2, 3, 5, 7, 9, 10],
-          phrygian: [0, 1, 3, 5, 7, 8, 10],
-          lydian: [0, 2, 4, 6, 7, 9, 11],
-          mixolydian: [0, 2, 4, 5, 7, 9, 10],
-          locrian: [0, 1, 3, 5, 6, 8, 10],
-          pentatonic_major: [0, 2, 4, 7, 9],
-          pentatonic_minor: [0, 3, 5, 7, 10],
-          blues: [0, 3, 5, 6, 7, 10],
-          harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
-          melodic_minor: [0, 2, 3, 5, 7, 9, 11],
-        }
-
-        // MIDI note numbers for each key at octave 4
-        const KEY_TO_MIDI: Record<string, number> = {
-          C: 60,
-          'C#': 61,
-          D: 62,
-          'D#': 63,
-          E: 64,
-          F: 65,
-          'F#': 66,
-          G: 67,
-          'G#': 68,
-          A: 69,
-          'A#': 70,
-          B: 71,
-        }
-
-        const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major
-        const rootMidi = KEY_TO_MIDI[key] || 60
-
-        // Handle negative scale degrees
-        const octaveOffset = Math.floor(scaleDegree / intervals.length)
-        const normalizedDegree =
-          ((scaleDegree % intervals.length) + intervals.length) % intervals.length
-
-        // Get the interval for this scale degree
-        const interval = intervals[normalizedDegree]
-
-        // Calculate final MIDI note
-        const midiNote = rootMidi + interval + octaveOffset * 12
-
-        // Clamp to valid MIDI range (0-127)
-        return Math.max(0, Math.min(127, midiNote))
+        // Validate and cast key/mode to proper types, fallback to defaults
+        const validKey: Key = isValidKey(key) ? key : 'C'
+        const validMode: Mode = isValidMode(mode) ? mode : 'major'
+        return scaleToMidiUtil(scaleDegree, validKey, validMode)
       },
 
       updateAudioContext(audioContext: AudioContext): void {
@@ -727,50 +690,15 @@ const CustomNodeStore = types
           if (!propertiesObj['key']) propertiesObj['key'] = 'C'
           if (!propertiesObj['mode']) propertiesObj['mode'] = 'major'
 
-          // Calculate initial MIDI note and frequency
+          // Calculate initial MIDI note and frequency using domain utilities
           const scaleDegree = propertiesObj['scaleDegree'] || 0
           const key = propertiesObj['key'] || 'C'
           const mode = propertiesObj['mode'] || 'major'
 
-          // Use the same scale conversion logic
-          const SCALE_INTERVALS: Record<string, number[]> = {
-            major: [0, 2, 4, 5, 7, 9, 11],
-            minor: [0, 2, 3, 5, 7, 8, 10],
-            dorian: [0, 2, 3, 5, 7, 9, 10],
-            phrygian: [0, 1, 3, 5, 7, 8, 10],
-            lydian: [0, 2, 4, 6, 7, 9, 11],
-            mixolydian: [0, 2, 4, 5, 7, 9, 10],
-            locrian: [0, 1, 3, 5, 6, 8, 10],
-            pentatonic_major: [0, 2, 4, 7, 9],
-            pentatonic_minor: [0, 3, 5, 7, 10],
-            blues: [0, 3, 5, 6, 7, 10],
-            harmonic_minor: [0, 2, 3, 5, 7, 8, 11],
-            melodic_minor: [0, 2, 3, 5, 7, 9, 11],
-          }
-
-          const KEY_TO_MIDI: Record<string, number> = {
-            C: 60,
-            'C#': 61,
-            D: 62,
-            'D#': 63,
-            E: 64,
-            F: 65,
-            'F#': 66,
-            G: 67,
-            'G#': 68,
-            A: 69,
-            'A#': 70,
-            B: 71,
-          }
-
-          const intervals = SCALE_INTERVALS[mode] || SCALE_INTERVALS.major
-          const rootMidi = KEY_TO_MIDI[key] || 60
-          const octaveOffset = Math.floor(scaleDegree / intervals.length)
-          const normalizedDegree =
-            ((scaleDegree % intervals.length) + intervals.length) % intervals.length
-          const interval = intervals[normalizedDegree]
-          const midiNote = Math.max(0, Math.min(127, rootMidi + interval + octaveOffset * 12))
-          const frequency = 440 * Math.pow(2, (midiNote - 69) / 12)
+          const validKey: Key = isValidKey(key) ? key : 'C'
+          const validMode: Mode = isValidMode(mode) ? mode : 'major'
+          const midiNote = scaleToMidiUtil(scaleDegree, validKey, validMode)
+          const frequency = midiToFrequencyUtil(midiNote)
 
           propertiesObj['midiNote'] = midiNote
           propertiesObj['frequency'] = frequency

@@ -4,7 +4,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.3-646CFF?logo=vite)](https://vitejs.dev/)
-[![Tests](https://img.shields.io/badge/Tests-391%2F391%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
+[![Tests](https://img.shields.io/badge/Tests-416%2F416%20passing-brightgreen)](https://github.com/miltonlaufer/visualwebaudio)
 [![Coverage](https://img.shields.io/badge/Coverage-63.76%25-yellow)](https://github.com/miltonlaufer/visualwebaudio)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -162,31 +162,44 @@ GitHub Actions automatically runs type checking, tests, and linting on all PRs.
 
 ## Architecture
 
-Visual Web Audio uses a sophisticated type-driven architecture that automatically extracts metadata from TypeScript's Web Audio API definitions. For a detailed technical deep-dive, see our **[Architecture Documentation](ARCHITECTURE.md)**.
+Visual Web Audio uses a sophisticated type-driven architecture that automatically extracts metadata from TypeScript's Web Audio API definitions, combined with clean domain-driven design patterns. For a detailed technical deep-dive, see our **[Architecture Documentation](ARCHITECTURE.md)**.
 
 ### Key Architectural Components
 
 - **[Type-Driven Development](ARCHITECTURE.md#type-driven-development-core)**: Automatic extraction of Web Audio API metadata from TypeScript definitions
+- **[Domain Layer](ARCHITECTURE.md#domain-layer)**: Pure business logic with Strategy, Repository, and Facade patterns
 - **[MST State Management](ARCHITECTURE.md#mobx-state-tree-mst-architecture)**: Hierarchical state management with MobX State Tree
 - **[Service Layer](ARCHITECTURE.md#service-layer)**: AudioNodeFactory and CustomNodeFactory for node creation
 - **[React Components](ARCHITECTURE.md#react-component-architecture)**: Modular component architecture with React Flow
-- **[Data Flow](ARCHITECTURE.md#data-flow)**: Comprehensive data flow from user actions to audio output
 
-### Type-Driven Workflow
+### Architecture Overview
 
 ```
-TypeScript Web Audio API Definitions (@types/web)
-                    ↓
-            extract-web-audio-types.js
-                    ↓
-         Generated Metadata (JSON)
-                    ↓
-            AudioNodeFactory
-                    ↓
-        Dynamic Node Creation & Management
-                    ↓
-         React Components (Visual Layer)
+src/
+  domain/                    # Pure business logic (no React/MobX dependencies)
+    music/                   # MIDI and scale utilities
+    nodes/                   # Node strategies and registry
+      strategies/            # Strategy pattern for custom node behaviors
+      NodeRegistry.ts        # Repository pattern for metadata access
+    audio/                   # AudioConnector facade
+  stores/                    # MobX State Tree stores
+    RootStore.ts             # Composition root
+    AudioGraphStore.ts       # Core audio graph state
+    GraphStore.ts            # Graph topology facade
+    AudioRuntimeStore.ts     # Audio runtime facade
+    UIStore.ts               # UI state management
+  services/                  # Node factories
+  components/                # React components
 ```
+
+### Design Patterns Used
+
+- **Strategy Pattern**: Custom node behaviors via `INodeStrategy` interface
+- **Repository Pattern**: `NodeRegistry` for centralized metadata access
+- **Facade Pattern**: `AudioConnector`, `GraphStore`, `UIStore` for simplified APIs
+- **Factory Pattern**: `AudioNodeFactory`, `CustomNodeFactory` for node creation
+- **Adapter Pattern**: `NodeAdapter` for unified node representation
+- **Observer Pattern**: MobX reactions for state synchronization
 
 For implementation details, architecture diagrams, and design patterns, please refer to the **[Architecture Documentation](ARCHITECTURE.md)**.
 

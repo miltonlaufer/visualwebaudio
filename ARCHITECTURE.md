@@ -4,6 +4,7 @@
 
 - [Overview](#overview)
 - [Type-Driven Development Core](#type-driven-development-core)
+- [Domain Layer](#domain-layer)
 - [MobX State Tree (MST) Architecture](#mobx-state-tree-mst-architecture)
 - [Service Layer](#service-layer)
 - [React Component Architecture](#react-component-architecture)
@@ -29,15 +30,31 @@ graph TB
         EXTRACT -->|"Generates"| META
     end
     
+    subgraph "Domain Layer"
+        NR["NodeRegistry<br/>(Repository pattern)"]
+        SR["StrategyRegistry<br/>(Strategy pattern)"]
+        MU["Music Utilities<br/>(MIDI, scales)"]
+        AC_F["AudioConnector<br/>(Facade pattern)"]
+        
+        META -->|"loaded by"| NR
+        NR -->|"provides metadata to"| SR
+    end
+    
     subgraph "MST State Management"
         ROOT["RootStore<br/>(Root MST Model)"]
         AGS["AudioGraphStore<br/>(Main store for audio graph)"]
+        GS["GraphStore<br/>(Graph topology facade)"]
+        ARS["AudioRuntimeStore<br/>(Audio runtime facade)"]
+        UIS["UIStore<br/>(UI state)"]
         CNS["CustomNodeStore<br/>(Store for custom nodes)"]
         NA["NodeAdapter[]<br/>(Unified node representation)"]
         
         ROOT -->|"contains"| AGS
         ROOT -->|"references"| CNS
         AGS -->|"manages"| NA
+        AGS -->|"delegates to"| GS
+        AGS -->|"delegates to"| ARS
+        AGS -->|"delegates to"| UIS
     end
     
     subgraph "Service Layer"
@@ -46,6 +63,7 @@ graph TB
         
         AGS -->|"uses"| ANF
         AGS -->|"uses"| CNF
+        CNF -->|"uses"| SR
     end
     
     subgraph "React Components"
@@ -62,17 +80,19 @@ graph TB
     end
     
     subgraph "Web Audio API"
-        AC["AudioContext"]
+        CTX["AudioContext"]
         NODES["AudioNode instances<br/>(OscillatorNode, GainNode, etc.)"]
         
         ANF -->|"creates"| NODES
-        NODES -->|"connected via"| AC
+        NODES -->|"connected via"| CTX
     end
     
-    META -->|"provides metadata to"| AGS
+    NR -->|"provides metadata to"| AGS
     NA -->|"rendered by"| AAN
     AAN -->|"updates"| NA
     NA -->|"triggers creation"| NODES
+    CNS -->|"uses"| MU
+    AC_F -->|"manages connections in"| ARS
 ```
 
 ## Type-Driven Development Core
@@ -94,6 +114,120 @@ The most innovative aspect of this application is its type-driven approach:
    - Input/output configurations
    - Node categories
 
+## Domain Layer
+
+The domain layer contains pure business logic with no React or MobX dependencies. This layer follows clean architecture principles and implements several design patterns.
+
+### Directory Structure
+
+```
+src/domain/
+  music/                     # Music theory utilities
+    midiUtils.ts             # MIDI note <-> frequency conversion
+    scaleUtils.ts            # Scale/key/mode calculations
+    index.ts                 # Public API exports
+  nodes/                     # Node management
+    strategies/              # Strategy pattern implementations
+      INodeStrategy.ts       # Strategy interface
+      StrategyRegistry.ts    # Strategy registry
+      ButtonStrategy.ts      # Button node behavior
+      SliderStrategy.ts      # Slider node behavior
+      MidiToFreqStrategy.ts  # MIDI to frequency conversion
+      ScaleToMidiStrategy.ts # Scale to MIDI conversion
+      DisplayStrategy.ts     # Display node behavior
+      ...                    # Other strategies
+    NodeRegistry.ts          # Repository pattern for metadata
+    index.ts                 # Public API exports
+  audio/                     # Audio connection management
+    AudioConnector.ts        # Facade for audio connections
+```
+
+### Music Utilities (`domain/music/`)
+
+Centralized music theory calculations, eliminating code duplication across stores:
+
+```typescript
+// MIDI utilities
+midiToFrequency(midiNote: number): number    // MIDI note -> Hz
+frequencyToMidi(frequency: number): number   // Hz -> MIDI note
+midiToNoteName(midiNote: number): string     // MIDI note -> "C4", "A#3", etc.
+
+// Scale utilities
+scaleToMidi(degree: number, key: Key, mode: Mode): number
+scaleToFrequency(degree: number, key: Key, mode: Mode): number
+getScaleIntervals(mode: Mode): number[]
+```
+
+### Strategy Pattern (`domain/nodes/strategies/`)
+
+Each custom node type has its own strategy that encapsulates its behavior:
+
+```mermaid
+classDiagram
+    class INodeStrategy {
+        <<interface>>
+        +nodeType: string
+        +initialize(state, metadata)
+        +handleInput(state, inputName, value)
+        +cleanup(state)
+        +setProperty?(state, name, value)
+    }
+    
+    class BaseNodeStrategy {
+        <<abstract>>
+        +initialize(state, metadata)
+        +cleanup(state)
+    }
+    
+    class SliderStrategy {
+        +nodeType: "SliderNode"
+        +handleInput()
+        +setProperty()
+    }
+    
+    class MidiToFreqStrategy {
+        +nodeType: "MidiToFreqNode"
+        +handleInput()
+    }
+    
+    INodeStrategy <|.. BaseNodeStrategy
+    BaseNodeStrategy <|-- SliderStrategy
+    BaseNodeStrategy <|-- MidiToFreqStrategy
+```
+
+The `StrategyRegistry` provides centralized access to all strategies:
+
+```typescript
+strategyRegistry.getStrategy('SliderNode')    // Get specific strategy
+strategyRegistry.hasStrategy('SliderNode')    // Check if custom node
+strategyRegistry.getAllStrategyTypes()        // Get all custom node types
+```
+
+### Repository Pattern (`domain/nodes/NodeRegistry.ts`)
+
+The `NodeRegistry` provides unified access to all node metadata:
+
+```typescript
+nodeRegistry.getMetadata('OscillatorNode')   // Get specific metadata
+nodeRegistry.getAllMetadata()                 // Get all metadata
+nodeRegistry.isCustomNode('SliderNode')       // Check node type
+nodeRegistry.getCustomNodeTypes()             // Get custom node types
+nodeRegistry.getWebAudioNodeTypes()           // Get Web Audio node types
+nodeRegistry.getCategories()                  // Get all categories
+```
+
+### Facade Pattern (`domain/audio/AudioConnector.ts`)
+
+Simplifies complex audio connection logic:
+
+```typescript
+class AudioConnector {
+  connect(sourceId, targetId, sourceHandle?, targetHandle?): boolean
+  disconnect(sourceId, targetId, sourceHandle?, targetHandle?): void
+  isValidConnection(sourceId, targetId, sourceHandle?, targetHandle?): boolean
+}
+```
+
 ## MobX State Tree (MST) Architecture
 
 The application uses a hierarchical MST structure for state management:
@@ -103,6 +237,7 @@ The application uses a hierarchical MST structure for state management:
 - Top-level store that manages the entire application state
 - Handles version migration for backward compatibility
 - Contains references to AudioGraphStore and CustomNodeStore
+- Property change counter for forcing UI re-renders
 
 ### AudioGraphStore
 
@@ -114,6 +249,27 @@ Central store managing the audio graph with key responsibilities:
 - Project modification tracking
 - Clipboard operations for copy/paste
 - Audio context lifecycle
+- Delegates specialized operations to facade stores
+
+### Store Facades
+
+The architecture uses facade stores to separate concerns:
+
+#### GraphStore (Graph Topology)
+- Manages graph structure (nodes, edges)
+- Position calculations and auto-positioning
+- Node/edge CRUD operations
+
+#### AudioRuntimeStore (Audio Runtime)
+- Manages live AudioContext
+- AudioNode creation and lifecycle
+- Audio connection routing
+- Custom node bridges (control connections)
+
+#### UIStore (UI State)
+- Clipboard state for copy/paste
+- Selected node tracking
+- UI-specific transient state
 
 ### NodeAdapter Model Structure
 
@@ -298,12 +454,50 @@ graph LR
 
 ## Key Design Patterns
 
-1. **Adapter Pattern**: NodeAdapter provides unified interface for different node types
-2. **Factory Pattern**: AudioNodeFactory and CustomNodeFactory handle node creation
-3. **Observer Pattern**: MobX reactions synchronize state changes
-4. **Command Pattern**: Undo/redo via MST patches
-5. **Strategy Pattern**: Different node types implement INodeImplementation interface
-6. **Lifecycle Pattern**: MST lifecycle hooks manage resource creation/cleanup
+### Strategy Pattern
+Custom node behaviors are encapsulated in strategy classes (`domain/nodes/strategies/`):
+- Each custom node type (Slider, Button, MidiToFreq, etc.) has its own strategy
+- Strategies implement the `INodeStrategy` interface
+- `StrategyRegistry` provides centralized access to all strategies
+- New custom nodes are added by creating a new strategy class
+
+### Repository Pattern
+`NodeRegistry` provides centralized metadata access:
+- Combines Web Audio and custom node metadata
+- Single source of truth for node information
+- Query methods for filtering by type, category, etc.
+
+### Facade Pattern
+Multiple facades simplify complex subsystems:
+- `GraphStore`: Simplifies graph topology operations
+- `AudioRuntimeStore`: Abstracts audio runtime management
+- `UIStore`: Encapsulates UI state
+- `AudioConnector`: Simplifies audio connection logic
+
+### Factory Pattern
+- `AudioNodeFactory`: Creates and configures Web Audio API nodes
+- `CustomNodeFactory`: Creates custom nodes, delegates to strategies
+
+### Adapter Pattern
+`NodeAdapter` provides unified interface for different node types:
+- Abstracts differences between Web Audio and custom nodes
+- Unified property access and connection management
+
+### Observer Pattern
+MobX reactions synchronize state changes:
+- Property changes trigger audio updates
+- Graph changes trigger UI re-renders
+- `propertyChangeCounter` forces updates for control connections
+
+### Command Pattern
+Undo/redo via MST patches:
+- All state changes captured as patches
+- History navigation with undo/redo actions
+
+### Lifecycle Pattern
+MST lifecycle hooks manage resource creation/cleanup:
+- `afterCreate`: Initialize audio nodes
+- `beforeDestroy`: Cleanup resources, dispose reactions
 
 ## Memory Management
 
