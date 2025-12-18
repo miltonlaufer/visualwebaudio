@@ -16,6 +16,7 @@ import { observer } from 'mobx-react-lite'
 
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { useRootStore } from '~/stores/RootStore'
+import { useThemeStore } from '~/stores/ThemeStore'
 import AdaptedAudioNode from '~/components/AdaptedAudioNode'
 
 const nodeTypes: NodeTypes = {
@@ -75,9 +76,18 @@ interface GraphCanvasProps {
 const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
   const store = useAudioGraphStore()
   const rootStore = useRootStore()
+  const themeStore = useThemeStore()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [forceUpdate, setForceUpdate] = useState(0)
+
+  // Track dark mode from both store and document for production reliability
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark')
+    }
+    return themeStore.isDarkMode
+  })
   const syncingRef = useRef(false)
   const lastSyncedNodesLength = useRef(0)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
@@ -85,6 +95,24 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
   const handleForceUpdate = useCallback(() => {
     setForceUpdate(prev => prev + 1)
+  }, [])
+
+  // Sync dark mode state with theme store (for production reliability)
+  useEffect(() => {
+    setIsDark(themeStore.isDarkMode)
+  }, [themeStore.isDarkMode])
+
+  // Also watch for document class changes (MutationObserver for external changes)
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      const hasDarkClass = document.documentElement.classList.contains('dark')
+      setIsDark(hasDarkClass)
+    })
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    })
+    return () => observer.disconnect()
   }, [])
 
   // Keyboard shortcuts for copy/cut/paste
@@ -552,7 +580,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         connectionMode={ConnectionMode.Loose}
         connectOnClick={false}
         defaultEdgeOptions={canvasDefaultEdgeOptions}
-        className="bg-gray-50 w-full h-full"
+        colorMode={isDark ? 'dark' : 'light'}
+        className={`w-full h-full ${isDark ? 'bg-gray-900' : 'bg-gray-50'}`}
         multiSelectionKeyCode="Shift"
         deleteKeyCode="Delete"
         onSelectionChange={onSelectionChange}
