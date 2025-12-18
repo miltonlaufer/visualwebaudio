@@ -2434,10 +2434,12 @@ export const AudioGraphStore = types
             if (shouldAutostart && 'start' in audioNode && typeof audioNode.start === 'function') {
               try {
                 ;(audioNode as OscillatorNode | AudioBufferSourceNode).start()
+                // Set state AFTER successful start
                 self.setNodeState(nodeId, { isRunning: true })
               } catch (error) {
-                // Node might already be started, ignore
+                // Node might already be started - still mark as running since sound IS playing
                 console.warn(`Source node ${nodeId} already started or failed to start:`, error)
+                self.setNodeState(nodeId, { isRunning: true })
               }
             }
           }
