@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react'
+import React, { useState, useRef, useEffect, useCallback, lazy, Suspense } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import type { Edge } from '@xyflow/react'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { useOnClickOutside } from 'usehooks-ts'
+
+// Lazy load syntax highlighter to reduce initial bundle size
+const CodeViewer = lazy(() => import('./CodeViewer'))
 
 interface AudioNode {
   id: string
@@ -1648,9 +1649,18 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
             </div>
             <div className="overflow-x-auto max-h-[60vh] select-text">
-              <SyntaxHighlighter language="javascript" style={oneDark} wrapLongLines>
-                {code}
-              </SyntaxHighlighter>
+              <Suspense
+                fallback={
+                  <pre
+                    className="p-4 bg-gray-800 text-gray-100 rounded text-sm overflow-x-auto"
+                    data-testid="syntax-highlighter"
+                  >
+                    {code}
+                  </pre>
+                }
+              >
+                <CodeViewer code={code} language="javascript" />
+              </Suspense>
             </div>
           </div>
         </div>

@@ -7,16 +7,9 @@ import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 // Mock the audio graph store
 vi.mock('~/stores/AudioGraphStore')
 
-// Mock react-syntax-highlighter
-vi.mock('react-syntax-highlighter', () => ({
-  Prism: ({ children }: { children: string }) => (
-    <pre data-testid="syntax-highlighter">{children}</pre>
-  ),
-}))
-
-// Mock react-syntax-highlighter styles
-vi.mock('react-syntax-highlighter/dist/esm/styles/prism', () => ({
-  oneDark: {},
+// Mock the lazy-loaded CodeViewer component
+vi.mock('./CodeViewer', () => ({
+  default: ({ code }: { code: string }) => <pre data-testid="syntax-highlighter">{code}</pre>,
 }))
 
 // Mock usehooks-ts

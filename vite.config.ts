@@ -65,17 +65,39 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
+        manualChunks(id) {
           // React and React DOM
-          'react-vendor': ['react', 'react-dom'],
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react/')) {
+            return 'react-vendor'
+          }
           // MobX state management
-          'mobx-vendor': ['mobx', 'mobx-react-lite', 'mobx-state-tree'],
+          if (id.includes('node_modules/mobx')) {
+            return 'mobx-vendor'
+          }
           // React Flow library
-          'reactflow-vendor': ['@xyflow/react'],
+          if (id.includes('node_modules/@xyflow')) {
+            return 'reactflow-vendor'
+          }
+          // LangChain AI libraries (largest dependencies)
+          if (id.includes('node_modules/@langchain') || id.includes('node_modules/langchain')) {
+            return 'langchain-vendor'
+          }
+          // UI libraries
+          if (id.includes('node_modules/@headlessui') || id.includes('node_modules/@heroicons')) {
+            return 'ui-vendor'
+          }
+          // Syntax highlighter (large)
+          if (id.includes('node_modules/react-syntax-highlighter')) {
+            return 'syntax-highlighter'
+          }
+          // Other utilities
+          if (id.includes('node_modules/dexie') || id.includes('node_modules/crypto-js')) {
+            return 'utils-vendor'
+          }
         },
       },
     },
-    // Increase chunk size warning limit to 1MB since we're now splitting chunks
-    chunkSizeWarningLimit: 1000,
+    // Higher limit since large chunks (langchain, syntax-highlighter) are lazy-loaded
+    chunkSizeWarningLimit: 700,
   },
 })

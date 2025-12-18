@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, lazy, Suspense } from 'react'
 import '@xyflow/react/dist/style.css'
 import { observer } from 'mobx-react-lite'
 
@@ -11,7 +11,9 @@ import Header from '~/components/Header'
 import GraphCanvas from '~/components/GraphCanvas'
 import UpdateNotification from '~/components/UpdateNotification'
 import OfflineIndicator from '~/components/OfflineIndicator'
-import AIChat from '~/components/AIChat'
+
+// Lazy load AI Chat to reduce initial bundle size (loads LangChain libs)
+const AIChat = lazy(() => import('~/components/AIChat'))
 
 const App: React.FC = observer(() => {
   const themeStore = useMemo(() => createThemeStore(), [])
@@ -177,8 +179,10 @@ const AppContent: React.FC = observer(() => {
         />
       </div>
 
-      {/* AI Chat Component */}
-      <AIChat />
+      {/* AI Chat Component - Lazy loaded */}
+      <Suspense fallback={null}>
+        <AIChat />
+      </Suspense>
     </div>
   )
 })
