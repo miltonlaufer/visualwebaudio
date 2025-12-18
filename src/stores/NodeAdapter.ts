@@ -394,6 +394,16 @@ export const NodeAdapter = types
                   }
                 } catch (error) {
                   console.warn(`[NodeAdapter] Error starting WebAudio node ${self.id}:`, error)
+                  // Report to error queue for AI feedback
+                  const root = getParent(self) as IAudioGraphStore
+                  root?.reportError?.({
+                    category: 'audio',
+                    severity: 'error',
+                    message: `Failed to start node: ${error instanceof Error ? error.message : String(error)}`,
+                    nodeId: self.id,
+                    nodeType: self.nodeType,
+                    details: { action: 'start' },
+                  })
                 }
               },
               stop: () => {
@@ -407,6 +417,16 @@ export const NodeAdapter = types
                   }
                 } catch (error) {
                   console.warn(`[NodeAdapter] Error stopping WebAudio node ${self.id}:`, error)
+                  // Report to error queue for AI feedback
+                  const root = getParent(self) as IAudioGraphStore
+                  root?.reportError?.({
+                    category: 'audio',
+                    severity: 'error',
+                    message: `Failed to stop node: ${error instanceof Error ? error.message : String(error)}`,
+                    nodeId: self.id,
+                    nodeType: self.nodeType,
+                    details: { action: 'stop' },
+                  })
                 }
               },
             })
@@ -546,6 +566,16 @@ export const NodeAdapter = types
       updateProperty(name: string, value: any) {
         if (!self.properties) {
           console.warn(`[NodeAdapter] Properties not initialized for node ${self.id}`)
+          // Report to error queue for AI feedback
+          const root = getParent(self) as IAudioGraphStore
+          root?.reportError?.({
+            category: 'property',
+            severity: 'warning',
+            message: `Properties not initialized for node`,
+            nodeId: self.id,
+            nodeType: self.nodeType,
+            details: { propertyName: name },
+          })
           return
         }
 
@@ -553,6 +583,16 @@ export const NodeAdapter = types
           self.properties.set(name, value)
         } catch (error) {
           console.error(`[NodeAdapter] Error setting property ${name} for node ${self.id}:`, error)
+          // Report to error queue for AI feedback
+          const root = getParent(self) as IAudioGraphStore
+          root?.reportError?.({
+            category: 'property',
+            severity: 'error',
+            message: `Failed to set property ${name}: ${error instanceof Error ? error.message : String(error)}`,
+            nodeId: self.id,
+            nodeType: self.nodeType,
+            details: { propertyName: name, value },
+          })
           return
         }
 

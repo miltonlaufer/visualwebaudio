@@ -113,8 +113,29 @@ describe('NodePalette - Filtering System', () => {
     it('should render section headers', () => {
       renderWithStore(<NodePalette />)
 
-      expect(screen.getByText('🔊 Web Audio API Nodes')).toBeInTheDocument()
-      expect(screen.getByText('🎛️ Utility Nodes')).toBeInTheDocument()
+      expect(screen.getByText('Web Audio API Nodes')).toBeInTheDocument()
+      expect(screen.getByText('Utility Nodes')).toBeInTheDocument()
+    })
+
+    it('should render categories collapsed by default', () => {
+      renderWithStore(<NodePalette />)
+
+      // Category headers should be visible but nodes should be hidden
+      expect(screen.getByRole('button', { name: /source Nodes/i })).toBeInTheDocument()
+      // Nodes inside collapsed categories should not be visible
+      expect(screen.queryByText('Oscillator')).not.toBeInTheDocument()
+    })
+
+    it('should expand category when clicked', async () => {
+      const user = userEvent.setup()
+      renderWithStore(<NodePalette />)
+
+      // Click to expand source category
+      const sourceCategory = screen.getByRole('button', { name: /source Nodes/i })
+      await user.click(sourceCategory)
+
+      // Now Oscillator should be visible
+      expect(screen.getByText('Oscillator')).toBeInTheDocument()
     })
   })
 
@@ -124,11 +145,15 @@ describe('NodePalette - Filtering System', () => {
 
       const searchInput = screen.getByPlaceholderText('Search nodes to add...')
 
-      // Initially all nodes should be visible (check for some common ones)
-      expect(screen.getByText('Oscillator')).toBeInTheDocument()
-      expect(screen.getByText('Gain')).toBeInTheDocument()
+      // Initially categories are collapsed, so nodes are hidden
+      expect(screen.queryByText('Oscillator')).not.toBeInTheDocument()
 
-      // Type "gain" to filter
+      // Type "osc" to filter - this should auto-expand matching categories
+      await user.type(searchInput, 'osc')
+      expect(screen.getByText('Oscillator')).toBeInTheDocument()
+
+      // Clear and search for "gain"
+      await user.clear(searchInput)
       await user.type(searchInput, 'gain')
 
       // Only GainNode should be visible
@@ -169,6 +194,7 @@ describe('NodePalette - Filtering System', () => {
       // Type something
       await user.type(searchInput, 'gain')
       expect(searchInput).toHaveValue('gain')
+      expect(screen.getByText('Gain')).toBeInTheDocument()
 
       // Find and click clear button
       const clearButton = searchInput.parentElement?.querySelector('button')
@@ -177,9 +203,8 @@ describe('NodePalette - Filtering System', () => {
       }
 
       expect(searchInput).toHaveValue('')
-      // All nodes should be visible again
-      expect(screen.getByText('Oscillator')).toBeInTheDocument()
-      expect(screen.getByText('Gain')).toBeInTheDocument()
+      // Categories should be collapsed again after clearing search
+      expect(screen.queryByText('Gain')).not.toBeInTheDocument()
     })
 
     it('should show partial matches', async () => {
@@ -233,6 +258,7 @@ describe('NodePalette - Filtering System', () => {
       // Apply text filter
       await user.type(searchInput, 'gain')
       expect(searchInput).toHaveValue('gain')
+      expect(screen.getByText('Gain')).toBeInTheDocument()
 
       // Click clear filters button
       const clearFiltersButton = screen.getByText(/Clear filters/)
@@ -242,23 +268,30 @@ describe('NodePalette - Filtering System', () => {
       expect(searchInput).toHaveValue('')
       expect(screen.queryByText(/Clear filters/)).not.toBeInTheDocument()
 
-      // All nodes should be visible again
-      expect(screen.getByText('Oscillator')).toBeInTheDocument()
-      expect(screen.getByText('Gain')).toBeInTheDocument()
+      // Categories should be collapsed again
+      expect(screen.queryByText('Gain')).not.toBeInTheDocument()
     })
   })
 
   describe('Node Display', () => {
-    it('should show node counts in node cards', () => {
+    it('should show node counts in node cards when category is expanded', async () => {
       renderWithStore(<NodePalette />)
+
+      // Search to expand categories with matches
+      const searchInput = screen.getByPlaceholderText('Search nodes to add...')
+      await user.type(searchInput, 'osc')
 
       // Check that input/output counts are displayed
       const nodeCards = screen.getAllByText(/\d+ (in|out)/)
       expect(nodeCards.length).toBeGreaterThan(0)
     })
 
-    it('should render draggable node elements', () => {
+    it('should render draggable node elements when category is expanded', async () => {
       renderWithStore(<NodePalette />)
+
+      // Search for oscillator to expand its category
+      const searchInput = screen.getByPlaceholderText('Search nodes to add...')
+      await user.type(searchInput, 'osc')
 
       const oscillatorNode = screen.getByText('Oscillator')
       const draggableElement = oscillatorNode.closest('[draggable="true"]')
@@ -275,12 +308,26 @@ describe('NodePalette - Filtering System', () => {
       const searchInput = screen.getByPlaceholderText('Search nodes to add...')
 
       // Type and then clear
-      await user.type(searchInput, 'test')
+      await user.type(searchInput, 'osc')
+      expect(screen.getByText('Oscillator')).toBeInTheDocument()
+
       await user.clear(searchInput)
 
-      // Should show all nodes again
+      // Categories should collapse again when search is cleared
+      expect(screen.queryByText('Oscillator')).not.toBeInTheDocument()
+    })
+
+    it('should auto-expand categories during search', async () => {
+      renderWithStore(<NodePalette />)
+
+      const searchInput = screen.getByPlaceholderText('Search nodes to add...')
+
+      // Categories start collapsed
+      expect(screen.queryByText('Oscillator')).not.toBeInTheDocument()
+
+      // Search expands matching categories automatically
+      await user.type(searchInput, 'osc')
       expect(screen.getByText('Oscillator')).toBeInTheDocument()
-      expect(screen.getByText('Gain')).toBeInTheDocument()
     })
   })
 
@@ -289,7 +336,7 @@ describe('NodePalette - Filtering System', () => {
       renderWithStore(<NodePalette />)
 
       const searchInput = screen.getByPlaceholderText('Search nodes to add...')
-      expect(searchInput).toHaveAttribute('type', 'text')
+      expect(searchInput).toHaveAttribute('type', 'search')
     })
 
     it('should support keyboard navigation', async () => {

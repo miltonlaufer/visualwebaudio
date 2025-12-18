@@ -20,7 +20,17 @@ vi.mock('~/services/KeyStorageService', () => ({
     hasKey: vi.fn().mockResolvedValue(false),
     storeKey: vi.fn().mockResolvedValue(undefined),
     retrieveKey: vi.fn().mockResolvedValue(null),
+    removeKey: vi.fn().mockResolvedValue(undefined),
   },
+}))
+
+vi.mock('~/services/ChatPersistenceService', () => ({
+  ChatPersistenceService: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    getAllConversations: vi.fn().mockResolvedValue([]),
+    saveConversation: vi.fn().mockResolvedValue(undefined),
+    deleteConversation: vi.fn().mockResolvedValue(undefined),
+  })),
 }))
 
 const TestWrapper: React.FC<{ children: React.ReactNode }> = observer(({ children }) => {
@@ -54,7 +64,7 @@ describe('AIChat', () => {
     fireEvent.click(chatButton)
 
     await waitFor(() => {
-      expect(screen.getByText('AI Assistant (mega alpha)')).toBeInTheDocument()
+      expect(screen.getByText('AI Assistant (beta)')).toBeInTheDocument()
     })
   })
 
@@ -154,9 +164,9 @@ describe('AIChat', () => {
     const openButton = getByTitle('Open AI Assistant')
     expect(openButton).toBeInTheDocument()
 
-    // Mock the focus method
+    // Mock the focus method for textarea
     const mockFocus = vi.fn()
-    HTMLInputElement.prototype.focus = mockFocus
+    HTMLTextAreaElement.prototype.focus = mockFocus
 
     // Open the chat
     fireEvent.click(openButton)

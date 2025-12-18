@@ -1,0 +1,112 @@
+{
+  "providers": {
+    "openai": {
+      "name": "OpenAI",
+      "apiKeyUrl": "https://platform.openai.com/api-keys",
+      "baseUrl": "https://api.openai.com/v1",
+      "modelsEndpoint": "/models",
+      "supportsModelFetch": true,
+      "requiresApiKey": true,
+      "defaultModels": [
+        { "id": "gpt-5.2", "name": "GPT-5.2", "supportsTools": true },
+        { "id": "gpt-5.2-pro", "name": "GPT-5.2 Pro", "supportsTools": true },
+        { "id": "gpt-5.2-instant", "name": "GPT-5.2 Instant", "supportsTools": true },
+        { "id": "gpt-5.1", "name": "GPT-5.1", "supportsTools": true },
+        { "id": "gpt-5-mini", "name": "GPT-5 Mini", "supportsTools": true },
+        { "id": "gpt-5-nano", "name": "GPT-5 Nano", "supportsTools": true },
+        { "id": "gpt-4.1", "name": "GPT-4.1", "supportsTools": true },
+        { "id": "o4-mini", "name": "o4 Mini", "supportsTools": true },
+        { "id": "gpt-4o", "name": "GPT-4o", "supportsTools": true }
+      ]
+    },
+    "anthropic": {
+      "name": "Anthropic",
+      "apiKeyUrl": "https://console.anthropic.com/",
+      "supportsModelFetch": false,
+      "requiresApiKey": true,
+      "defaultModels": [
+        { "id": "claude-opus-4-5-20251124", "name": "Claude Opus 4.5", "supportsTools": true },
+        { "id": "claude-haiku-4-5-20251015", "name": "Claude Haiku 4.5", "supportsTools": true },
+        { "id": "claude-sonnet-4-20250514", "name": "Claude Sonnet 4", "supportsTools": true },
+        { "id": "claude-3-7-sonnet-20250219", "name": "Claude 3.7 Sonnet", "supportsTools": true },
+        { "id": "claude-3-5-sonnet-20241022", "name": "Claude 3.5 Sonnet", "supportsTools": true },
+        { "id": "claude-3-5-haiku-20241022", "name": "Claude 3.5 Haiku", "supportsTools": true }
+      ]
+    },
+    "google": {
+      "name": "Google (Gemini)",
+      "apiKeyUrl": "https://aistudio.google.com/apikey",
+      "supportsModelFetch": false,
+      "requiresApiKey": true,
+      "defaultModels": [
+        { "id": "gemini-3-pro", "name": "Gemini 3 Pro", "supportsTools": true },
+        { "id": "gemini-3-flash", "name": "Gemini 3 Flash", "supportsTools": true },
+        { "id": "gemini-2.0-flash", "name": "Gemini 2.0 Flash", "supportsTools": true },
+        { "id": "gemini-2.0-flash-lite", "name": "Gemini 2.0 Flash Lite", "supportsTools": true },
+        { "id": "gemini-1.5-pro", "name": "Gemini 1.5 Pro", "supportsTools": true },
+        { "id": "gemini-1.5-flash", "name": "Gemini 1.5 Flash", "supportsTools": true }
+      ]
+    },
+    "deepseek": {
+      "name": "DeepSeek",
+      "apiKeyUrl": "https://platform.deepseek.com/api_keys",
+      "baseUrl": "https://api.deepseek.com/v1",
+      "modelsEndpoint": "/models",
+      "supportsModelFetch": true,
+      "requiresApiKey": true,
+      "openaiCompatible": true,
+      "defaultModels": [
+        { "id": "deepseek-chat", "name": "DeepSeek V3", "supportsTools": true },
+        { "id": "deepseek-reasoner", "name": "DeepSeek R1", "supportsTools": false }
+      ]
+    },
+    "xai": {
+      "name": "xAI (Grok)",
+      "apiKeyUrl": "https://console.x.ai/",
+      "baseUrl": "https://api.x.ai/v1",
+      "modelsEndpoint": "/models",
+      "supportsModelFetch": true,
+      "requiresApiKey": true,
+      "defaultModels": [
+        { "id": "grok-3", "name": "Grok 3", "supportsTools": true },
+        { "id": "grok-3-fast", "name": "Grok 3 Fast", "supportsTools": true },
+        { "id": "grok-2-latest", "name": "Grok 2", "supportsTools": true }
+      ]
+    },
+    "openrouter": {
+      "name": "OpenRouter",
+      "apiKeyUrl": "https://openrouter.ai/keys",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "modelsEndpoint": "https://openrouter.ai/api/v1/models",
+      "supportsModelFetch": true,
+      "requiresApiKey": true,
+      "openaiCompatible": true,
+      "defaultModels": [
+        { "id": "openai/gpt-5.2", "name": "OpenAI GPT-5.2", "supportsTools": true },
+        { "id": "anthropic/claude-opus-4.5", "name": "Claude Opus 4.5", "supportsTools": true },
+        { "id": "google/gemini-3-pro", "name": "Gemini 3 Pro", "supportsTools": true },
+        { "id": "deepseek/deepseek-r1", "name": "DeepSeek R1", "supportsTools": false },
+        { "id": "meta-llama/llama-4-maverick", "name": "Llama 4 Maverick", "supportsTools": true },
+        { "id": "x-ai/grok-3", "name": "Grok 3", "supportsTools": true }
+      ]
+    },
+    "ollama": {
+      "name": "Ollama (Local)",
+      "apiKeyUrl": "https://ollama.com/library",
+      "baseUrl": "http://localhost:11434",
+      "modelsEndpoint": "/api/tags",
+      "supportsModelFetch": true,
+      "requiresApiKey": false,
+      "instructions": "Run 'ollama pull <model>' to download models first. Models list updates automatically from your local Ollama installation.",
+      "defaultModels": [
+        { "id": "llama3.3:latest", "name": "Llama 3.3 (70B)", "supportsTools": true },
+        { "id": "llama3.2:latest", "name": "Llama 3.2", "supportsTools": true },
+        { "id": "qwen2.5:latest", "name": "Qwen 2.5", "supportsTools": true },
+        { "id": "deepseek-r1:latest", "name": "DeepSeek R1", "supportsTools": false },
+        { "id": "mistral:latest", "name": "Mistral", "supportsTools": true },
+        { "id": "codellama:latest", "name": "Code Llama", "supportsTools": false },
+        { "id": "phi3:latest", "name": "Phi-3", "supportsTools": true }
+      ]
+    }
+  }
+}

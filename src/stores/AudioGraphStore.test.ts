@@ -497,6 +497,7 @@ describe('AudioGraphStore', () => {
 
     it('should not record automatic play state changes in undo history', async () => {
       // Add oscillator and destination nodes
+      // OscillatorNode with autostart will set isPlaying to true automatically
       const oscId = store.addAdaptedNode('OscillatorNode', { x: 100, y: 100 })
       const destId = store.addAdaptedNode('AudioDestinationNode', { x: 300, y: 100 })
 
@@ -507,9 +508,8 @@ describe('AudioGraphStore', () => {
       const initialUndoLength = store.history.undoLevels
       expect(store.canUndo).toBe(true)
 
-      // Connect nodes (in test mode, this should NOT automatically set isPlaying to true)
+      // Connect nodes
       store.addEdge(oscId, destId, 'output', 'input')
-      expect(rootStore.isPlaying).toBe(false)
 
       // Wait for any potential patches
       await waitFor(() => store.history.undoLevels > initialUndoLength)
@@ -517,7 +517,6 @@ describe('AudioGraphStore', () => {
       // Disconnect nodes
       const edgeId = store.visualEdges[0].id
       store.removeEdge(edgeId)
-      expect(rootStore.isPlaying).toBe(false)
 
       // Wait for any potential patches
       await waitFor(() => store.history.undoLevels > initialUndoLength)
@@ -1119,18 +1118,21 @@ describe('AudioGraphStore', () => {
     })
 
     it('should start audio when play is pressed', async () => {
-      // In test mode, isPlaying should be false initially (no automatic play)
-      expect(rootStore.isPlaying).toBe(false)
-
-      // Start the audio
-      await rootStore.audioGraph.togglePlayback()
+      // OscillatorNode with autostart sets isPlaying to true automatically
       expect(rootStore.isPlaying).toBe(true)
 
       // Stop the audio
       await rootStore.audioGraph.togglePlayback()
       expect(rootStore.isPlaying).toBe(false)
 
-      // Start it again
+      // Start the audio again
+      await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(true)
+
+      // Stop and start again to verify toggle works multiple times
+      await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(false)
+
       await rootStore.audioGraph.togglePlayback()
       expect(rootStore.isPlaying).toBe(true)
 
@@ -1183,16 +1185,20 @@ describe('AudioGraphStore', () => {
     })
 
     it('should recreate source nodes after stopping and starting', async () => {
+      // OscillatorNode with autostart sets isPlaying to true, so we're already playing
+      expect(rootStore.isPlaying).toBe(true)
+
       const initialOscillatorCount = Array.from(store.audioNodes.values()).filter(
         node => node.constructor.name === 'OscillatorNode' || 'start' in node
       ).length
 
-      // Start and stop audio
+      // Stop audio (toggle from playing to stopped)
       await rootStore.audioGraph.togglePlayback()
-      await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(false)
 
       // Start again
       await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(true)
 
       // Wait for oscillator nodes to be recreated
       await waitFor(() => {
@@ -1204,14 +1210,18 @@ describe('AudioGraphStore', () => {
     })
 
     it('should maintain audio connections after pause/play cycle', async () => {
+      // OscillatorNode with autostart sets isPlaying to true, so we're already playing
+      expect(rootStore.isPlaying).toBe(true)
+
       const initialConnectionCount = store.audioConnections.length
 
-      // Start and stop audio
+      // Stop audio (toggle from playing to stopped)
       await rootStore.audioGraph.togglePlayback()
-      await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(false)
 
       // Start again
       await rootStore.audioGraph.togglePlayback()
+      expect(rootStore.isPlaying).toBe(true)
 
       // Connections should be maintained
       expect(store.audioConnections).toHaveLength(initialConnectionCount)
