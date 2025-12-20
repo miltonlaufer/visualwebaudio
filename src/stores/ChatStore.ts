@@ -206,7 +206,7 @@ export const ChatStore = types
     })
 
     const createConversation = flow(function* (title = 'New conversation') {
-      const id = `conv-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      const id = `conv-${crypto.randomUUID()}`
       const now = new Date()
 
       const conversation = {

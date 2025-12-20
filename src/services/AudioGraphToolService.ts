@@ -21,6 +21,29 @@ const allMetadata: Record<string, NodeMetadata> = {
 }
 
 /**
+ * AudioParam names that can be modulated on various node types
+ * These are valid target handles even if not explicitly listed in metadata
+ */
+const audioParamsByNodeType: Record<string, string[]> = {
+  OscillatorNode: ['frequency', 'detune'],
+  GainNode: ['gain'],
+  DelayNode: ['delayTime'],
+  BiquadFilterNode: ['frequency', 'Q', 'gain', 'detune'],
+  DynamicsCompressorNode: ['threshold', 'knee', 'ratio', 'attack', 'release'],
+  StereoPannerNode: ['pan'],
+  PannerNode: [
+    'positionX',
+    'positionY',
+    'positionZ',
+    'orientationX',
+    'orientationY',
+    'orientationZ',
+  ],
+  ConstantSourceNode: ['offset'],
+  AudioBufferSourceNode: ['playbackRate', 'detune'],
+}
+
+/**
  * Get valid output handles for a node type
  */
 function getValidOutputs(nodeType: string): string[] {
@@ -31,11 +54,15 @@ function getValidOutputs(nodeType: string): string[] {
 
 /**
  * Get valid input handles for a node type
+ * Includes both metadata inputs and AudioParam names that can be modulated
  */
 function getValidInputs(nodeType: string): string[] {
   const metadata = allMetadata[nodeType]
-  if (!metadata?.inputs) return ['input']
-  return metadata.inputs.map(i => i.name)
+  const metadataInputs = metadata?.inputs?.map(i => i.name) || ['input']
+  const audioParams = audioParamsByNodeType[nodeType] || []
+
+  // Combine and deduplicate
+  return [...new Set([...metadataInputs, ...audioParams])]
 }
 
 /**

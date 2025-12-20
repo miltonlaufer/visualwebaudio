@@ -89,10 +89,15 @@ export function balanceBrackets(json: string): string {
 }
 
 /**
- * Remove non-printable characters
+ * Remove control characters that break JSON parsing
+ * Only removes actual control characters (0x00-0x1F except allowed whitespace)
+ * Preserves Unicode characters, emoji, and international text
  */
 export function removeNonPrintable(json: string): string {
-  return json.replace(/[^\x20-\x7E\n\r\t]/g, '')
+  // Only remove control characters (0x00-0x08, 0x0B, 0x0C, 0x0E-0x1F)
+  // Preserves: \t (0x09), \n (0x0A), \r (0x0D), and all characters >= 0x20 including Unicode
+  // eslint-disable-next-line no-control-regex
+  return json.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, '')
 }
 
 /**
@@ -271,11 +276,9 @@ export function parseAndValidateJSON(rawText: string): ParseResult {
  * More aggressive JSON repair for severely malformed JSON
  */
 function aggressiveJSONRepair(json: string): string {
-  const result = json
-
   // Try to extract individual action objects and rebuild
   const actionPattern = /\{\s*"type"\s*:\s*"[^"]+"\s*[^}]*\}/g
-  const matches = result.match(actionPattern)
+  const matches = json.match(actionPattern)
 
   if (matches && matches.length > 0) {
     // Try to parse each match individually and collect valid ones
@@ -301,7 +304,7 @@ function aggressiveJSONRepair(json: string): string {
     }
   }
 
-  return result
+  return json
 }
 
 /**
