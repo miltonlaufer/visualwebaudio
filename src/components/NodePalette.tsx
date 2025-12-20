@@ -6,6 +6,8 @@ import {
   CheckIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
+  ChevronRightIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/20/solid'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import MicrophoneInput from './MicrophoneInput'
@@ -22,6 +24,9 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   // Filtering state
   const [searchText, setSearchText] = useState('')
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+
+  // Collapsed/expanded state for categories (collapsed by default)
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
 
   // Get all available categories
   const allCategories = useMemo(() => {
@@ -62,6 +67,37 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
     setSearchText('')
     setSelectedCategories([])
   }
+
+  // Toggle category expansion
+  const toggleCategory = useCallback((categoryKey: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev)
+      if (next.has(categoryKey)) {
+        next.delete(categoryKey)
+      } else {
+        next.add(categoryKey)
+      }
+      return next
+    })
+  }, [])
+
+  // Check if a category should be shown as expanded
+  // During search or category filter, auto-expand categories with matches
+  const isCategoryExpanded = useCallback(
+    (categoryKey: string, category: string, hasMatches: boolean) => {
+      // If there's a search term and the category has matches, always expand
+      if (searchText && hasMatches) {
+        return true
+      }
+      // If this category is selected in the filter dropdown, always expand
+      if (selectedCategories.includes(category)) {
+        return true
+      }
+      // Otherwise, respect the manual toggle state
+      return expandedCategories.has(categoryKey)
+    },
+    [searchText, selectedCategories, expandedCategories]
+  )
 
   // Set up scroll detection
   useEffect(() => {
@@ -301,7 +337,12 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
               <MagnifyingGlassIcon className="h-4 w-4 text-gray-400" />
             </div>
             <input
-              type="text"
+              type="search"
+              name="node-search"
+              autoComplete="off"
+              data-lpignore="true"
+              data-1p-ignore
+              data-form-type="other"
               placeholder="Search nodes to add..."
               value={searchText}
               onChange={handleSearchTextChange}
@@ -393,110 +434,146 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         {/* Web Audio API Nodes */}
         <div className="mb-8">
           <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-            🔊 Web Audio API Nodes
+            Web Audio API Nodes
           </h2>
-          {Object.entries(webAudioCategories).map(([category, nodes]) => (
-            <div key={category} className="mb-6">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
-                {category} Nodes
-              </h3>
-              <div className="space-y-2">
-                {nodes.map(({ nodeType, metadata }) => (
-                  <div
-                    key={nodeType}
-                    draggable
-                    onDragStart={e => handleDragStart(e, nodeType)}
-                    onClick={() => handleNodeClick(nodeType)}
-                    className={`
-                      p-3 rounded-lg border cursor-pointer transition-all duration-200
-                      hover:shadow-md hover:scale-105
-                      ${getCategoryColor(category)}
-                    `}
-                  >
-                    <div className="text-sm font-medium">{nodeType.replace('Node', '')}</div>
-                    {metadata.description && (
-                      <div
-                        className="text-xs opacity-75 mt-1 line-clamp-2"
-                        title={metadata.description}
-                      >
-                        {metadata.description.split('.')[0]}.
-                      </div>
+          {Object.entries(webAudioCategories).map(([category, nodes]) => {
+            const categoryKey = `webAudio-${category}`
+            const isExpanded = isCategoryExpanded(categoryKey, category, nodes.length > 0)
+
+            return (
+              <div key={category} className="mb-2">
+                <button
+                  onClick={() => toggleCategory(categoryKey)}
+                  className="w-full flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 py-2 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <span className="capitalize flex items-center">
+                    {isExpanded ? (
+                      <ChevronDownIcon className="w-4 h-4 mr-1" />
+                    ) : (
+                      <ChevronRightIcon className="w-4 h-4 mr-1" />
                     )}
-                    <div className="flex items-center justify-between mt-2">
-                      <div className="flex items-center space-x-1">
-                        {metadata.inputs.length > 0 && (
-                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
-                            {metadata.inputs.length} in
-                          </span>
+                    {category} Nodes
+                  </span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{nodes.length}</span>
+                </button>
+                {isExpanded && (
+                  <div className="space-y-2 mt-2 ml-5">
+                    {nodes.map(({ nodeType, metadata }) => (
+                      <div
+                        key={nodeType}
+                        draggable
+                        onDragStart={e => handleDragStart(e, nodeType)}
+                        onClick={() => handleNodeClick(nodeType)}
+                        className={`
+                          p-3 rounded-lg border cursor-pointer transition-all duration-200
+                          hover:shadow-md hover:scale-105
+                          ${getCategoryColor(category)}
+                        `}
+                      >
+                        <div className="text-sm font-medium">{nodeType.replace('Node', '')}</div>
+                        {metadata.description && (
+                          <div
+                            className="text-xs opacity-75 mt-1 line-clamp-2"
+                            title={metadata.description}
+                          >
+                            {metadata.description.split('.')[0]}.
+                          </div>
                         )}
-                        {metadata.outputs.length > 0 && (
-                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
-                            {metadata.outputs.length} out
-                          </span>
-                        )}
+                        <div className="flex items-center justify-between mt-2">
+                          <div className="flex items-center space-x-1">
+                            {metadata.inputs.length > 0 && (
+                              <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                                {metadata.inputs.length} in
+                              </span>
+                            )}
+                            {metadata.outputs.length > 0 && (
+                              <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                                {metadata.outputs.length} out
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs opacity-75">{category}</span>
+                        </div>
                       </div>
-                      <span className="text-xs opacity-75">{category}</span>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
         {/* Utility Nodes */}
         {Object.keys(customNodeCategories).length > 0 && (
           <div className="mb-8">
             <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
-              🎛️ Utility Nodes
+              Utility Nodes
             </h2>
-            {Object.entries(customNodeCategories).map(([category, nodes]) => (
-              <div key={category} className="mb-6">
-                <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 capitalize">
-                  {category} Nodes
-                </h3>
-                <div className="space-y-2">
-                  {nodes.map(({ nodeType, metadata }) => (
-                    <div
-                      key={nodeType}
-                      draggable
-                      onDragStart={e => handleDragStart(e, nodeType)}
-                      onClick={() => handleNodeClick(nodeType)}
-                      className={`
-                        p-3 rounded-lg border cursor-pointer transition-all duration-200
-                        hover:shadow-md hover:scale-105
-                        ${getCategoryColor(category)}
-                      `}
-                    >
-                      <div className="text-sm font-medium">{metadata.name}</div>
-                      {metadata.description && (
-                        <div
-                          className="text-xs opacity-75 mt-1 line-clamp-2"
-                          title={metadata.description}
-                        >
-                          {metadata.description.split('.')[0]}.
-                        </div>
+            {Object.entries(customNodeCategories).map(([category, nodes]) => {
+              const categoryKey = `custom-${category}`
+              const isExpanded = isCategoryExpanded(categoryKey, category, nodes.length > 0)
+
+              return (
+                <div key={category} className="mb-2">
+                  <button
+                    onClick={() => toggleCategory(categoryKey)}
+                    className="w-full flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 py-2 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <span className="capitalize flex items-center">
+                      {isExpanded ? (
+                        <ChevronDownIcon className="w-4 h-4 mr-1" />
+                      ) : (
+                        <ChevronRightIcon className="w-4 h-4 mr-1" />
                       )}
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center space-x-1">
-                          {metadata.inputs.length > 0 && (
-                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
-                              {metadata.inputs.length} in
-                            </span>
+                      {category} Nodes
+                    </span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">{nodes.length}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="space-y-2 mt-2 ml-5">
+                      {nodes.map(({ nodeType, metadata }) => (
+                        <div
+                          key={nodeType}
+                          draggable
+                          onDragStart={e => handleDragStart(e, nodeType)}
+                          onClick={() => handleNodeClick(nodeType)}
+                          className={`
+                            p-3 rounded-lg border cursor-pointer transition-all duration-200
+                            hover:shadow-md hover:scale-105
+                            ${getCategoryColor(category)}
+                          `}
+                        >
+                          <div className="text-sm font-medium">{metadata.name}</div>
+                          {metadata.description && (
+                            <div
+                              className="text-xs opacity-75 mt-1 line-clamp-2"
+                              title={metadata.description}
+                            >
+                              {metadata.description.split('.')[0]}.
+                            </div>
                           )}
-                          {metadata.outputs.length > 0 && (
-                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
-                              {metadata.outputs.length} out
-                            </span>
-                          )}
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center space-x-1">
+                              {metadata.inputs.length > 0 && (
+                                <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                                  {metadata.inputs.length} in
+                                </span>
+                              )}
+                              {metadata.outputs.length > 0 && (
+                                <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                                  {metadata.outputs.length} out
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-xs opacity-75">{category}</span>
+                          </div>
                         </div>
-                        <span className="text-xs opacity-75">{category}</span>
-                      </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
 

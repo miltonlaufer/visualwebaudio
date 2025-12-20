@@ -29,6 +29,19 @@ const getAllNodesMetadata = (): Record<string, INodeMetadata> => {
   }
 }
 
+/******************* ERROR QUEUE TYPES ***********************/
+
+export interface GraphError {
+  id: string
+  timestamp: number
+  category: 'property' | 'connection' | 'audio' | 'initialization'
+  severity: 'warning' | 'error'
+  message: string
+  nodeId?: string
+  nodeType?: string
+  details?: Record<string, unknown>
+}
+
 // Helper function to encode Float32Array to WAV format
 const encodeWAV = (
   leftChannel: Float32Array,
@@ -129,6 +142,8 @@ export const AudioGraphStore = types
     recordingProcessor: null as ScriptProcessorNode | null,
     recordingBuffers: [[], []] as Float32Array[][],
     recordingStartTime: null as number | null,
+    // Error queue for AI feedback
+    errorQueue: [] as GraphError[],
   }))
   .preProcessSnapshot((snapshot: any) => {
     // Apply migration logic when loading snapshots
@@ -216,6 +231,40 @@ export const AudioGraphStore = types
       // Action to set/reset stopping state
       setIsStoppedByTheUser(value: boolean) {
         self.isStoppedByTheUser = value
+      },
+
+      /******************* ERROR QUEUE ACTIONS ***********************/
+
+      /**
+       * Report an error to the error queue for AI feedback
+       */
+      reportError(error: Omit<GraphError, 'id' | 'timestamp'>) {
+        const graphError: GraphError = {
+          ...error,
+          id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          timestamp: Date.now(),
+        }
+        self.errorQueue.push(graphError)
+        // Also log to console for debugging
+        const logFn = error.severity === 'error' ? console.error : console.warn
+        logFn(`[GraphError] ${error.category}: ${error.message}`, error.details || '')
+      },
+
+      /**
+       * Clear all errors from the queue
+       */
+      clearErrors() {
+        self.errorQueue.length = 0
+      },
+
+      /**
+       * Get recent errors, optionally filtered by timestamp
+       */
+      getRecentErrors(since?: number): GraphError[] {
+        if (since) {
+          return self.errorQueue.filter(e => e.timestamp >= since)
+        }
+        return [...self.errorQueue]
       },
 
       // Set node runtime state
@@ -399,6 +448,11 @@ export const AudioGraphStore = types
           self.audioContext = new AudioContext()
           self.audioNodeFactory = new AudioNodeFactory(self.audioContext)
           self.customNodeFactory = new CustomNodeFactory(self.audioContext)
+
+          // Set error reporter on the factory for AI feedback
+          self.audioNodeFactory.setErrorReporter?.(error => {
+            this.reportError(error)
+          })
 
           // Create global analyzer for frequency analysis
           self.globalAnalyzer = self.audioContext.createAnalyser()
@@ -701,9 +755,25 @@ export const AudioGraphStore = types
 
               if (!success) {
                 console.warn(`Property ${propertyName} not found on node ${nodeId}`)
+                this.reportError({
+                  category: 'property',
+                  severity: 'warning',
+                  message: `Property ${propertyName} update failed on node ${nodeId}`,
+                  nodeId,
+                  nodeType,
+                  details: { propertyName, value },
+                })
               }
             } catch (error) {
               console.error(`Error updating audio property ${propertyName}:`, error)
+              this.reportError({
+                category: 'property',
+                severity: 'error',
+                message: `Error updating audio property ${propertyName}: ${error instanceof Error ? error.message : String(error)}`,
+                nodeId,
+                nodeType,
+                details: { propertyName, value },
+              })
             }
           })
         } else if (customNode) {
@@ -890,10 +960,24 @@ export const AudioGraphStore = types
             sourceHandle,
             targetHandle,
           })
+          this.reportError({
+            category: 'connection',
+            severity: 'error',
+            message: `Invalid connection from ${source}(${sourceHandle || 'output'}) to ${target}(${targetHandle || 'input'})`,
+            details: { source, target, sourceHandle, targetHandle },
+          })
           return
         }
 
         const edgeId = `${source}-${target}-${sourceHandle || 'output'}-${targetHandle || 'input'}`
+
+        // Check for duplicate edges
+        const existingEdge = self.visualEdges.find(e => e.id === edgeId)
+        if (existingEdge) {
+          // Edge already exists, skip silently (not an error, just deduplication)
+          return
+        }
+
         const edge = {
           id: edgeId,
           source,
@@ -982,6 +1066,17 @@ export const AudioGraphStore = types
             sourceNodeType: sourceNode.nodeType,
             targetNodeType: targetNode.nodeType,
           })
+          this.reportError({
+            category: 'connection',
+            severity: 'error',
+            message: `Handle not found: ${!sourceOutput ? `output "${outputName}" on ${sourceNode.nodeType}` : `input "${inputName}" on ${targetNode.nodeType}`}`,
+            details: {
+              outputName,
+              inputName,
+              sourceNodeType: sourceNode.nodeType,
+              targetNodeType: targetNode.nodeType,
+            },
+          })
           return false
         }
 
@@ -997,6 +1092,12 @@ export const AudioGraphStore = types
           console.warn('Incompatible connection types:', {
             sourceType: sourceOutput.type,
             targetType: targetInput.type,
+          })
+          this.reportError({
+            category: 'connection',
+            severity: 'error',
+            message: `Incompatible connection: cannot connect ${sourceOutput.type} output to ${targetInput.type} input`,
+            details: { sourceType: sourceOutput.type, targetType: targetInput.type },
           })
         }
 
@@ -2436,10 +2537,18 @@ export const AudioGraphStore = types
                 ;(audioNode as OscillatorNode | AudioBufferSourceNode).start()
                 // Set state AFTER successful start
                 self.setNodeState(nodeId, { isRunning: true })
+                // Sync play button state - if a source node auto-starts, update isPlaying
+                if (!self.root.isPlaying) {
+                  self.root.setIsPlaying(true)
+                }
               } catch (error) {
                 // Node might already be started - still mark as running since sound IS playing
                 console.warn(`Source node ${nodeId} already started or failed to start:`, error)
                 self.setNodeState(nodeId, { isRunning: true })
+                // Sync play button state even on "already started" error
+                if (!self.root.isPlaying) {
+                  self.root.setIsPlaying(true)
+                }
               }
             }
           }

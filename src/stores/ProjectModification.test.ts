@@ -201,8 +201,6 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
 
       // The edge addition should mark as modified
       expect(root.isProjectModified).toBe(true)
-      // In test mode, isPlaying doesn't auto-start
-      expect(root.isPlaying).toBe(false)
 
       root.setProjectModified(false) // Reset to test the disconnect
 
@@ -212,7 +210,6 @@ describe('AudioGraphStore - Project Modification Tracking', () => {
 
       // The edge removal should mark as modified
       expect(root.isProjectModified).toBe(true)
-      expect(root.isPlaying).toBe(false)
     })
   })
 

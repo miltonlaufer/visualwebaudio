@@ -32,6 +32,7 @@ describe('LangChainService', () => {
     service = new LangChainService()
     service.initialize({
       apiKey: 'test-key',
+      provider: 'openai',
       model: 'gpt-4',
       temperature: 0.7,
     })
@@ -500,26 +501,40 @@ describe('LangChainService', () => {
         'AudioDestinationNode',
       ]
 
-      // Access the private method using bracket notation
-      const systemPrompt = (service as any).getSystemPrompt(availableNodeTypes)
+      // Access the private method using bracket notation - test fallback mode (JSON)
+      const systemPrompt = (service as any).getSystemPrompt(availableNodeTypes, false)
 
-      // Check for essential information in the new enhanced prompt with audio engineering knowledge
-      expect(systemPrompt).toContain('You are a senior audio engineer')
+      // Check for essential information in the fallback prompt
+      expect(systemPrompt.toLowerCase()).toContain('professor')
       expect(systemPrompt).toContain('AVAILABLE NODES:')
       expect(systemPrompt).toContain('KEY PARAMETERS:')
       expect(systemPrompt).toContain('DelayNode: delayTime(0-1s)')
       expect(systemPrompt).toContain(
         'OscillatorNode: frequency(Hz), type(sine/square/sawtooth/triangle)'
       )
-      expect(systemPrompt).toContain('MANDATORY RULES:')
-      expect(systemPrompt).toContain('AudioDestinationNode')
-      expect(systemPrompt).toContain('NO UNCONNECTED NODES')
-      expect(systemPrompt).toContain('COMPLETE SETUPS REQUIRED:')
-      expect(systemPrompt).toContain('MUSICAL CONTROL PATTERN:')
-      expect(systemPrompt).toContain('CONNECTIONS FORMAT:')
-      expect(systemPrompt).toContain('SLIDER SETUP')
-      expect(systemPrompt).toContain('RESPOND WITH PURE JSON ONLY')
-      expect(systemPrompt).toContain('REMEMBER: Include ALL nodes AND ALL connections')
+      expect(systemPrompt).toContain('CONNECTION HANDLES')
+      expect(systemPrompt).toContain('RESPOND WITH JSON')
+    })
+
+    it('should include tool calling info when tools are supported', () => {
+      const service = new LangChainService()
+      const availableNodeTypes = [
+        'OscillatorNode',
+        'DelayNode',
+        'SliderNode',
+        'MidiToFreqNode',
+        'GainNode',
+        'AudioDestinationNode',
+      ]
+
+      // Access the private method using bracket notation - test tool mode
+      const systemPrompt = (service as any).getSystemPrompt(availableNodeTypes, true)
+
+      // Check for audio engineering mindset and technical info
+      expect(systemPrompt.toLowerCase()).toContain('professor')
+      expect(systemPrompt).toContain('AVAILABLE NODE TYPES:')
+      expect(systemPrompt).toContain('batchActions')
+      expect(systemPrompt).toContain('CONNECTION HANDLES')
     })
   })
 
@@ -606,12 +621,16 @@ describe('LangChainService', () => {
       // Verify connection was created
       expect(store.visualEdges.length).toBe(1)
 
-      // Now remove the connection using AI identifiers
+      // Get actual node IDs after creation
+      const oscNode = store.adaptedNodes.find((n: any) => n.nodeType === 'OscillatorNode')
+      const gainNode = store.adaptedNodes.find((n: any) => n.nodeType === 'GainNode')
+
+      // Now remove the connection using actual node IDs (simulating cross-session scenario)
       const removeActions: AudioGraphAction[] = [
         {
           type: 'removeConnection',
-          sourceId: 'osc1',
-          targetId: 'gain1',
+          sourceId: oscNode!.id,
+          targetId: gainNode!.id,
           sourceHandle: 'output',
           targetHandle: 'input',
         },

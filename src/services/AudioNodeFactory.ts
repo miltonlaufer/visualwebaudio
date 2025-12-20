@@ -1,9 +1,30 @@
 import type { INodeMetadata } from '~/stores/NodeModels'
+import type { GraphError } from '~/stores/AudioGraphStore'
+
+export type ErrorReporter = (error: Omit<GraphError, 'id' | 'timestamp'>) => void
 
 export class AudioNodeFactory {
   public audioContext: AudioContext
+  private errorReporter: ErrorReporter | null = null
+
   constructor(audioContext: AudioContext) {
     this.audioContext = audioContext
+  }
+
+  /**
+   * Set the error reporter callback for sending errors to the store
+   */
+  setErrorReporter(reporter: ErrorReporter): void {
+    this.errorReporter = reporter
+  }
+
+  /**
+   * Report an error to the queue (if reporter is set)
+   */
+  private reportError(error: Omit<GraphError, 'id' | 'timestamp'>): void {
+    if (this.errorReporter) {
+      this.errorReporter(error)
+    }
   }
 
   createAudioNode(
@@ -90,6 +111,12 @@ export class AudioNodeFactory {
           const numValue = Number(value)
           if (isNaN(numValue) || !isFinite(numValue)) {
             console.error(`Cannot set AudioParam ${propertyName} to non-finite value: ${value}`)
+            this.reportError({
+              category: 'property',
+              severity: 'error',
+              message: `Cannot set AudioParam ${propertyName} to non-finite value: ${value}`,
+              details: { propertyName, value, propertyType },
+            })
             return
           }
           audioParam.value = numValue
@@ -99,6 +126,12 @@ export class AudioNodeFactory {
       }
     } else {
       console.warn(`Property ${propertyName} not found on audio node`)
+      this.reportError({
+        category: 'property',
+        severity: 'warning',
+        message: `Property ${propertyName} not found on audio node`,
+        details: { propertyName, value },
+      })
     }
   }
 
@@ -168,6 +201,13 @@ export class AudioNodeFactory {
     const propertyDef = metadata.properties.find(p => p.name === propertyName)
     if (!propertyDef) {
       console.error(`Property ${propertyName} not found in metadata for ${nodeType}`)
+      this.reportError({
+        category: 'property',
+        severity: 'error',
+        message: `Property ${propertyName} not found in metadata for ${nodeType}`,
+        nodeType,
+        details: { propertyName },
+      })
       return false
     }
 
@@ -175,6 +215,13 @@ export class AudioNodeFactory {
     const validatedValue = this.validatePropertyValue(value, propertyDef, propertyName)
     if (validatedValue === null) {
       console.error(`Invalid value for property ${propertyName}: ${value}`)
+      this.reportError({
+        category: 'property',
+        severity: 'error',
+        message: `Invalid value for property ${propertyName}: ${value}`,
+        nodeType,
+        details: { propertyName, value },
+      })
       return false
     }
 
@@ -210,12 +257,24 @@ export class AudioNodeFactory {
           console.warn(
             `Property ${propertyName} value ${numValue} is below minimum ${propertyDef.min}`
           )
+          this.reportError({
+            category: 'property',
+            severity: 'warning',
+            message: `Property ${propertyName} value ${numValue} is below minimum ${propertyDef.min}. Clamped to ${propertyDef.min}.`,
+            details: { propertyName, value: numValue, min: propertyDef.min },
+          })
           return propertyDef.min
         }
         if (propertyDef.max !== undefined && numValue > propertyDef.max) {
           console.warn(
             `Property ${propertyName} value ${numValue} is above maximum ${propertyDef.max}`
           )
+          this.reportError({
+            category: 'property',
+            severity: 'warning',
+            message: `Property ${propertyName} value ${numValue} is above maximum ${propertyDef.max}. Clamped to ${propertyDef.max}.`,
+            details: { propertyName, value: numValue, max: propertyDef.max },
+          })
           return propertyDef.max
         }
 
