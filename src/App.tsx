@@ -5,15 +5,29 @@ import { observer } from 'mobx-react-lite'
 import { rootStore } from '~/stores/RootStore'
 import { AudioGraphStoreContext, useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
 import Header from '~/components/Header'
 import GraphCanvas from '~/components/GraphCanvas'
 import UpdateNotification from '~/components/UpdateNotification'
 import OfflineIndicator from '~/components/OfflineIndicator'
+import prebuiltCompositeNodes from '~/types/composite-nodes-prebuilt.json'
+import type { CompositeNodeDefinition } from '~/types'
 
 // Lazy load AI Chat to reduce initial bundle size (loads LangChain libs)
 const AIChat = lazy(() => import('~/components/AIChat'))
+
+// Initialize composite node definitions at app startup
+const initializeCompositeNodes = () => {
+  if (!compositeNodeDefinitionStore.isLoaded && !compositeNodeDefinitionStore.isLoading) {
+    const prebuiltDefs = Object.values(prebuiltCompositeNodes) as CompositeNodeDefinition[]
+    compositeNodeDefinitionStore.initialize(prebuiltDefs)
+  }
+}
+
+// Initialize immediately when module loads
+initializeCompositeNodes()
 
 const App: React.FC = observer(() => {
   const themeStore = useMemo(() => createThemeStore(), [])

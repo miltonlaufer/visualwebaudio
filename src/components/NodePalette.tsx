@@ -10,7 +10,11 @@ import {
   ChevronDownIcon,
 } from '@heroicons/react/20/solid'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
+import { compositeEditorStore } from '~/stores/CompositeEditorStore'
 import MicrophoneInput from './MicrophoneInput'
+import prebuiltCompositeNodes from '~/types/composite-nodes-prebuilt.json'
+import type { CompositeNodeDefinition } from '~/types'
 
 interface NodePaletteProps {
   onClose?: () => void
@@ -27,6 +31,16 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
 
   // Collapsed/expanded state for categories (collapsed by default)
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set())
+
+  /******************* COMPOSITE NODES INITIALIZATION ***********************/
+
+  // Initialize composite node definition store on mount
+  useEffect(() => {
+    if (!compositeNodeDefinitionStore.isLoaded && !compositeNodeDefinitionStore.isLoading) {
+      const prebuiltDefs = Object.values(prebuiltCompositeNodes) as CompositeNodeDefinition[]
+      compositeNodeDefinitionStore.initialize(prebuiltDefs)
+    }
+  }, [])
 
   // Get all available categories
   const allCategories = useMemo(() => {
@@ -147,6 +161,20 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
 
   const handleNodeClick = useCallback(
     (nodeType: string) => {
+      // If composite editor is open, add to editor instead of main graph
+      if (compositeEditorStore.isOpen) {
+        // Check if we can add nodes (callback is set only for non-prebuilt)
+        if (compositeEditorStore.isReadOnly) {
+          // This is a prebuilt composite - show warning message
+          compositeEditorStore.setError(
+            "Cannot add nodes to a prebuilt composite. Use 'Save As' to create an editable copy first."
+          )
+          return
+        }
+        compositeEditorStore.addNodeToEditor(nodeType)
+        return
+      }
+
       // Add node at a default position with automatic spacing
       const basePosition = { x: 100, y: 100 }
       const nodeSpacing = 400 // Increased from 250 to 400 for better spacing
@@ -221,10 +249,56 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
         return 'bg-teal-50 dark:bg-teal-900 border-teal-200 dark:border-teal-700 text-teal-800 dark:text-teal-200'
       case 'misc':
         return 'bg-orange-50 dark:bg-orange-900 border-orange-200 dark:border-orange-700 text-orange-800 dark:text-orange-200'
+      // Composite node categories
+      case 'composite':
+        return 'bg-cyan-50 dark:bg-cyan-900 border-cyan-200 dark:border-cyan-700 text-cyan-800 dark:text-cyan-200'
+      case 'user-composite':
+        return 'bg-violet-50 dark:bg-violet-900 border-violet-200 dark:border-violet-700 text-violet-800 dark:text-violet-200'
       default:
         return 'bg-white dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-200'
     }
   }
+
+  /******************* USER COMPOSITE HANDLERS ***********************/
+
+  const handleEditUserComposite = useCallback((e: React.MouseEvent, definitionId: string) => {
+    e.stopPropagation()
+    compositeEditorStore.openEditor(definitionId)
+  }, [])
+
+  const handleDeleteUserComposite = useCallback(
+    async (e: React.MouseEvent, definitionId: string, name: string) => {
+      e.stopPropagation()
+
+      // Count nodes in main graph that use this definition
+      const nodeType = `Composite_${definitionId}`
+      const nodesUsingDefinition = store.adaptedNodes.filter(node => node.nodeType === nodeType)
+      const nodeCount = nodesUsingDefinition.length
+
+      const confirmMessage =
+        nodeCount > 0
+          ? `Are you sure you want to delete "${name}"? This will also remove ${nodeCount} node(s) from the main graph. This action cannot be undone.`
+          : `Are you sure you want to delete "${name}"? This action cannot be undone.`
+
+      if (!confirm(confirmMessage)) {
+        return
+      }
+
+      try {
+        // First remove all nodes from the main graph that use this definition
+        for (const node of nodesUsingDefinition) {
+          store.removeNode(node.id)
+        }
+
+        // Then delete the definition itself
+        await compositeNodeDefinitionStore.deleteCompositeNode(definitionId)
+      } catch (err) {
+        console.error('Failed to delete user composite:', err)
+        alert(`Failed to delete: ${(err as Error).message}`)
+      }
+    },
+    [store]
+  )
 
   // Custom node types
   const customNodeTypes = [
@@ -267,7 +341,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
   })
 
   return (
-    <div className="flex flex-col h-full relative">
+    <div className="flex flex-col h-full relative" data-testid="node-palette">
       {/* Scrollable content area */}
       <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
         <div className="flex items-center justify-between mb-4">
@@ -343,6 +417,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
               data-lpignore="true"
               data-1p-ignore
               data-form-type="other"
+              data-testid="node-search-input"
               placeholder="Search nodes to add..."
               value={searchText}
               onChange={handleSearchTextChange}
@@ -464,6 +539,7 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
                         draggable
                         onDragStart={e => handleDragStart(e, nodeType)}
                         onClick={() => handleNodeClick(nodeType)}
+                        data-testid={`node-item-${nodeType}`}
                         className={`
                           p-3 rounded-lg border cursor-pointer transition-all duration-200
                           hover:shadow-md hover:scale-105
@@ -576,6 +652,219 @@ const NodePalette: React.FC<NodePaletteProps> = observer(({ onClose }) => {
             })}
           </div>
         )}
+
+        {/* Composite Nodes (Prebuilt) */}
+        {compositeNodeDefinitionStore.prebuiltDefinitions.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+              Composite Nodes
+            </h2>
+            <div className="mb-2">
+              <button
+                onClick={() => toggleCategory('composite-prebuilt')}
+                className="w-full flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 py-2 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                <span className="capitalize flex items-center">
+                  {isCategoryExpanded('composite-prebuilt', 'composite', true) ? (
+                    <ChevronDownIcon className="w-4 h-4 mr-1" />
+                  ) : (
+                    <ChevronRightIcon className="w-4 h-4 mr-1" />
+                  )}
+                  Effect Chains
+                </span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {compositeNodeDefinitionStore.prebuiltDefinitions.length}
+                </span>
+              </button>
+              {isCategoryExpanded('composite-prebuilt', 'composite', true) && (
+                <div className="space-y-2 mt-2 ml-5">
+                  {compositeNodeDefinitionStore.prebuiltDefinitions.map(def => (
+                    <div
+                      key={def.id}
+                      draggable
+                      onDragStart={e => handleDragStart(e, `Composite_${def.id}`)}
+                      onClick={() => handleNodeClick(`Composite_${def.id}`)}
+                      className={`
+                        p-3 rounded-lg border cursor-pointer transition-all duration-200
+                        hover:shadow-md hover:scale-105
+                        ${getCategoryColor('composite')}
+                      `}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="text-sm font-medium">{def.name}</div>
+                        <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-cyan-500 text-white">
+                          Preset
+                        </span>
+                      </div>
+                      {def.description && (
+                        <div
+                          className="text-xs opacity-75 mt-1 line-clamp-2"
+                          title={def.description}
+                        >
+                          {def.description.split('.')[0]}.
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between mt-2">
+                        <div className="flex items-center space-x-1">
+                          {def.inputs.length > 0 && (
+                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                              {def.inputs.length} in
+                            </span>
+                          )}
+                          {def.outputs.length > 0 && (
+                            <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                              {def.outputs.length} out
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-xs opacity-75">composite</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* User Composite Nodes - Always show with Add New button */}
+        <div className="mb-8">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-4 border-b border-gray-200 dark:border-gray-700 pb-2">
+            User Composite Nodes
+          </h2>
+          <div className="mb-2">
+            <button
+              onClick={() => toggleCategory('composite-user')}
+              className="w-full flex items-center justify-between text-sm font-medium text-gray-700 dark:text-gray-300 py-2 px-2 rounded hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+            >
+              <span className="capitalize flex items-center">
+                {isCategoryExpanded('composite-user', 'user-composite', true) ? (
+                  <ChevronDownIcon className="w-4 h-4 mr-1" />
+                ) : (
+                  <ChevronRightIcon className="w-4 h-4 mr-1" />
+                )}
+                My Composites
+              </span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {compositeNodeDefinitionStore.userDefinitions.length}
+              </span>
+            </button>
+            {isCategoryExpanded('composite-user', 'user-composite', true) && (
+              <div className="space-y-2 mt-2 ml-5">
+                {/* Add New button */}
+                <button
+                  onClick={() => compositeEditorStore.createNew()}
+                  className={`
+                    w-full p-3 rounded-lg border-2 border-dashed cursor-pointer transition-all duration-200
+                    hover:shadow-md hover:border-solid
+                    border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30
+                    text-violet-700 dark:text-violet-300
+                    flex items-center justify-center gap-2
+                  `}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
+                    />
+                  </svg>
+                  <span className="text-sm font-medium">Create New Composite</span>
+                </button>
+
+                {/* Existing user composites */}
+                {compositeNodeDefinitionStore.userDefinitions.map(def => (
+                  <div
+                    key={def.id}
+                    draggable
+                    onDragStart={e => handleDragStart(e, `Composite_${def.id}`)}
+                    onClick={() => handleNodeClick(`Composite_${def.id}`)}
+                    className={`
+                      p-3 rounded-lg border cursor-pointer transition-all duration-200
+                      hover:shadow-md hover:scale-105
+                      ${getCategoryColor('user-composite')}
+                    `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm font-medium">{def.name}</div>
+                      <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-violet-500 text-white">
+                        User
+                      </span>
+                    </div>
+                    {def.description && (
+                      <div className="text-xs opacity-75 mt-1 line-clamp-2" title={def.description}>
+                        {def.description.split('.')[0]}.
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-2">
+                      <div className="flex items-center space-x-1">
+                        {def.inputs.length > 0 && (
+                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                            {def.inputs.length} in
+                          </span>
+                        )}
+                        {def.outputs.length > 0 && (
+                          <span className="text-xs bg-white dark:bg-gray-600 bg-opacity-50 dark:bg-opacity-50 px-1 rounded">
+                            {def.outputs.length} out
+                          </span>
+                        )}
+                      </div>
+                      {/* Edit and Delete buttons */}
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={e => handleEditUserComposite(e, def.id)}
+                          className="p-1 rounded hover:bg-violet-200 dark:hover:bg-violet-700 transition-colors"
+                          title="Edit composite"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={e => handleDeleteUserComposite(e, def.id, def.name)}
+                          className="p-1 rounded hover:bg-red-200 dark:hover:bg-red-700 text-red-600 dark:text-red-400 transition-colors"
+                          title="Delete composite"
+                        >
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Empty state message */}
+                {compositeNodeDefinitionStore.userDefinitions.length === 0 && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+                    No custom composites yet. Create one to get started!
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Node Categories - Legacy fallback */}
         {Object.keys(webAudioCategories).length === 0 &&

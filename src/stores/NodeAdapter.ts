@@ -56,6 +56,8 @@ export const NodeAdapter = types
         'input',
         'utility',
         'misc',
+        'composite',
+        'user-composite',
       ]),
       inputs: types.array(
         types.model('NodeInput', {

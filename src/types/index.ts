@@ -64,3 +64,70 @@ export interface AppState {
   selectedNodeId: string | null
   isPlaying: boolean
 }
+
+/******************* COMPOSITE NODE TYPES ***********************/
+
+export interface CompositeNodePort {
+  id: string
+  name: string
+  type: 'audio' | 'control'
+  description?: string
+}
+
+export interface SerializedNodeProperty {
+  name: string
+  value: unknown
+}
+
+export interface SerializedNode {
+  id: string
+  nodeType: string
+  position: { x: number; y: number }
+  properties: SerializedNodeProperty[]
+}
+
+export interface SerializedEdge {
+  id: string
+  source: string
+  target: string
+  sourceHandle?: string
+  targetHandle?: string
+}
+
+export interface SerializedConnection {
+  sourceNodeId: string
+  targetNodeId: string
+  sourceOutput: string
+  targetInput: string
+}
+
+export interface CompositeNodeInternalGraph {
+  nodes: SerializedNode[]
+  edges: SerializedEdge[]
+  connections: SerializedConnection[]
+}
+
+export interface CompositeNodeDefinition {
+  id: string
+  name: string
+  description: string
+  category: 'composite' | 'user-composite'
+  isPrebuilt: boolean
+  inputs: CompositeNodePort[]
+  outputs: CompositeNodePort[]
+  internalGraph: CompositeNodeInternalGraph
+  createdAt?: Date
+  updatedAt?: Date
+}
+
+export interface SavedCompositeNode {
+  id?: number
+  definitionId: string
+  name: string
+  description: string
+  inputs: CompositeNodePort[]
+  outputs: CompositeNodePort[]
+  internalGraph: string // JSON string of CompositeNodeInternalGraph
+  createdAt: Date
+  updatedAt: Date
+}

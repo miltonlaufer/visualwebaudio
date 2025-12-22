@@ -6,6 +6,7 @@ import { NodeAdapter } from './NodeAdapter'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import UndoManager from './UndoManager'
 import { createContext, useContext } from 'react'
 // Import the JSON metadata directly
@@ -27,6 +28,82 @@ const getAllNodesMetadata = (): Record<string, INodeMetadata> => {
     ...getWebAudioMetadata(),
     ...getCustomNodesMetadata(),
   }
+}
+
+// Get metadata for a composite node type
+const getCompositeNodeMetadata = (nodeType: string): INodeMetadata | null => {
+  if (!nodeType.startsWith('Composite_')) return null
+
+  const definitionId = nodeType.replace('Composite_', '')
+  const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+
+  if (!definition) return null
+
+  // Generate properties from control inputs - these should be editable in the PropertyPanel
+  const controlProperties = definition.inputs
+    .filter(input => input.type === 'control')
+    .map(input => ({
+      name: input.name,
+      type: 'number' as const,
+      defaultValue: getDefaultValueForControlInput(input.name),
+      description: input.description || `Control parameter: ${input.name}`,
+      min: 0,
+      max: getMaxValueForControlInput(input.name),
+      step: 0.01,
+    }))
+
+  // Generate metadata from definition
+  // Use the definition's category directly - NodeMetadataModel now supports 'composite' and 'user-composite'
+  return {
+    name: definition.name,
+    description: definition.description,
+    category: definition.category,
+    inputs: definition.inputs.map(input => ({
+      name: input.name,
+      type: input.type as 'audio' | 'control',
+    })),
+    outputs: definition.outputs.map(output => ({
+      name: output.name,
+      type: output.type as 'audio' | 'control',
+    })),
+    properties: controlProperties,
+    methods: [],
+    events: [],
+  } as unknown as INodeMetadata
+}
+
+// Helper to get default values for common control input names
+const getDefaultValueForControlInput = (name: string): number => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('time') || lowerName.includes('delay')) return 0.3
+  if (lowerName.includes('feedback')) return 0.3
+  if (lowerName.includes('wet') || lowerName.includes('dry') || lowerName.includes('mix'))
+    return 0.5
+  if (lowerName.includes('attack')) return 0.01
+  if (lowerName.includes('decay')) return 0.1
+  if (lowerName.includes('sustain')) return 0.7
+  if (lowerName.includes('release')) return 0.3
+  if (lowerName.includes('rate')) return 1.5
+  if (lowerName.includes('depth')) return 0.3
+  if (lowerName.includes('gain') || lowerName.includes('volume')) return 1.0
+  if (lowerName.includes('frequency') || lowerName.includes('freq')) return 440
+  return 0.5
+}
+
+// Helper to get max values for common control input names
+const getMaxValueForControlInput = (name: string): number => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('time') || lowerName.includes('delay')) return 5
+  if (lowerName.includes('feedback')) return 0.99
+  if (lowerName.includes('wet') || lowerName.includes('dry') || lowerName.includes('mix')) return 1
+  if (lowerName.includes('attack') || lowerName.includes('decay') || lowerName.includes('release'))
+    return 5
+  if (lowerName.includes('sustain')) return 1
+  if (lowerName.includes('rate')) return 20
+  if (lowerName.includes('depth')) return 1
+  if (lowerName.includes('gain') || lowerName.includes('volume')) return 2
+  if (lowerName.includes('frequency') || lowerName.includes('freq')) return 20000
+  return 10
 }
 
 /******************* ERROR QUEUE TYPES ***********************/
@@ -465,7 +542,12 @@ export const AudioGraphStore = types
       addAdaptedNode(nodeType: string, position: { x: number; y: number }) {
         // Check both WebAudio and Custom node metadata
         const allMetadata = getAllNodesMetadata()
-        const metadata = allMetadata[nodeType]
+        let metadata = allMetadata[nodeType]
+
+        // If not found in regular metadata, check if it's a composite node
+        if (!metadata && nodeType.startsWith('Composite_')) {
+          metadata = getCompositeNodeMetadata(nodeType) as INodeMetadata
+        }
 
         if (!metadata) {
           console.error('STORE: Unknown node type:', nodeType)
@@ -1724,6 +1806,65 @@ export const AudioGraphStore = types
           // Mark project as modified
           self.root?.markProjectModified()
         }
+      },
+
+      /**
+       * Update a composite node to use a different definition.
+       * Used when "Save As" creates a new definition from a preset.
+       */
+      updateCompositeNodeDefinition(nodeId: string, newDefinitionId: string) {
+        const node = self.adaptedNodes.find(n => n.id === nodeId)
+        if (!node) {
+          console.warn('Node not found:', nodeId)
+          return
+        }
+
+        // Verify it's a composite node
+        if (!node.nodeType.startsWith('Composite_')) {
+          console.warn('Not a composite node:', node.nodeType)
+          return
+        }
+
+        // Update the node type to reference the new definition
+        const newNodeType = `Composite_${newDefinitionId}`
+
+        // Get new metadata for the new definition
+        const newMetadata = getCompositeNodeMetadata(newNodeType)
+        if (!newMetadata) {
+          console.error('Could not get metadata for new definition:', newDefinitionId)
+          return
+        }
+
+        // Update the node type
+        node.nodeType = newNodeType
+
+        // Update the metadata
+        node.metadata.name = newMetadata.name
+        node.metadata.description = newMetadata.description
+        node.metadata.category = newMetadata.category
+
+        // Update inputs/outputs if they match
+        // (For now, we assume the interface is compatible)
+        node.metadata.inputs.clear()
+        newMetadata.inputs.forEach(input => {
+          node.metadata.inputs.push(input)
+        })
+
+        node.metadata.outputs.clear()
+        newMetadata.outputs.forEach(output => {
+          node.metadata.outputs.push(output)
+        })
+
+        node.metadata.properties.clear()
+        newMetadata.properties.forEach(prop => {
+          node.metadata.properties.push(prop)
+        })
+
+        // Mark project as modified
+        self.root?.markProjectModified()
+
+        // Force a re-render
+        self.root?.forceRerender()
       },
     }
   })

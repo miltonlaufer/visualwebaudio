@@ -17,6 +17,10 @@
     "test:coverage:ui": "vitest --ui --coverage",
     "test:watch": "vitest",
     "full-tests": "npm run test && npx lint-staged && npm run type-check",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
     "extract-types": "node scripts/extract-web-audio-types.js",
     "type-check": "tsc --noEmit --project tsconfig.app.json",
     "prepare": "husky",
@@ -58,6 +62,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@playwright/test": "^1.57.0",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.3.0",

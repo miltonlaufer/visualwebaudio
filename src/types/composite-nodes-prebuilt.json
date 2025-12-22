@@ -1,0 +1,1394 @@
+{
+  "DelayEffect": {
+    "id": "DelayEffect",
+    "name": "Delay Effect",
+    "description": "Complete delay effect with feedback control and wet/dry mix. Creates echo and rhythmic delay effects.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "delayTime",
+        "name": "delayTime",
+        "type": "control",
+        "description": "Delay time in seconds (0-2)"
+      },
+      {
+        "id": "feedback",
+        "name": "feedback",
+        "type": "control",
+        "description": "Feedback amount (0-0.95)"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_delayTime",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 250 },
+          "properties": [{ "name": "portId", "value": "delayTime" }]
+        },
+        {
+          "id": "ext_feedback",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "feedback" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 450 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "delay",
+          "nodeType": "DelayNode",
+          "position": { "x": 300, "y": 150 },
+          "properties": [{ "name": "delayTime", "value": 0.3 }]
+        },
+        {
+          "id": "feedbackGain",
+          "nodeType": "GainNode",
+          "position": { "x": 300, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.4 }]
+        },
+        {
+          "id": "wetGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 150 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 900, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_input",
+          "target": "delay",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e3",
+          "source": "delay",
+          "target": "feedbackGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e4",
+          "source": "feedbackGain",
+          "target": "delay",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "delay",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "wetGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e8",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e9",
+          "source": "ext_delayTime",
+          "target": "delay",
+          "sourceHandle": "output",
+          "targetHandle": "delayTime"
+        },
+        {
+          "id": "e10",
+          "source": "ext_feedback",
+          "target": "feedbackGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        },
+        {
+          "id": "e11",
+          "source": "ext_wetDry",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "delay",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "delay",
+          "targetNodeId": "feedbackGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "feedbackGain",
+          "targetNodeId": "delay",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "delay",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "wetGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_delayTime",
+          "targetNodeId": "delay",
+          "sourceOutput": "output",
+          "targetInput": "delayTime"
+        },
+        {
+          "sourceNodeId": "ext_feedback",
+          "targetNodeId": "feedbackGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  },
+  "ReverbChapel": {
+    "id": "ReverbChapel",
+    "name": "Chapel Reverb",
+    "description": "Warm, musical reverb from Spokane Woman's Club chapel. Real impulse response from OpenAir library. Great for vocals and acoustic instruments.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "convolver",
+          "nodeType": "ConvolverNode",
+          "position": { "x": 300, "y": 150 },
+          "properties": [{ "name": "impulseResponse", "value": "chapel" }]
+        },
+        {
+          "id": "wetGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 150 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 900, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_input",
+          "target": "convolver",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e3",
+          "source": "convolver",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e4",
+          "source": "wetGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "ext_wetDry",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "convolver",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "convolver",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "wetGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  },
+  "ReverbMausoleum": {
+    "id": "ReverbMausoleum",
+    "name": "Mausoleum Reverb",
+    "description": "Hamilton Mausoleum - one of the longest natural reverbs in the world (~15s decay). Real impulse response from OpenAir. Epic, cathedral-like sound.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "convolver",
+          "nodeType": "ConvolverNode",
+          "position": { "x": 300, "y": 150 },
+          "properties": [{ "name": "impulseResponse", "value": "mausoleum" }]
+        },
+        {
+          "id": "wetGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 150 },
+          "properties": [{ "name": "gain", "value": 0.4 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.6 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 900, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_input",
+          "target": "convolver",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e3",
+          "source": "convolver",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e4",
+          "source": "wetGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "ext_wetDry",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "convolver",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "convolver",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "wetGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  },
+  "ReverbStairwell": {
+    "id": "ReverbStairwell",
+    "name": "Stairwell Reverb",
+    "description": "Concrete stairwell with bright, reflective reverb. Real impulse response from OpenAir. Adds presence and brightness.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "convolver",
+          "nodeType": "ConvolverNode",
+          "position": { "x": 300, "y": 150 },
+          "properties": [{ "name": "impulseResponse", "value": "stairwell" }]
+        },
+        {
+          "id": "wetGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 150 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 900, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_input",
+          "target": "convolver",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e3",
+          "source": "convolver",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e4",
+          "source": "wetGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "ext_wetDry",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "convolver",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "convolver",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "wetGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  },
+  "ReverbBasement": {
+    "id": "ReverbBasement",
+    "name": "Basement Reverb",
+    "description": "Small basement room with tight, intimate reverb. Real impulse response from OpenAir. Good for subtle ambience.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "convolver",
+          "nodeType": "ConvolverNode",
+          "position": { "x": 300, "y": 150 },
+          "properties": [{ "name": "impulseResponse", "value": "basement" }]
+        },
+        {
+          "id": "wetGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 150 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 500, "y": 300 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 900, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_input",
+          "target": "convolver",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e3",
+          "source": "convolver",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e4",
+          "source": "wetGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "ext_wetDry",
+          "target": "wetGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "convolver",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "convolver",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "wetGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "wetGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  },
+  "EnvelopeADSR": {
+    "id": "EnvelopeADSR",
+    "name": "ADSR Envelope",
+    "description": "Attack-Decay-Sustain-Release envelope generator with trigger input. Shape audio amplitude over time.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "trigger",
+        "name": "trigger",
+        "type": "control",
+        "description": "Triggers the envelope (any value > 0)"
+      },
+      {
+        "id": "gate",
+        "name": "gate",
+        "type": "audio",
+        "description": "Audio signal to shape with envelope"
+      },
+      {
+        "id": "attack",
+        "name": "attack",
+        "type": "control",
+        "description": "Attack time in seconds (0.001-2)"
+      },
+      {
+        "id": "decay",
+        "name": "decay",
+        "type": "control",
+        "description": "Decay time in seconds (0.001-2)"
+      },
+      {
+        "id": "sustain",
+        "name": "sustain",
+        "type": "control",
+        "description": "Sustain level (0-1)"
+      },
+      {
+        "id": "release",
+        "name": "release",
+        "type": "control",
+        "description": "Release time in seconds (0.001-5)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Envelope-shaped audio output"
+      },
+      {
+        "id": "envelope",
+        "name": "envelope",
+        "type": "control",
+        "description": "Current envelope value (0-1)"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_trigger",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 50 },
+          "properties": [{ "name": "portId", "value": "trigger" }]
+        },
+        {
+          "id": "ext_gate",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 150 },
+          "properties": [{ "name": "portId", "value": "gate" }]
+        },
+        {
+          "id": "ext_attack",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 250 },
+          "properties": [{ "name": "portId", "value": "attack" }]
+        },
+        {
+          "id": "ext_decay",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "decay" }]
+        },
+        {
+          "id": "ext_sustain",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 450 },
+          "properties": [{ "name": "portId", "value": "sustain" }]
+        },
+        {
+          "id": "ext_release",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 550 },
+          "properties": [{ "name": "portId", "value": "release" }]
+        },
+        {
+          "id": "envelopeGain",
+          "nodeType": "GainNode",
+          "position": { "x": 400, "y": 200 },
+          "properties": [
+            { "name": "gain", "value": 0 },
+            { "name": "_isEnvelope", "value": true },
+            { "name": "_attack", "value": 0.01 },
+            { "name": "_decay", "value": 0.1 },
+            { "name": "_sustain", "value": 0.7 },
+            { "name": "_release", "value": 0.3 }
+          ]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 700, "y": 200 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        },
+        {
+          "id": "ext_envelope",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 700, "y": 350 },
+          "properties": [{ "name": "portId", "value": "envelope" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "ext_gate",
+          "target": "envelopeGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "envelopeGain",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "ext_gate",
+          "targetNodeId": "envelopeGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "envelopeGain",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        }
+      ]
+    }
+  },
+  "ChorusEffect": {
+    "id": "ChorusEffect",
+    "name": "Chorus Effect",
+    "description": "Classic chorus effect using multiple delayed copies with LFO modulation. Creates rich, shimmering sounds.",
+    "category": "composite",
+    "isPrebuilt": true,
+    "inputs": [
+      {
+        "id": "input",
+        "name": "input",
+        "type": "audio",
+        "description": "Audio signal to process"
+      },
+      {
+        "id": "rate",
+        "name": "rate",
+        "type": "control",
+        "description": "LFO rate in Hz (0.1-10)"
+      },
+      {
+        "id": "depth",
+        "name": "depth",
+        "type": "control",
+        "description": "Modulation depth (0-1)"
+      },
+      {
+        "id": "wetDry",
+        "name": "wetDry",
+        "type": "control",
+        "description": "Wet/dry mix (0=dry, 1=wet)"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "output",
+        "name": "output",
+        "type": "audio",
+        "description": "Processed audio output"
+      }
+    ],
+    "internalGraph": {
+      "nodes": [
+        {
+          "id": "ext_input",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 200 },
+          "properties": [{ "name": "portId", "value": "input" }]
+        },
+        {
+          "id": "ext_rate",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 350 },
+          "properties": [{ "name": "portId", "value": "rate" }]
+        },
+        {
+          "id": "ext_depth",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 450 },
+          "properties": [{ "name": "portId", "value": "depth" }]
+        },
+        {
+          "id": "ext_wetDry",
+          "nodeType": "ExternalInputNode",
+          "position": { "x": 50, "y": 550 },
+          "properties": [{ "name": "portId", "value": "wetDry" }]
+        },
+        {
+          "id": "lfo",
+          "nodeType": "OscillatorNode",
+          "position": { "x": 200, "y": 50 },
+          "properties": [
+            { "name": "type", "value": "sine" },
+            { "name": "frequency", "value": 1.5 }
+          ]
+        },
+        {
+          "id": "lfoGain",
+          "nodeType": "GainNode",
+          "position": { "x": 350, "y": 50 },
+          "properties": [{ "name": "gain", "value": 0.002 }]
+        },
+        {
+          "id": "delay1",
+          "nodeType": "DelayNode",
+          "position": { "x": 350, "y": 150 },
+          "properties": [{ "name": "delayTime", "value": 0.025 }]
+        },
+        {
+          "id": "delay2",
+          "nodeType": "DelayNode",
+          "position": { "x": 350, "y": 280 },
+          "properties": [{ "name": "delayTime", "value": 0.03 }]
+        },
+        {
+          "id": "chorusMix",
+          "nodeType": "GainNode",
+          "position": { "x": 550, "y": 200 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "dryGain",
+          "nodeType": "GainNode",
+          "position": { "x": 550, "y": 350 },
+          "properties": [{ "name": "gain", "value": 0.5 }]
+        },
+        {
+          "id": "outputMix",
+          "nodeType": "GainNode",
+          "position": { "x": 750, "y": 250 },
+          "properties": [{ "name": "gain", "value": 1 }]
+        },
+        {
+          "id": "ext_output",
+          "nodeType": "ExternalOutputNode",
+          "position": { "x": 950, "y": 250 },
+          "properties": [{ "name": "portId", "value": "output" }]
+        }
+      ],
+      "edges": [
+        {
+          "id": "e1",
+          "source": "lfo",
+          "target": "lfoGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e2",
+          "source": "lfoGain",
+          "target": "delay1",
+          "sourceHandle": "output",
+          "targetHandle": "delayTime"
+        },
+        {
+          "id": "e3",
+          "source": "lfoGain",
+          "target": "delay2",
+          "sourceHandle": "output",
+          "targetHandle": "delayTime"
+        },
+        {
+          "id": "e4",
+          "source": "ext_input",
+          "target": "delay1",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e5",
+          "source": "ext_input",
+          "target": "delay2",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e6",
+          "source": "ext_input",
+          "target": "dryGain",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e7",
+          "source": "delay1",
+          "target": "chorusMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e8",
+          "source": "delay2",
+          "target": "chorusMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e9",
+          "source": "chorusMix",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e10",
+          "source": "dryGain",
+          "target": "outputMix",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e11",
+          "source": "outputMix",
+          "target": "ext_output",
+          "sourceHandle": "output",
+          "targetHandle": "input"
+        },
+        {
+          "id": "e12",
+          "source": "ext_rate",
+          "target": "lfo",
+          "sourceHandle": "output",
+          "targetHandle": "frequency"
+        },
+        {
+          "id": "e13",
+          "source": "ext_depth",
+          "target": "lfoGain",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        },
+        {
+          "id": "e14",
+          "source": "ext_wetDry",
+          "target": "chorusMix",
+          "sourceHandle": "output",
+          "targetHandle": "gain"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNodeId": "lfo",
+          "targetNodeId": "lfoGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "lfoGain",
+          "targetNodeId": "delay1",
+          "sourceOutput": "output",
+          "targetInput": "delayTime"
+        },
+        {
+          "sourceNodeId": "lfoGain",
+          "targetNodeId": "delay2",
+          "sourceOutput": "output",
+          "targetInput": "delayTime"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "delay1",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "delay2",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_input",
+          "targetNodeId": "dryGain",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "delay1",
+          "targetNodeId": "chorusMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "delay2",
+          "targetNodeId": "chorusMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "chorusMix",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "dryGain",
+          "targetNodeId": "outputMix",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "outputMix",
+          "targetNodeId": "ext_output",
+          "sourceOutput": "output",
+          "targetInput": "input"
+        },
+        {
+          "sourceNodeId": "ext_rate",
+          "targetNodeId": "lfo",
+          "sourceOutput": "output",
+          "targetInput": "frequency"
+        },
+        {
+          "sourceNodeId": "ext_depth",
+          "targetNodeId": "lfoGain",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        },
+        {
+          "sourceNodeId": "ext_wetDry",
+          "targetNodeId": "chorusMix",
+          "sourceOutput": "output",
+          "targetInput": "gain"
+        }
+      ]
+    }
+  }
+}
