@@ -7,6 +7,7 @@
 
 import { types, Instance, flow, getSnapshot } from 'mobx-state-tree'
 import { compositeNodeOperations, type SavedCompositeNode } from '~/utils/database'
+import { generateCompositeNodeId } from '~/utils/idGenerator'
 import type {
   CompositeNodePort,
   CompositeNodeInternalGraph,
@@ -302,7 +303,7 @@ const CompositeNodeDefinitionStore = types
 
         try {
           // Generate unique ID
-          const definitionId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          const definitionId = generateCompositeNodeId()
 
           // Save to IndexedDB
           const dbId: number = yield compositeNodeOperations.saveCompositeNode(
@@ -368,7 +369,7 @@ const CompositeNodeDefinitionStore = types
         setError(undefined)
 
         try {
-          const definitionId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+          const definitionId = generateCompositeNodeId()
 
           const dbId: number = yield compositeNodeOperations.saveCompositeNode(
             definitionId,

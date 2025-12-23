@@ -13,6 +13,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { Node, Edge } from '@xyflow/react'
+import { generateCopiedNodeId } from '~/utils/idGenerator'
 
 /******************* TYPES ***********************/
 
@@ -333,7 +334,7 @@ export function useGraphUndoRedo(options: UseGraphUndoRedoOptions = {}): UseGrap
       const nodeType = (clipNode.data as { nodeType?: string })?.nodeType || 'node'
       const newId = generateNodeId
         ? generateNodeId(clipNode.id, nodeType)
-        : `${clipNode.id}_copy_${timestamp}_${index}`
+        : generateCopiedNodeId(clipNode.id, index, timestamp)
       idMap.set(clipNode.id, newId)
 
       return {
