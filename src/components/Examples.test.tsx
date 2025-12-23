@@ -3,7 +3,9 @@ import { renderHook, waitFor } from '@testing-library/react'
 import { useExamples } from './Examples'
 import { RootStore } from '~/stores/RootStore'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import type { AudioGraphStoreType } from '~/stores/AudioGraphStore'
+import prebuiltDefinitions from '~/types/composite-nodes-prebuilt.json'
 
 // Create mock audio nodes
 const createMockAudioNode = () => ({
@@ -205,6 +207,22 @@ vi.mock('~/stores/AudioGraphStore', async importOriginal => {
   }
 })
 
+// Helper to load composite definitions
+const loadCompositeDefinitions = () => {
+  // Convert the JSON definitions to the format expected by loadPrebuiltDefinitions
+  const definitions = Object.values(prebuiltDefinitions).map((def: any) => ({
+    id: def.id,
+    name: def.name,
+    description: def.description,
+    category: def.category,
+    isPrebuilt: true,
+    inputs: def.inputs,
+    outputs: def.outputs,
+    internalGraph: def.internalGraph,
+  }))
+  compositeNodeDefinitionStore.loadPrebuiltDefinitions(definitions)
+}
+
 describe('Examples Structure Tests', () => {
   let store: AudioGraphStoreType
   let examples: any[]
@@ -212,6 +230,9 @@ describe('Examples Structure Tests', () => {
   beforeEach(async () => {
     // Clear the custom node store
     customNodeStore.clear()
+
+    // Load composite node definitions
+    loadCompositeDefinitions()
 
     // Create a real store instance for testing with CustomNodeStore environment
     const rootStore = RootStore.create({ audioGraph: { history: {} } }, { customNodeStore })
@@ -267,66 +288,37 @@ describe('Examples Structure Tests', () => {
     })
   })
 
-  describe('Stereo Panning Example', () => {
-    it('should create exactly 6 nodes including LFO and oscillator gain', async () => {
-      const example = examples.find(e => e.id === 'stereo-panner')
+  describe('Delay Effect Example (with Composite)', () => {
+    it('should create 4 nodes including DelayEffect composite', async () => {
+      const example = examples.find(e => e.id === 'delay-effect')
       expect(example).toBeDefined()
 
       await example.create()
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.adaptedNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(4)
       })
 
-      expect(store.adaptedNodes.filter(n => n.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
-      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
-      expect(store.adaptedNodes.some(n => n.nodeType === 'StereoPannerNode')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(1)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'Composite_DelayEffect')).toBe(true)
       expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
 
-    it('should create exactly 5 connections (main chain + LFO modulation)', async () => {
-      const example = examples.find(e => e.id === 'stereo-panner')
+    it('should create exactly 3 connections', async () => {
+      const example = examples.find(e => e.id === 'delay-effect')
       await example.create()
 
       // Wait for edges to be created
       await waitFor(() => {
-        expect(store.visualEdges).toHaveLength(5)
-      })
-    })
-
-    it('should configure LFO for panning automation', async () => {
-      const example = examples.find(e => e.id === 'stereo-panner')
-      await example.create()
-
-      // Wait for nodes to be created and properties to be set
-      await waitFor(() => {
-        // Find the LFO oscillator (should be at y: 350)
-        const lfoNode = store.adaptedNodes.find(
-          n => n.nodeType === 'OscillatorNode' && n.position.y === 350
-        )
-        expect(lfoNode).toBeDefined()
-        expect(lfoNode?.properties.get('frequency')).toBe(0.2)
-
-        // Find the LFO gain node
-        const lfoGainNode = store.adaptedNodes.find(
-          n => n.nodeType === 'GainNode' && n.position.y === 350
-        )
-        expect(lfoGainNode).toBeDefined()
-        expect(lfoGainNode?.properties.get('gain')).toBe(1)
-
-        // Find the oscillator gain node
-        const oscGainNode = store.adaptedNodes.find(
-          n => n.nodeType === 'GainNode' && n.position.y === 150
-        )
-        expect(oscGainNode).toBeDefined()
-        expect(oscGainNode?.properties.get('gain')).toBe(0.5)
+        expect(store.visualEdges).toHaveLength(3)
       })
     })
   })
 
-  describe('Filter Sweep Example', () => {
-    it('should create exactly 6 nodes', async () => {
+  describe('Filter Sweep Example (with Composite)', () => {
+    it('should create 4 nodes including FilterSweep composite', async () => {
       const example = examples.find(e => e.id === 'filter-sweep')
       expect(example).toBeDefined()
 
@@ -334,41 +326,51 @@ describe('Examples Structure Tests', () => {
 
       // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.adaptedNodes).toHaveLength(6)
+        expect(store.adaptedNodes).toHaveLength(4)
       })
-      expect(store.adaptedNodes.filter(n => n.nodeType === 'OscillatorNode')).toHaveLength(2) // Main + LFO
-      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(2) // Osc + LFO gain
-      expect(store.adaptedNodes.some(n => n.nodeType === 'BiquadFilterNode')).toBe(true)
+
+      expect(store.adaptedNodes.some(n => n.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(1)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'Composite_FilterSweep')).toBe(true)
       expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
+  })
 
-    it('should configure filter and LFO properly', async () => {
-      const example = examples.find(e => e.id === 'filter-sweep')
+  describe('Tremolo Effect Example (with Composite)', () => {
+    it('should create 4 nodes including Tremolo composite', async () => {
+      const example = examples.find(e => e.id === 'tremolo-effect')
+      expect(example).toBeDefined()
+
       await example.create()
 
-      // Wait for nodes to be created and properties to be set
+      // Wait for nodes to be created
       await waitFor(() => {
-        // Check filter configuration
-        const filterNode = store.adaptedNodes.find(n => n.nodeType === 'BiquadFilterNode')
-        expect(filterNode).toBeDefined()
-        expect(filterNode?.properties.get('type')).toBe('lowpass')
-        expect(filterNode?.properties.get('frequency')).toBe(800)
-        expect(filterNode?.properties.get('Q')).toBe(10)
-
-        // Check LFO configuration
-        const lfoNode = store.adaptedNodes.find(
-          n => n.nodeType === 'OscillatorNode' && n.position.y === 350
-        )
-        expect(lfoNode).toBeDefined()
-        expect(lfoNode?.properties.get('frequency')).toBe(0.5)
-
-        // Check oscillator gain
-        const oscGainNode = store.adaptedNodes.find(
-          n => n.nodeType === 'GainNode' && n.position.y === 100
-        )
-        expect(oscGainNode).toBeDefined()
-        expect(oscGainNode?.properties.get('gain')).toBe(0.5)
+        expect(store.adaptedNodes).toHaveLength(4)
       })
+
+      expect(store.adaptedNodes.some(n => n.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(1)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'Composite_Tremolo')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
+    })
+  })
+
+  describe('Stereo Panner Example (with Composite)', () => {
+    it('should create 4 nodes including AutoPanner composite', async () => {
+      const example = examples.find(e => e.id === 'stereo-panner')
+      expect(example).toBeDefined()
+
+      await example.create()
+
+      // Wait for nodes to be created
+      await waitFor(() => {
+        expect(store.adaptedNodes).toHaveLength(4)
+      })
+
+      expect(store.adaptedNodes.some(n => n.nodeType === 'OscillatorNode')).toBe(true)
+      expect(store.adaptedNodes.filter(n => n.nodeType === 'GainNode')).toHaveLength(1)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'Composite_AutoPanner')).toBe(true)
+      expect(store.adaptedNodes.some(n => n.nodeType === 'AudioDestinationNode')).toBe(true)
     })
   })
 
@@ -420,6 +422,9 @@ describe('Examples UI Integration Tests', () => {
   let store: AudioGraphStoreType
 
   beforeEach(async () => {
+    // Load composite node definitions
+    loadCompositeDefinitions()
+
     const rootStore = RootStore.create({ audioGraph: { history: {} } })
     store = rootStore.audioGraph
     store.loadMetadata()
@@ -464,7 +469,7 @@ describe('Examples UI Integration Tests', () => {
       expect(gainToDest).toBeDefined()
     })
 
-    it('should create filter sweep with LFO modulation', async () => {
+    it('should create filter sweep with composite node', async () => {
       const { result } = renderHook(() => useExamples())
       const filterExample = result.current.examples.find(e => e.id === 'filter-sweep')
       expect(filterExample).toBeDefined()
@@ -474,34 +479,18 @@ describe('Examples UI Integration Tests', () => {
 
       // Wait for nodes and edges to be created
       await waitFor(() => {
-        expect(store.adaptedNodes).toHaveLength(6)
-        expect(store.visualEdges).toHaveLength(5)
+        expect(store.adaptedNodes).toHaveLength(4)
+        expect(store.visualEdges).toHaveLength(3)
       })
 
-      // Verify LFO modulation connection exists
-      const lfoNode = store.adaptedNodes.find(
-        n => n.nodeType === 'OscillatorNode' && n.position.y === 350
-      )
-      const filterNode = store.adaptedNodes.find(n => n.nodeType === 'BiquadFilterNode')
-
-      expect(lfoNode).toBeDefined()
-      expect(filterNode).toBeDefined()
-
-      // Should have a modulation connection (through LFO gain)
-      const lfoGainNode = store.adaptedNodes.find(
-        n => n.nodeType === 'GainNode' && n.position.y === 350
-      )
-      expect(lfoGainNode).toBeDefined()
-
-      const modulationConnection = store.visualEdges.find(
-        e => e.source === lfoGainNode?.id && e.target === filterNode?.id
-      )
-      expect(modulationConnection).toBeDefined()
+      // Verify FilterSweep composite is present
+      const filterSweepNode = store.adaptedNodes.find(n => n.nodeType === 'Composite_FilterSweep')
+      expect(filterSweepNode).toBeDefined()
     })
   })
 
   describe('Example Structure Validation', () => {
-    it('should create all expected node types for complex examples', async () => {
+    it('should create all expected node types for chord synthesis', async () => {
       const { result } = renderHook(() => useExamples())
       const chordExample = result.current.examples.find(e => e.id === 'chord-synthesis')
       expect(chordExample).toBeDefined()
@@ -527,32 +516,30 @@ describe('Examples UI Integration Tests', () => {
       expect(destination).toHaveLength(1)
     })
 
-    it('should maintain consistent connection patterns', async () => {
+    it('should create vintage synth with composites', async () => {
       const { result } = renderHook(() => useExamples())
-      const tremoloExample = result.current.examples.find(e => e.id === 'tremolo-effect')
-      expect(tremoloExample).toBeDefined()
-      if (!tremoloExample) return
+      const vintageExample = result.current.examples.find(e => e.id === 'vintage-analog-synth')
+      expect(vintageExample).toBeDefined()
+      if (!vintageExample) return
 
-      await tremoloExample.create()
+      await vintageExample.create()
 
-      // Wait for nodes and edges to be created
+      // Wait for nodes to be created
       await waitFor(() => {
-        expect(store.visualEdges).toHaveLength(5)
-        expect(store.adaptedNodes).toHaveLength(6)
+        expect(store.adaptedNodes.length).toBeGreaterThan(0)
       })
 
-      // Verify tremolo structure: Osc → OscGain → TremoloGain → Dest
-      //                          LFO → LFOGain → TremoloGain
-      const mainOsc = store.adaptedNodes.find(
-        n => n.nodeType === 'OscillatorNode' && n.position.y === 100
-      )
-      const lfoOsc = store.adaptedNodes.find(
-        n => n.nodeType === 'OscillatorNode' && n.position.y === 350
-      )
+      // Should have OscillatorBank composite
+      const oscBank = store.adaptedNodes.find(n => n.nodeType === 'Composite_OscillatorBank')
+      expect(oscBank).toBeDefined()
 
-      expect(mainOsc).toBeDefined()
-      expect(lfoOsc).toBeDefined()
-      expect(mainOsc?.id).not.toBe(lfoOsc?.id)
+      // Should have FilterSweep composite
+      const filterSweep = store.adaptedNodes.find(n => n.nodeType === 'Composite_FilterSweep')
+      expect(filterSweep).toBeDefined()
+
+      // Should have DelayEffect composite
+      const delay = store.adaptedNodes.find(n => n.nodeType === 'Composite_DelayEffect')
+      expect(delay).toBeDefined()
     })
   })
 })

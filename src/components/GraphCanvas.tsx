@@ -19,6 +19,7 @@ import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { useRootStore } from '~/stores/RootStore'
 import { useThemeStore } from '~/stores/ThemeStore'
 import { compositeEditorStore } from '~/stores/CompositeEditorStore'
+import { useMainGraphOperations } from '~/hooks'
 import AdaptedAudioNode from '~/components/AdaptedAudioNode'
 import CompositeEditorPanel from '~/components/CompositeEditorPanel'
 import { AutoLayoutPanelWithContext } from '~/components/AutoLayoutPanel'
@@ -120,97 +121,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     return () => observer.disconnect()
   }, [])
 
-  // Keyboard shortcuts for copy/cut/paste
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when not in an input field
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return
-      }
-
-      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
-      const isInSelectableArea = target.closest('.select-text') !== null
-      if (isInSelectableArea) {
-        // Always allow normal text operations in chat area
-        return
-      }
-
-      // Check if there's an active text selection anywhere
-      const selection = window.getSelection()
-      if (selection && selection.toString().length > 0) {
-        // If there's selected text anywhere, allow normal copy/paste behavior
-        return
-      }
-
-      // Delete: Delete key
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          selectedNodeIds.forEach(nodeId => {
-            store.removeNode(nodeId)
-          })
-        }
-
-        if (selectedEdgeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          selectedEdgeIds.forEach(edgeId => {
-            store.removeEdge(edgeId)
-          })
-        }
-        return
-      }
-
-      // Copy: Ctrl/Cmd + C
-      if ((event.metaKey || event.ctrlKey) && event.key === 'c' && !event.shiftKey) {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          store.copySelectedNodes(selectedNodeIds)
-
-          // Check clipboard permission after copy attempt
-          setTimeout(() => {
-            store.checkClipboardPermission()
-          }, 100)
-        }
-        return
-      }
-
-      // Cut: Ctrl/Cmd + X
-      if ((event.metaKey || event.ctrlKey) && event.key === 'x' && !event.shiftKey) {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          store.cutSelectedNodes(selectedNodeIds)
-        }
-        return
-      }
-
-      // Paste: Ctrl/Cmd + V
-      if ((event.metaKey || event.ctrlKey) && event.key === 'v' && !event.shiftKey) {
-        if (store.canPaste) {
-          event.preventDefault()
-          event.stopPropagation()
-          store
-            .pasteNodes()
-            .then(() => {})
-            .catch(error => {
-              console.error('Error pasting nodes:', error)
-            })
-        }
-        return
-      }
-    }
-
-    // Use capture phase for keyboard shortcuts
-    document.addEventListener('keydown', handleKeyDown, true)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
-  }, [selectedNodeIds, selectedEdgeIds, store])
+  // Register with unified keyboard handler
+  useMainGraphOperations({
+    store,
+    selectedNodeIds,
+    selectedEdgeIds,
+  })
   // Track last forceUpdate value to detect when we need to re-sync regardless of node count
   const lastForceUpdateRef = useRef(forceUpdate)
   const lastGraphChangeCounterRef = useRef(rootStore.graphChangeCounter)

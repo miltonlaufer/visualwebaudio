@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { observer } from 'mobx-react-lite'
 import type { INodeAdapter } from '~/stores/NodeAdapter'
@@ -6,6 +6,7 @@ import CustomNodeRenderer from './customNodes'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { compositeEditorStore } from '~/stores/CompositeEditorStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import { isCustomNodeType } from '~/domain/nodes/strategies'
 import { formatPropertyValue } from '~/utils/formatPropertyValue'
 
@@ -130,6 +131,43 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
   const isCompositeNode =
     metadata.category === 'composite' || metadata.category === 'user-composite'
   const isUserComposite = metadata.category === 'user-composite'
+
+  // Get display name for the node
+  const displayName = useMemo(() => {
+    if (isCompositeNode && nodeType?.startsWith('Composite_')) {
+      const definitionId = nodeType.replace('Composite_', '')
+      const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+      if (definition?.name) {
+        return definition.name
+      }
+    }
+    // Default: remove 'Node' suffix
+    return nodeType.replace('Node', '')
+  }, [isCompositeNode, nodeType])
+
+  // State for editing the node name
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(displayName)
+
+  // Handler to save the edited name
+  const handleNameSave = useCallback(() => {
+    if (isUserComposite && nodeType?.startsWith('Composite_') && editedName.trim()) {
+      const definitionId = nodeType.replace('Composite_', '')
+      const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+      if (definition && !definition.isPrebuilt) {
+        // Pass all required arguments to updateCompositeNode
+        compositeNodeDefinitionStore.updateCompositeNode(
+          definitionId,
+          editedName.trim(),
+          definition.description,
+          JSON.parse(JSON.stringify(definition.inputs)),
+          JSON.parse(JSON.stringify(definition.outputs)),
+          JSON.parse(JSON.stringify(definition.internalGraph))
+        )
+      }
+    }
+    setIsEditingName(false)
+  }, [isUserComposite, nodeType, editedName])
 
   // Handler to open composite editor for user composites
   const handleEditComposite = useCallback(
@@ -267,8 +305,39 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
       })}
 
       {/* Node Header */}
-      <div className="text-sm font-semibold text-gray-800 mb-2 text-center">
-        {nodeType.replace('Node', '')}
+      <div className="text-sm font-semibold text-gray-800 mb-2 text-center w-full px-2">
+        {isEditingName && isUserComposite ? (
+          <input
+            type="text"
+            value={editedName}
+            onChange={e => setEditedName(e.target.value)}
+            onBlur={handleNameSave}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleNameSave()
+              if (e.key === 'Escape') {
+                setEditedName(displayName)
+                setIsEditingName(false)
+              }
+            }}
+            onClick={e => e.stopPropagation()}
+            className="w-full text-center text-sm font-semibold bg-white border border-violet-400 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            autoFocus
+          />
+        ) : (
+          <span
+            onClick={e => {
+              if (isUserComposite) {
+                e.stopPropagation()
+                setEditedName(displayName)
+                setIsEditingName(true)
+              }
+            }}
+            className={isUserComposite ? 'cursor-text hover:bg-violet-100 rounded px-1' : ''}
+            title={isUserComposite ? 'Click to rename' : undefined}
+          >
+            {displayName}
+          </span>
+        )}
       </div>
 
       {/* Custom Node UI Container */}

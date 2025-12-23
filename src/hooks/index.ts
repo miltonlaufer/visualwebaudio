@@ -20,3 +20,12 @@ export type {
 
 export { useCompositeEditorState } from './useCompositeEditorState'
 export type { UseCompositeEditorStateReturn } from './useCompositeEditorState'
+
+export { useUnifiedKeyboardShortcuts } from './useUnifiedKeyboardShortcuts'
+export type { UseUnifiedKeyboardShortcutsOptions } from './useUnifiedKeyboardShortcuts'
+
+export { useMainGraphOperations } from './useMainGraphOperations'
+export type { UseMainGraphOperationsOptions } from './useMainGraphOperations'
+
+export { useCompositeEditorOperations } from './useCompositeEditorOperations'
+export type { UseCompositeEditorOperationsOptions } from './useCompositeEditorOperations'

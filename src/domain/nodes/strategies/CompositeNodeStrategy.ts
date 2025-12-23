@@ -32,11 +32,19 @@ interface InternalNode {
   properties: Map<string, unknown>
 }
 
+interface InternalEdge {
+  source: string
+  target: string
+  sourceHandle: string
+  targetHandle: string
+}
+
 interface InternalGraphState {
   audioContext: AudioContext
   nodes: Map<string, InternalNode>
   inputGains: Map<string, GainNode> // External input port ID -> GainNode
   outputGains: Map<string, GainNode> // External output port ID -> GainNode
+  edges: InternalEdge[] // Store edges for control input routing
   adsrState?: ADSRState // For envelope composite nodes
 }
 
@@ -159,13 +167,17 @@ export class CompositeNodeStrategy extends BaseNodeStrategy {
     const state = internalGraphs.get(context.state.id)
     if (!state) return
 
+    const numValue = Number(value)
+    if (isNaN(numValue)) return
+
     // Handle ADSR property changes
     if (state.adsrState && ['attack', 'decay', 'sustain', 'release'].includes(propertyName)) {
-      const numValue = Number(value)
-      if (!isNaN(numValue)) {
-        state.adsrState[propertyName as keyof ADSRState] = numValue as never
-      }
+      state.adsrState[propertyName as keyof ADSRState] = numValue as never
     }
+
+    // Route property changes to internal nodes via control inputs
+    // This handles properties like delayTime, feedback, cutoff, resonance, etc.
+    this.handleControlInput(context, state, propertyName, numValue)
   }
 
   /******************* INTERNAL GRAPH SETUP ***********************/
@@ -192,6 +204,12 @@ export class CompositeNodeStrategy extends BaseNodeStrategy {
       nodes: new Map(),
       inputGains: new Map(),
       outputGains: new Map(),
+      edges: definition.internalGraph.edges.map(e => ({
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || '',
+        targetHandle: e.targetHandle || '',
+      })),
     }
 
     // Create input gain nodes for external audio inputs
@@ -480,24 +498,23 @@ export class CompositeNodeStrategy extends BaseNodeStrategy {
     }
   }
 
-  private routeControlValue(state: InternalGraphState, _sourceId: string, value: number): void {
-    // Find connections from this source and update target parameters
-    state.nodes.forEach(node => {
-      if (node.audioNode) {
-        // Check if this node should receive the value
-        // This would need to be more sophisticated based on actual connections
-        // For now, handle common parameter mappings
+  private routeControlValue(state: InternalGraphState, sourceId: string, value: number): void {
+    // Find edges from this source node and update target parameters
+    const outgoingEdges = state.edges.filter(edge => edge.source === sourceId)
 
-        const nodeWithParams = node.audioNode as unknown as Record<string, AudioParam>
+    outgoingEdges.forEach(edge => {
+      const targetNode = state.nodes.get(edge.target)
+      if (!targetNode || !targetNode.audioNode) return
 
-        // Update common audio parameters based on value
-        if (node.nodeType === 'DelayNode' && nodeWithParams.delayTime) {
-          nodeWithParams.delayTime.value = Math.min(5, Math.max(0, value))
-        } else if (node.nodeType === 'GainNode' && nodeWithParams.gain) {
-          nodeWithParams.gain.value = Math.min(2, Math.max(0, value))
-        } else if (node.nodeType === 'OscillatorNode' && nodeWithParams.frequency) {
-          nodeWithParams.frequency.value = Math.max(0, value)
-        }
+      const targetParam = edge.targetHandle
+      if (!targetParam || targetParam === 'input') return // Skip audio connections
+
+      const nodeWithParams = targetNode.audioNode as unknown as Record<string, AudioParam | unknown>
+      const param = nodeWithParams[targetParam]
+
+      if (param instanceof AudioParam) {
+        // Apply value directly to AudioParam
+        param.setValueAtTime(value, state.audioContext.currentTime)
       }
     })
   }
@@ -583,6 +600,164 @@ export class CompositeNodeStrategy extends BaseNodeStrategy {
    */
   hasInternalGraph(nodeId: string): boolean {
     return internalGraphs.has(nodeId)
+  }
+
+  /**
+   * Build internal graph for a composite node (public API for use by AudioGraphStore)
+   * This is the main entry point for creating composite node audio graphs from the store.
+   */
+  buildInternalGraph(
+    nodeId: string,
+    internalGraph: CompositeNodeInternalGraph,
+    inputs: CompositeNodePort[],
+    outputs: CompositeNodePort[],
+    audioContext: AudioContext,
+    externalProperties?: Record<string, unknown>
+  ): void {
+    // Clean up any existing graph for this node
+    const existing = internalGraphs.get(nodeId)
+    if (existing) {
+      existing.nodes.forEach(node => {
+        if (node.audioNode) {
+          try {
+            node.audioNode.disconnect()
+          } catch {
+            // Ignore disconnect errors
+          }
+        }
+      })
+      existing.inputGains.forEach(gain => {
+        try {
+          gain.disconnect()
+        } catch {
+          // Ignore
+        }
+      })
+      existing.outputGains.forEach(gain => {
+        try {
+          gain.disconnect()
+        } catch {
+          // Ignore
+        }
+      })
+      internalGraphs.delete(nodeId)
+    }
+
+    const graphState: InternalGraphState = {
+      audioContext,
+      nodes: new Map(),
+      inputGains: new Map(),
+      outputGains: new Map(),
+      edges: internalGraph.edges.map(e => ({
+        source: e.source,
+        target: e.target,
+        sourceHandle: e.sourceHandle || '',
+        targetHandle: e.targetHandle || '',
+      })),
+    }
+
+    // Create input gain nodes for external audio inputs
+    inputs.forEach((input: CompositeNodePort) => {
+      if (input.type === 'audio') {
+        const gain = audioContext.createGain()
+        gain.gain.value = 1
+        graphState.inputGains.set(input.id, gain)
+      }
+    })
+
+    // Create output gain nodes for external audio outputs
+    outputs.forEach((output: CompositeNodePort) => {
+      if (output.type === 'audio') {
+        const gain = audioContext.createGain()
+        gain.gain.value = 1
+        graphState.outputGains.set(output.id, gain)
+      }
+    })
+
+    // Create internal nodes
+    this.createInternalNodes(graphState, internalGraph, audioContext)
+
+    // Apply external properties to internal nodes if provided
+    if (externalProperties) {
+      this.applyExternalProperties(graphState, externalProperties)
+    }
+
+    // Connect internal nodes
+    this.connectInternalNodes(graphState, internalGraph)
+
+    // Check if this is an envelope composite
+    const definitionId = externalProperties?.definitionId as string
+    if (definitionId === 'EnvelopeADSR') {
+      graphState.adsrState = {
+        attack: 0.01,
+        decay: 0.1,
+        sustain: 0.7,
+        release: 0.3,
+        isGateOpen: false,
+        currentGain: 0,
+      }
+    }
+
+    internalGraphs.set(nodeId, graphState)
+  }
+
+  /**
+   * Apply external properties to internal nodes
+   */
+  private applyExternalProperties(
+    graphState: InternalGraphState,
+    externalProperties: Record<string, unknown>
+  ): void {
+    // For each external property, find the ExternalInputNode with matching portId
+    // and route the value to connected internal nodes via edges
+    Object.entries(externalProperties).forEach(([propName, propValue]) => {
+      const numValue = Number(propValue)
+      if (isNaN(numValue)) return
+
+      // Find the ExternalInputNode for this property
+      graphState.nodes.forEach(node => {
+        if (node.nodeType === 'ExternalInputNode') {
+          const portId = node.properties.get('portId')
+          if (portId === propName) {
+            // Route value through edges to connected internal nodes
+            this.routeControlValue(graphState, node.id, numValue)
+          }
+        }
+      })
+    })
+  }
+
+  /**
+   * Clean up internal graph for a node
+   */
+  cleanupNode(nodeId: string): void {
+    const state = internalGraphs.get(nodeId)
+    if (state) {
+      state.nodes.forEach(node => {
+        if (node.audioNode) {
+          try {
+            node.audioNode.disconnect()
+          } catch {
+            // Ignore disconnect errors
+          }
+        }
+      })
+      state.inputGains.forEach(gain => {
+        try {
+          gain.disconnect()
+        } catch {
+          // Ignore
+        }
+      })
+      state.outputGains.forEach(gain => {
+        try {
+          gain.disconnect()
+        } catch {
+          // Ignore
+        }
+      })
+      internalGraphs.delete(nodeId)
+    }
   }
 }
 

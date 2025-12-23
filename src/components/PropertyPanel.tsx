@@ -1,7 +1,8 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { useRootStore } from '~/stores/RootStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import FrequencyAnalyzer from './FrequencyAnalyzer'
 import type { INodePropertyDef } from '~/stores/NodeModels'
 
@@ -14,6 +15,24 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
   const rootStore = useRootStore()
   const selectedNode = rootStore.selectedNode
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false)
+
+  // Get display name for composite nodes (show definition name instead of ugly ID)
+  const displayNodeName = useMemo(() => {
+    if (!selectedNode) return ''
+    const nodeType = selectedNode.nodeType
+    const isCompositeNode =
+      selectedNode.metadata.category === 'composite' ||
+      selectedNode.metadata.category === 'user-composite'
+
+    if (isCompositeNode && nodeType?.startsWith('Composite_')) {
+      const definitionId = nodeType.replace('Composite_', '')
+      const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+      if (definition?.name) {
+        return definition.name
+      }
+    }
+    return nodeType
+  }, [selectedNode])
 
   // Helper function to safely get property value whether properties is a Map or object
   const getPropertyValue = (properties: unknown, propertyName: string): unknown => {
@@ -315,7 +334,7 @@ const PropertyPanel: React.FC<PropertyPanelProps> = observer(({ onClose }) => {
               <div className="space-y-2 text-sm">
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">Type:</span>{' '}
-                  <span className="text-gray-700 dark:text-gray-300">{selectedNode.nodeType}</span>
+                  <span className="text-gray-700 dark:text-gray-300">{displayNodeName}</span>
                 </div>
                 <div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">Category:</span>{' '}

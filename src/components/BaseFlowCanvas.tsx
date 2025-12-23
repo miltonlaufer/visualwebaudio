@@ -12,7 +12,7 @@
  * - Edge styling
  */
 
-import React, { useCallback, useState, useEffect, useMemo } from 'react'
+import React, { useCallback, useState, useMemo } from 'react'
 import {
   ReactFlow,
   Background,
@@ -89,7 +89,7 @@ const BaseFlowCanvas: React.FC<BaseFlowCanvasProps> = ({
   onConnect,
   nodeTypes,
   onNodeDelete,
-  onEdgeDelete,
+  onEdgeDelete: _onEdgeDelete,
   onDrop,
   onNodeDoubleClick,
   onNodeClick,
@@ -99,14 +99,14 @@ const BaseFlowCanvas: React.FC<BaseFlowCanvasProps> = ({
   fitView = false,
   children,
   className,
-  // Clipboard
+  // Clipboard - keyboard handling moved to unified handler, these are for UI buttons
   onCopy,
   onCut,
-  onPaste,
+  onPaste: _onPaste,
   canPaste = false,
-  // Undo/Redo
-  onUndo,
-  onRedo,
+  // Undo/Redo - keyboard handling moved to unified handler, these are for UI buttons
+  onUndo: _onUndo,
+  onRedo: _onRedo,
   canUndo = false,
   canRedo = false,
   // Selection
@@ -118,114 +118,8 @@ const BaseFlowCanvas: React.FC<BaseFlowCanvasProps> = ({
 
   const isDark = themeStore.isDarkMode
 
-  /******************* KEYBOARD SHORTCUTS ***********************/
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when not in an input field
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return
-      }
-
-      // Check if we're in a selectable text area
-      const isInSelectableArea = target.closest('.select-text') !== null
-      if (isInSelectableArea) {
-        return
-      }
-
-      // Check if there's an active text selection
-      const selection = window.getSelection()
-      if (selection && selection.toString().length > 0) {
-        return
-      }
-
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0
-      const modKey = isMac ? event.metaKey : event.ctrlKey
-
-      // Copy: Ctrl/Cmd + C
-      if (modKey && event.key === 'c' && !event.shiftKey) {
-        if (selectedNodeIds.length > 0 && onCopy) {
-          event.preventDefault()
-          event.stopPropagation()
-          onCopy(selectedNodeIds)
-        }
-        return
-      }
-
-      // Cut: Ctrl/Cmd + X
-      if (modKey && event.key === 'x' && !readOnly) {
-        if (selectedNodeIds.length > 0 && onCut) {
-          event.preventDefault()
-          event.stopPropagation()
-          onCut(selectedNodeIds)
-        }
-        return
-      }
-
-      // Paste: Ctrl/Cmd + V
-      if (modKey && event.key === 'v' && !readOnly) {
-        if (canPaste && onPaste) {
-          event.preventDefault()
-          event.stopPropagation()
-          onPaste()
-        }
-        return
-      }
-
-      // Undo: Ctrl/Cmd + Z (without Shift)
-      if (modKey && event.key === 'z' && !event.shiftKey) {
-        if (canUndo && onUndo) {
-          event.preventDefault()
-          event.stopPropagation()
-          onUndo()
-        }
-        return
-      }
-
-      // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
-      if ((modKey && event.shiftKey && event.key === 'z') || (modKey && event.key === 'y')) {
-        if (canRedo && onRedo) {
-          event.preventDefault()
-          event.stopPropagation()
-          onRedo()
-        }
-        return
-      }
-
-      // Delete: Delete or Backspace key (only when not read-only)
-      if (!readOnly && (event.key === 'Delete' || event.key === 'Backspace')) {
-        if (selectedNodeIds.length > 0 && onNodeDelete) {
-          event.preventDefault()
-          event.stopPropagation()
-          onNodeDelete(selectedNodeIds)
-        }
-
-        if (selectedEdgeIds.length > 0 && onEdgeDelete) {
-          event.preventDefault()
-          event.stopPropagation()
-          onEdgeDelete(selectedEdgeIds)
-        }
-      }
-    }
-
-    document.addEventListener('keydown', handleKeyDown, true)
-    return () => document.removeEventListener('keydown', handleKeyDown, true)
-  }, [
-    readOnly,
-    selectedNodeIds,
-    selectedEdgeIds,
-    onNodeDelete,
-    onEdgeDelete,
-    onCopy,
-    onCut,
-    onPaste,
-    canPaste,
-    onUndo,
-    onRedo,
-    canUndo,
-    canRedo,
-  ])
+  // Note: Keyboard shortcuts are handled by the unified keyboard handler at the app level.
+  // This component only tracks selection for the focus store handlers.
 
   /******************* HANDLERS ***********************/
 

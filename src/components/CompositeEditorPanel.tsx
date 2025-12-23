@@ -36,6 +36,7 @@ import { AutoLayoutPanelWithContext } from './AutoLayoutPanel'
 import EdgeConnectorNode from './customNodes/EdgeConnectorNode'
 import InternalNodeComponent from './customNodes/InternalNodeComponent'
 import { useGraphUndoRedo } from '~/hooks/useGraphUndoRedo'
+import { useCompositeEditorOperations } from '~/hooks/useCompositeEditorOperations'
 import type {
   CompositeNodePort,
   CompositeNodeInternalGraph,
@@ -94,6 +95,8 @@ const CompositeEditorPanel: React.FC<CompositeEditorPanelProps> = observer(({ on
 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([])
 
   const [nodeName, setNodeName] = useState('')
   const [nodeDescription, setNodeDescription] = useState('')
@@ -115,6 +118,21 @@ const CompositeEditorPanel: React.FC<CompositeEditorPanelProps> = observer(({ on
   const panelRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const nodeIdCounter = useRef(0)
+
+  /******************* COMPUTED ***********************/
+
+  const definition = useMemo((): ICompositeNodeDefinition | undefined => {
+    if (!definitionId) return undefined
+    return compositeNodeDefinitionStore.getDefinition(definitionId) as
+      | ICompositeNodeDefinition
+      | undefined
+  }, [definitionId])
+
+  const isPrebuilt = useMemo(() => {
+    return definition?.isPrebuilt ?? false
+  }, [definition?.isPrebuilt])
+
+  const isDark = themeStore.isDarkMode
 
   // Use the undo/redo hook with external state management (integrates with useNodesState/useEdgesState)
   const {
@@ -139,20 +157,23 @@ const CompositeEditorPanel: React.FC<CompositeEditorPanelProps> = observer(({ on
     generateEdgeId: (_originalId, source, target) => `e_${source}_${target}_${Date.now()}`,
   })
 
-  /******************* COMPUTED ***********************/
-
-  const definition = useMemo((): ICompositeNodeDefinition | undefined => {
-    if (!definitionId) return undefined
-    return compositeNodeDefinitionStore.getDefinition(definitionId) as
-      | ICompositeNodeDefinition
-      | undefined
-  }, [definitionId])
-
-  const isPrebuilt = useMemo(() => {
-    return definition?.isPrebuilt ?? false
-  }, [definition?.isPrebuilt])
-
-  const isDark = themeStore.isDarkMode
+  // Register with unified keyboard handler (handles copy/paste/undo/redo/delete)
+  useCompositeEditorOperations({
+    isOpen,
+    isReadOnly: isPrebuilt,
+    nodes,
+    edges,
+    selectedNodeIds,
+    selectedEdgeIds,
+    setNodes,
+    setEdges,
+    saveUndoState,
+    undo: hookUndo,
+    redo: hookRedo,
+    canUndo,
+    canRedo,
+    nodeIdCounter,
+  })
 
   /******************* ADD NODE HANDLER ***********************/
 
@@ -1108,12 +1129,17 @@ const CompositeEditorPanel: React.FC<CompositeEditorPanelProps> = observer(({ on
           onDrop={isPrebuilt ? undefined : handleDrop}
           readOnly={isPrebuilt}
           fitView
-          // Clipboard operations
+          // Selection tracking for unified keyboard handler
+          onSelectionChanged={(nodeIds, edgeIds) => {
+            setSelectedNodeIds(nodeIds)
+            setSelectedEdgeIds(edgeIds)
+          }}
+          // Clipboard operations (for any UI buttons - keyboard handled by unified handler)
           onCopy={handleCopy}
           onCut={isPrebuilt ? undefined : handleCut}
           onPaste={isPrebuilt ? undefined : handlePaste}
           canPaste={!isPrebuilt && canPaste}
-          // Undo/Redo operations
+          // Undo/Redo operations (for any UI buttons)
           onUndo={isPrebuilt ? undefined : handleUndo}
           onRedo={isPrebuilt ? undefined : handleRedo}
           canUndo={!isPrebuilt && canUndo}
