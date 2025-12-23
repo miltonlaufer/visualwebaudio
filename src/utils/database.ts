@@ -1,4 +1,5 @@
 import Dexie, { Table } from 'dexie'
+import type { CompositeNodePort } from '~/types'
 
 export interface SavedProject {
   id?: number
@@ -19,15 +20,33 @@ export interface AudioRecording {
   size: number // file size in bytes
 }
 
+export interface SavedCompositeNode {
+  id?: number
+  definitionId: string
+  name: string
+  description: string
+  inputs: CompositeNodePort[]
+  outputs: CompositeNodePort[]
+  internalGraph: string // JSON string of CompositeNodeInternalGraph
+  createdAt: Date
+  updatedAt: Date
+}
+
 export class ProjectDatabase extends Dexie {
   projects!: Table<SavedProject>
   recordings!: Table<AudioRecording>
+  compositeNodes!: Table<SavedCompositeNode>
 
   constructor() {
     super('VisualWebAudioDB')
     this.version(2).stores({
       projects: '++id, name, createdAt, updatedAt',
       recordings: '++id, name, projectName, createdAt, duration, size',
+    })
+    this.version(3).stores({
+      projects: '++id, name, createdAt, updatedAt',
+      recordings: '++id, name, projectName, createdAt, duration, size',
+      compositeNodes: '++id, definitionId, name, createdAt, updatedAt',
     })
   }
 }
@@ -80,6 +99,81 @@ export const projectOperations = {
       return projects.some(p => p.id !== excludeId)
     }
     return projects.length > 0
+  },
+}
+
+// Composite Node operations
+export const compositeNodeOperations = {
+  // Save a new composite node
+  async saveCompositeNode(
+    definitionId: string,
+    name: string,
+    description: string,
+    inputs: CompositeNodePort[],
+    outputs: CompositeNodePort[],
+    internalGraph: string
+  ): Promise<number> {
+    const now = new Date()
+    return await db.compositeNodes.add({
+      definitionId,
+      name,
+      description,
+      inputs,
+      outputs,
+      internalGraph,
+      createdAt: now,
+      updatedAt: now,
+    })
+  },
+
+  // Update existing composite node
+  async updateCompositeNode(
+    id: number,
+    name: string,
+    description: string,
+    inputs: CompositeNodePort[],
+    outputs: CompositeNodePort[],
+    internalGraph: string
+  ): Promise<void> {
+    await db.compositeNodes.update(id, {
+      name,
+      description,
+      inputs,
+      outputs,
+      internalGraph,
+      updatedAt: new Date(),
+    })
+  },
+
+  // Get all composite nodes
+  async getAllCompositeNodes(): Promise<SavedCompositeNode[]> {
+    return await db.compositeNodes.orderBy('updatedAt').reverse().toArray()
+  },
+
+  // Get composite node by ID
+  async getCompositeNode(id: number): Promise<SavedCompositeNode | undefined> {
+    return await db.compositeNodes.get(id)
+  },
+
+  // Get composite node by definition ID
+  async getCompositeNodeByDefinitionId(
+    definitionId: string
+  ): Promise<SavedCompositeNode | undefined> {
+    return await db.compositeNodes.where('definitionId').equals(definitionId).first()
+  },
+
+  // Delete composite node
+  async deleteCompositeNode(id: number): Promise<void> {
+    await db.compositeNodes.delete(id)
+  },
+
+  // Check if composite node name exists
+  async compositeNodeNameExists(name: string, excludeId?: number): Promise<boolean> {
+    const nodes = await db.compositeNodes.where('name').equals(name).toArray()
+    if (excludeId) {
+      return nodes.some(n => n.id !== excludeId)
+    }
+    return nodes.length > 0
   },
 }
 

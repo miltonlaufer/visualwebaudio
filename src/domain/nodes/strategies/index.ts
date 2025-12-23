@@ -19,6 +19,7 @@ export { RandomStrategy } from './RandomStrategy'
 export { TimerStrategy } from './TimerStrategy'
 export { SoundFileStrategy } from './SoundFileStrategy'
 export { GreaterThanStrategy, EqualsStrategy, SelectStrategy } from './LogicStrategies'
+export { CompositeNodeStrategy, compositeNodeStrategy } from './CompositeNodeStrategy'
 
 // Registry
 export {

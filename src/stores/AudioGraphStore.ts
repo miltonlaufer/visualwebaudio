@@ -6,6 +6,8 @@ import { NodeAdapter } from './NodeAdapter'
 import { AudioNodeFactory } from '~/services/AudioNodeFactory'
 import { CustomNodeFactory, type CustomNode } from '~/services/CustomNodeFactory'
 import { customNodeStore } from '~/stores/CustomNodeStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
+import { compositeNodeStrategy } from '~/domain/nodes/strategies/CompositeNodeStrategy'
 import UndoManager from './UndoManager'
 import { createContext, useContext } from 'react'
 // Import the JSON metadata directly
@@ -27,6 +29,82 @@ const getAllNodesMetadata = (): Record<string, INodeMetadata> => {
     ...getWebAudioMetadata(),
     ...getCustomNodesMetadata(),
   }
+}
+
+// Get metadata for a composite node type
+const getCompositeNodeMetadata = (nodeType: string): INodeMetadata | null => {
+  if (!nodeType.startsWith('Composite_')) return null
+
+  const definitionId = nodeType.replace('Composite_', '')
+  const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+
+  if (!definition) return null
+
+  // Generate properties from control inputs - these should be editable in the PropertyPanel
+  const controlProperties = definition.inputs
+    .filter(input => input.type === 'control')
+    .map(input => ({
+      name: input.name,
+      type: 'number' as const,
+      defaultValue: getDefaultValueForControlInput(input.name),
+      description: input.description || `Control parameter: ${input.name}`,
+      min: 0,
+      max: getMaxValueForControlInput(input.name),
+      step: 0.01,
+    }))
+
+  // Generate metadata from definition
+  // Use the definition's category directly - NodeMetadataModel now supports 'composite' and 'user-composite'
+  return {
+    name: definition.name,
+    description: definition.description,
+    category: definition.category,
+    inputs: definition.inputs.map(input => ({
+      name: input.name,
+      type: input.type as 'audio' | 'control',
+    })),
+    outputs: definition.outputs.map(output => ({
+      name: output.name,
+      type: output.type as 'audio' | 'control',
+    })),
+    properties: controlProperties,
+    methods: [],
+    events: [],
+  } as unknown as INodeMetadata
+}
+
+// Helper to get default values for common control input names
+const getDefaultValueForControlInput = (name: string): number => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('time') || lowerName.includes('delay')) return 0.3
+  if (lowerName.includes('feedback')) return 0.3
+  if (lowerName.includes('wet') || lowerName.includes('dry') || lowerName.includes('mix'))
+    return 0.5
+  if (lowerName.includes('attack')) return 0.01
+  if (lowerName.includes('decay')) return 0.1
+  if (lowerName.includes('sustain')) return 0.7
+  if (lowerName.includes('release')) return 0.3
+  if (lowerName.includes('rate')) return 1.5
+  if (lowerName.includes('depth')) return 0.3
+  if (lowerName.includes('gain') || lowerName.includes('volume')) return 1.0
+  if (lowerName.includes('frequency') || lowerName.includes('freq')) return 440
+  return 0.5
+}
+
+// Helper to get max values for common control input names
+const getMaxValueForControlInput = (name: string): number => {
+  const lowerName = name.toLowerCase()
+  if (lowerName.includes('time') || lowerName.includes('delay')) return 5
+  if (lowerName.includes('feedback')) return 0.99
+  if (lowerName.includes('wet') || lowerName.includes('dry') || lowerName.includes('mix')) return 1
+  if (lowerName.includes('attack') || lowerName.includes('decay') || lowerName.includes('release'))
+    return 5
+  if (lowerName.includes('sustain')) return 1
+  if (lowerName.includes('rate')) return 20
+  if (lowerName.includes('depth')) return 1
+  if (lowerName.includes('gain') || lowerName.includes('volume')) return 2
+  if (lowerName.includes('frequency') || lowerName.includes('freq')) return 20000
+  return 10
 }
 
 /******************* ERROR QUEUE TYPES ***********************/
@@ -465,7 +543,12 @@ export const AudioGraphStore = types
       addAdaptedNode(nodeType: string, position: { x: number; y: number }) {
         // Check both WebAudio and Custom node metadata
         const allMetadata = getAllNodesMetadata()
-        const metadata = allMetadata[nodeType]
+        let metadata = allMetadata[nodeType]
+
+        // If not found in regular metadata, check if it's a composite node
+        if (!metadata && nodeType.startsWith('Composite_')) {
+          metadata = getCompositeNodeMetadata(nodeType) as INodeMetadata
+        }
 
         if (!metadata) {
           console.error('STORE: Unknown node type:', nodeType)
@@ -1134,6 +1217,158 @@ export const AudioGraphStore = types
         const sourceCustomNode = self.customNodes.get(sourceId)
         const targetCustomNode = self.customNodes.get(targetId)
 
+        // Check if source or target is a composite node
+        const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+        const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+        const isSourceComposite = sourceVisualNode?.nodeType?.startsWith('Composite_')
+        const isTargetComposite = targetVisualNode?.nodeType?.startsWith('Composite_')
+
+        // Handle composite node connections
+        if (isSourceComposite || isTargetComposite) {
+          try {
+            // Check if this is a control connection to a composite node from a custom node (slider)
+            if (isTargetComposite && sourceCustomNode) {
+              const targetMetadata = targetVisualNode?.metadata
+              const targetInputDef = targetMetadata?.inputs.find(
+                (input: any) => input.name === targetInput
+              )
+              const isControlInput = targetInputDef?.type === 'control'
+
+              if (isControlInput) {
+                // Set up a bridge for custom node -> composite node control connections
+                // This allows slider values to update composite node parameters
+                if (!self.customNodeBridges) {
+                  self.customNodeBridges = new Map()
+                }
+
+                // Store bridge key for this control connection
+                const bridgeKey = `${sourceId}-${targetId}-${targetInput}`
+                self.customNodeBridges.set(bridgeKey, { type: 'composite-control' } as any)
+
+                // Get current value and apply it immediately
+                const currentValue = sourceCustomNode.outputs.get(sourceOutput)
+                if (currentValue !== undefined) {
+                  // Route the value to the composite node
+                  compositeNodeStrategy.handleInput(
+                    { state: { id: targetId, properties: new Map() } } as any,
+                    targetInput,
+                    currentValue
+                  )
+                }
+
+                if (!skipAddingToArray) {
+                  self.audioConnections.push({
+                    sourceNodeId: sourceId,
+                    targetNodeId: targetId,
+                    sourceOutput,
+                    targetInput,
+                  })
+                }
+                return
+              }
+            }
+
+            let sourceAudioNode: AudioNode | null = null
+            let targetAudioNode: AudioNode | AudioParam | null = null
+
+            // Get source audio node
+            if (isSourceComposite) {
+              sourceAudioNode = compositeNodeStrategy.getAudioOutput(sourceId, sourceOutput)
+              if (!sourceAudioNode) {
+                console.warn(`Composite node ${sourceId} output "${sourceOutput}" not found`)
+                return
+              }
+            } else if (sourceNode) {
+              sourceAudioNode = sourceNode
+            } else if (sourceCustomNode) {
+              sourceAudioNode = sourceCustomNode.getAudioOutput?.() || null
+            }
+
+            // Get target audio node
+            if (isTargetComposite) {
+              targetAudioNode = compositeNodeStrategy.getAudioInput(targetId, targetInput)
+              if (!targetAudioNode) {
+                // For control inputs, check if we should handle them differently
+                const targetMetadata = targetVisualNode?.metadata
+                const targetInputDef = targetMetadata?.inputs.find(
+                  (input: any) => input.name === targetInput
+                )
+                if (targetInputDef?.type === 'control') {
+                  // This is a control input - connection has been stored, just return
+                  if (!skipAddingToArray) {
+                    self.audioConnections.push({
+                      sourceNodeId: sourceId,
+                      targetNodeId: targetId,
+                      sourceOutput,
+                      targetInput,
+                    })
+                  }
+                  return
+                }
+
+                console.warn(`Composite node ${targetId} input "${targetInput}" not found`)
+                return
+              }
+            } else if (targetNode) {
+              // Check if connecting to an AudioParam
+              const targetMetadata = targetVisualNode?.metadata
+              const targetInputDef = targetMetadata?.inputs.find(
+                (input: any) => input.name === targetInput
+              )
+              const isControlConnection = targetInputDef?.type === 'control'
+
+              if (isControlConnection && targetInput !== 'trigger') {
+                const targetNodeWithParams = targetNode as unknown as Record<string, AudioParam>
+                targetAudioNode = targetNodeWithParams[targetInput]
+                if (!targetAudioNode) {
+                  console.error(`AudioParam ${targetInput} not found on target node`)
+                  return
+                }
+              } else {
+                targetAudioNode = targetNode
+              }
+            }
+
+            // Make the connection
+            if (sourceAudioNode && targetAudioNode) {
+              // Check if connecting to destination through analyzer
+              const isDestinationConnection = targetVisualNode?.nodeType === 'AudioDestinationNode'
+              if (
+                isDestinationConnection &&
+                self.globalAnalyzer &&
+                targetAudioNode instanceof AudioNode
+              ) {
+                sourceAudioNode.connect(self.globalAnalyzer)
+                self.globalAnalyzer.connect(targetAudioNode)
+              } else if (targetAudioNode instanceof AudioParam) {
+                sourceAudioNode.connect(targetAudioNode)
+              } else {
+                sourceAudioNode.connect(targetAudioNode as AudioNode)
+              }
+
+              if (!skipAddingToArray) {
+                self.audioConnections.push({
+                  sourceNodeId: sourceId,
+                  targetNodeId: targetId,
+                  sourceOutput,
+                  targetInput,
+                })
+              }
+
+              // Handle play state for destination connections
+              if (isDestinationConnection && !skipAddingToArray && !self.isUpdatingPlayState) {
+                const isTestEnvironment = typeof globalThis !== 'undefined' && 'vi' in globalThis
+                if (!isTestEnvironment && !self.isStoppedByTheUser) {
+                  self.root?.setIsPlaying(true)
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Failed to connect composite node:', error)
+          }
+          return
+        }
+
         // Handle custom node to custom node connections
         if (sourceCustomNode && targetCustomNode) {
           try {
@@ -1444,6 +1679,47 @@ export const AudioGraphStore = types
         const sourceCustomNode = self.customNodes.get(sourceId)
         const targetCustomNode = self.customNodes.get(targetId)
 
+        // Check if source or target is a composite node
+        const sourceVisualNode = self.adaptedNodes.find(node => node.id === sourceId)
+        const targetVisualNode = self.adaptedNodes.find(node => node.id === targetId)
+        const isSourceComposite = sourceVisualNode?.nodeType?.startsWith('Composite_')
+        const isTargetComposite = targetVisualNode?.nodeType?.startsWith('Composite_')
+
+        // Handle composite node disconnections
+        if (isSourceComposite || isTargetComposite) {
+          try {
+            // Find the connection to get source output and target input
+            const connection = self.audioConnections.find(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+
+            if (connection) {
+              // Get the source audio node and disconnect
+              if (isSourceComposite) {
+                const sourceAudioNode = compositeNodeStrategy.getAudioOutput(
+                  sourceId,
+                  connection.sourceOutput
+                )
+                if (sourceAudioNode) {
+                  sourceAudioNode.disconnect()
+                }
+              } else if (sourceNode) {
+                sourceNode.disconnect()
+              }
+            }
+
+            const connectionIndex = self.audioConnections.findIndex(
+              conn => conn.sourceNodeId === sourceId && conn.targetNodeId === targetId
+            )
+            if (connectionIndex !== -1) {
+              self.audioConnections.splice(connectionIndex, 1)
+            }
+          } catch (error) {
+            console.error('Failed to disconnect composite node:', error)
+          }
+          return
+        }
+
         // Handle custom node disconnections
         if (sourceCustomNode && targetCustomNode) {
           try {
@@ -1696,6 +1972,37 @@ export const AudioGraphStore = types
                   self.root?.incrementPropertyChangeCounter()
                 }
               }
+
+              // Handle composite node control connections
+              if ((bridge as any)?.type === 'composite-control') {
+                // Find the connection to get the target composite node
+                const compositeConnection = self.audioConnections.find(
+                  conn =>
+                    conn.sourceNodeId === nodeId &&
+                    bridgeKey.startsWith(`${conn.sourceNodeId}-${conn.targetNodeId}`) &&
+                    conn.sourceOutput === outputName
+                )
+
+                if (compositeConnection) {
+                  const targetVisualNode = self.adaptedNodes.find(
+                    node => node.id === compositeConnection.targetNodeId
+                  )
+                  if (targetVisualNode?.nodeType?.startsWith('Composite_')) {
+                    // Route the value to the composite node's internal graph
+                    compositeNodeStrategy.handleInput(
+                      {
+                        state: { id: compositeConnection.targetNodeId, properties: new Map() },
+                      } as any,
+                      compositeConnection.targetInput,
+                      value
+                    )
+
+                    // Also update the target node's property in the store for UI display
+                    targetVisualNode.properties.set(compositeConnection.targetInput, value)
+                    self.root?.incrementPropertyChangeCounter()
+                  }
+                }
+              }
             }
           }
         })
@@ -1724,6 +2031,65 @@ export const AudioGraphStore = types
           // Mark project as modified
           self.root?.markProjectModified()
         }
+      },
+
+      /**
+       * Update a composite node to use a different definition.
+       * Used when "Save As" creates a new definition from a preset.
+       */
+      updateCompositeNodeDefinition(nodeId: string, newDefinitionId: string) {
+        const node = self.adaptedNodes.find(n => n.id === nodeId)
+        if (!node) {
+          console.warn('Node not found:', nodeId)
+          return
+        }
+
+        // Verify it's a composite node
+        if (!node.nodeType.startsWith('Composite_')) {
+          console.warn('Not a composite node:', node.nodeType)
+          return
+        }
+
+        // Update the node type to reference the new definition
+        const newNodeType = `Composite_${newDefinitionId}`
+
+        // Get new metadata for the new definition
+        const newMetadata = getCompositeNodeMetadata(newNodeType)
+        if (!newMetadata) {
+          console.error('Could not get metadata for new definition:', newDefinitionId)
+          return
+        }
+
+        // Update the node type
+        node.nodeType = newNodeType
+
+        // Update the metadata
+        node.metadata.name = newMetadata.name
+        node.metadata.description = newMetadata.description
+        node.metadata.category = newMetadata.category
+
+        // Update inputs/outputs if they match
+        // (For now, we assume the interface is compatible)
+        node.metadata.inputs.clear()
+        newMetadata.inputs.forEach(input => {
+          node.metadata.inputs.push(input)
+        })
+
+        node.metadata.outputs.clear()
+        newMetadata.outputs.forEach(output => {
+          node.metadata.outputs.push(output)
+        })
+
+        node.metadata.properties.clear()
+        newMetadata.properties.forEach(prop => {
+          node.metadata.properties.push(prop)
+        })
+
+        // Mark project as modified
+        self.root?.markProjectModified()
+
+        // Force a re-render
+        self.root?.forceRerender()
       },
     }
   })
@@ -2522,6 +2888,33 @@ export const AudioGraphStore = types
           }
         }
 
+        // Handle composite nodes - build their internal graph
+        if (nodeType.startsWith('Composite_')) {
+          try {
+            const definitionId = nodeType.replace('Composite_', '')
+            const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+
+            if (definition && self.audioContext) {
+              // Build the internal audio graph
+              compositeNodeStrategy.buildInternalGraph(
+                nodeId,
+                definition.internalGraph,
+                definition.inputs,
+                definition.outputs,
+                self.audioContext,
+                properties
+              )
+            } else {
+              console.warn(
+                `Could not build internal graph for composite node ${nodeId}: definition or audio context missing`
+              )
+            }
+          } catch (error) {
+            console.error(`Error building composite node internal graph for ${nodeId}:`, error)
+          }
+          return
+        }
+
         // Handle regular Web Audio API nodes
         try {
           const audioNode = self.audioNodeFactory.createAudioNode(nodeType, metadata, properties)
@@ -2718,12 +3111,27 @@ export const AudioGraphStore = types
 
                   if (involvesNewNode) {
                     // Check that both nodes have audio nodes before connecting
+                    // Also check for composite nodes which have internal graphs
+                    const sourceVisualNode = self.adaptedNodes.find(
+                      n => n.id === connection.sourceNodeId
+                    )
+                    const targetVisualNode = self.adaptedNodes.find(
+                      n => n.id === connection.targetNodeId
+                    )
+                    const sourceIsComposite =
+                      sourceVisualNode?.nodeType?.startsWith('Composite_') &&
+                      compositeNodeStrategy.hasInternalGraph(connection.sourceNodeId)
+                    const targetIsComposite =
+                      targetVisualNode?.nodeType?.startsWith('Composite_') &&
+                      compositeNodeStrategy.hasInternalGraph(connection.targetNodeId)
                     const sourceHasAudioNode =
                       self.audioNodes.has(connection.sourceNodeId) ||
-                      self.customNodes.has(connection.sourceNodeId)
+                      self.customNodes.has(connection.sourceNodeId) ||
+                      sourceIsComposite
                     const targetHasAudioNode =
                       self.audioNodes.has(connection.targetNodeId) ||
-                      self.customNodes.has(connection.targetNodeId)
+                      self.customNodes.has(connection.targetNodeId) ||
+                      targetIsComposite
 
                     if (sourceHasAudioNode && targetHasAudioNode) {
                       self.connectAudioNodes(

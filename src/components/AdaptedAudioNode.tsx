@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useMemo } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { observer } from 'mobx-react-lite'
 import type { INodeAdapter } from '~/stores/NodeAdapter'
 import CustomNodeRenderer from './customNodes'
 import { customNodeStore } from '~/stores/CustomNodeStore'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
+import { compositeEditorStore } from '~/stores/CompositeEditorStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
 import { isCustomNodeType } from '~/domain/nodes/strategies'
 import { formatPropertyValue } from '~/utils/formatPropertyValue'
 
@@ -93,6 +95,11 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
         return 'bg-teal-100 border-teal-300'
       case 'misc':
         return 'bg-orange-100 border-orange-300'
+      // Composite node categories
+      case 'composite':
+        return 'bg-cyan-100 border-cyan-300'
+      case 'user-composite':
+        return 'bg-violet-100 border-violet-300'
       default:
         return 'bg-white border-gray-300'
     }
@@ -120,27 +127,89 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
   const handleHeight = maxHandles * 30 // 30px per handle
   const nodeHeight = Math.max(baseHeight, handleHeight + 40) // Ensure minimum height
 
+  // Check if this is a composite node
+  const isCompositeNode =
+    metadata.category === 'composite' || metadata.category === 'user-composite'
+  const isUserComposite = metadata.category === 'user-composite'
+
+  // Get display name for the node
+  const displayName = useMemo(() => {
+    if (isCompositeNode && nodeType?.startsWith('Composite_')) {
+      const definitionId = nodeType.replace('Composite_', '')
+      const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+      if (definition?.name) {
+        return definition.name
+      }
+    }
+    // Default: remove 'Node' suffix
+    return nodeType.replace('Node', '')
+  }, [isCompositeNode, nodeType])
+
+  // State for editing the node name
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(displayName)
+
+  // Handler to save the edited name
+  const handleNameSave = useCallback(() => {
+    if (isUserComposite && nodeType?.startsWith('Composite_') && editedName.trim()) {
+      const definitionId = nodeType.replace('Composite_', '')
+      const definition = compositeNodeDefinitionStore.getDefinition(definitionId)
+      if (definition && !definition.isPrebuilt) {
+        // Pass all required arguments to updateCompositeNode
+        compositeNodeDefinitionStore.updateCompositeNode(
+          definitionId,
+          editedName.trim(),
+          definition.description,
+          JSON.parse(JSON.stringify(definition.inputs)),
+          JSON.parse(JSON.stringify(definition.outputs)),
+          JSON.parse(JSON.stringify(definition.internalGraph))
+        )
+      }
+    }
+    setIsEditingName(false)
+  }, [isUserComposite, nodeType, editedName])
+
+  // Handler to open composite editor for user composites
+  const handleEditComposite = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation()
+      if (nodeType?.startsWith('Composite_') && nodeId) {
+        const definitionId = nodeType.replace('Composite_', '')
+        compositeEditorStore.openEditor(definitionId, nodeId)
+      }
+    },
+    [nodeType, nodeId]
+  )
+
   // Determine the type label for the corner
   const getTypeLabel = () => {
+    if (isCompositeNode) {
+      return isUserComposite ? 'User' : 'Composite'
+    }
     return isCustomNode ? 'Utility' : 'WebAudio'
   }
 
   const getTypeLabelColors = () => {
+    if (isCompositeNode) {
+      return isUserComposite ? 'bg-violet-500 text-white' : 'bg-cyan-500 text-white'
+    }
     if (isCustomNode) {
       return 'bg-orange-500 text-white'
-    } else {
-      return 'bg-blue-500 text-white'
     }
+    return 'bg-blue-500 text-white'
   }
 
   const getTypeLabelPositioning = () => {
+    if (isCompositeNode) {
+      // Composite: similar to Utility
+      return 'w-[75px] top-[7px] -right-[17px] text-center'
+    }
     if (isCustomNode) {
       // Utility: width: 67px, top: 7px, right: -17px, text-align: center
       return 'w-[67px] top-[7px] -right-[17px] text-center'
-    } else {
-      // WebAudio: width: 75px, top: 12px, right: -16px
-      return 'w-[75px] top-[10px] -right-4'
     }
+    // WebAudio: width: 75px, top: 12px, right: -16px
+    return 'w-[75px] top-[10px] -right-4'
   }
 
   return (
@@ -236,8 +305,39 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
       })}
 
       {/* Node Header */}
-      <div className="text-sm font-semibold text-gray-800 mb-2 text-center">
-        {nodeType.replace('Node', '')}
+      <div className="text-sm font-semibold text-gray-800 mb-2 text-center w-full px-2">
+        {isEditingName && isUserComposite ? (
+          <input
+            type="text"
+            value={editedName}
+            onChange={e => setEditedName(e.target.value)}
+            onBlur={handleNameSave}
+            onKeyDown={e => {
+              if (e.key === 'Enter') handleNameSave()
+              if (e.key === 'Escape') {
+                setEditedName(displayName)
+                setIsEditingName(false)
+              }
+            }}
+            onClick={e => e.stopPropagation()}
+            className="w-full text-center text-sm font-semibold bg-white border border-violet-400 rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            autoFocus
+          />
+        ) : (
+          <span
+            onClick={e => {
+              if (isUserComposite) {
+                e.stopPropagation()
+                setEditedName(displayName)
+                setIsEditingName(true)
+              }
+            }}
+            className={isUserComposite ? 'cursor-text hover:bg-violet-100 rounded px-1' : ''}
+            title={isUserComposite ? 'Click to rename' : undefined}
+          >
+            {displayName}
+          </span>
+        )}
       </div>
 
       {/* Custom Node UI Container */}
@@ -349,6 +449,25 @@ const AdaptedAudioNode: React.FC<AdaptedAudioNodeProps> = observer(({ data, sele
           {metadata.category}
         </span>
       </div>
+
+      {/* Edit Button for User Composites */}
+      {isUserComposite && (
+        <button
+          onClick={handleEditComposite}
+          className="mt-2 px-3 py-1 text-xs font-medium text-violet-700 bg-violet-100 hover:bg-violet-200 rounded-md transition-colors flex items-center gap-1"
+          title="Edit this composite node"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+            />
+          </svg>
+          Edit
+        </button>
+      )}
     </div>
   )
 })

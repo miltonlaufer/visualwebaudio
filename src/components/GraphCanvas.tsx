@@ -18,198 +18,16 @@ import { observer } from 'mobx-react-lite'
 import { useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { useRootStore } from '~/stores/RootStore'
 import { useThemeStore } from '~/stores/ThemeStore'
+import { compositeEditorStore } from '~/stores/CompositeEditorStore'
+import { useMainGraphOperations } from '~/hooks'
 import AdaptedAudioNode from '~/components/AdaptedAudioNode'
-import { autoLayoutNodes, type LayoutDirection, LAYOUT_DIRECTIONS } from '~/utils/autoLayout'
+import CompositeEditorPanel from '~/components/CompositeEditorPanel'
+import { AutoLayoutPanelWithContext } from '~/components/AutoLayoutPanel'
+import { autoLayoutNodes, type LayoutDirection } from '~/utils/autoLayout'
 
 const nodeTypes: NodeTypes = {
   adaptedNode: AdaptedAudioNode,
 }
-
-// Auto-layout panel component
-interface AutoLayoutPanelProps {
-  isDark: boolean
-  onLayoutComplete?: () => void
-}
-
-const AutoLayoutPanel: React.FC<AutoLayoutPanelProps> = observer(({ isDark, onLayoutComplete }) => {
-  const store = useAudioGraphStore()
-  const { fitView } = useReactFlow()
-  const [isOpen, setIsOpen] = useState(false)
-  const [direction, setDirection] = useState<LayoutDirection>('LR')
-  const [isLayouting, setIsLayouting] = useState(false)
-  const panelRef = useRef<HTMLDivElement>(null)
-
-  // Handle click outside
-  useEffect(() => {
-    if (!isOpen) return
-
-    const handleClickOutside = (event: MouseEvent) => {
-      if (panelRef.current && !panelRef.current.contains(event.target as globalThis.Node)) {
-        setIsOpen(false)
-      }
-    }
-
-    // Delay adding the listener to avoid catching the opening click
-    const timeoutId = setTimeout(() => {
-      document.addEventListener('click', handleClickOutside)
-    }, 0)
-
-    return () => {
-      clearTimeout(timeoutId)
-      document.removeEventListener('click', handleClickOutside)
-    }
-  }, [isOpen])
-
-  const handleAutoLayout = useCallback(async () => {
-    if (store.adaptedNodes.length === 0) return
-
-    setIsLayouting(true)
-
-    // Small delay to show loading state
-    await new Promise(resolve => setTimeout(resolve, 50))
-
-    try {
-      // Prepare nodes for layout (estimate size based on node type)
-      const layoutNodes = store.adaptedNodes.map(node => ({
-        id: node.id,
-        width: 280, // Default node width
-        height: 200, // Default node height
-      }))
-
-      // Get edges
-      const layoutEdges = store.visualEdges.map(edge => ({
-        source: edge.source,
-        target: edge.target,
-      }))
-
-      // Calculate new positions
-      const newPositions = autoLayoutNodes(layoutNodes, layoutEdges, { direction })
-
-      // Update positions in store
-      for (const pos of newPositions) {
-        store.updateNodePosition(pos.id, { x: pos.x, y: pos.y })
-      }
-
-      // Force ReactFlow to re-render with new positions
-      onLayoutComplete?.()
-
-      // Fit view to show all nodes
-      setTimeout(() => {
-        fitView({
-          padding: 0.1,
-          duration: 500,
-          maxZoom: 1.2,
-        })
-      }, 100)
-    } finally {
-      setIsLayouting(false)
-      setIsOpen(false)
-    }
-  }, [store, direction, fitView, onLayoutComplete])
-
-  const buttonBaseClass = isDark
-    ? 'bg-gray-700 hover:bg-gray-600 text-gray-200 border-gray-600'
-    : 'bg-white hover:bg-gray-50 text-gray-700 border-gray-300'
-
-  return (
-    <div className="relative" ref={panelRef}>
-      <button
-        onClick={e => {
-          e.stopPropagation()
-          setIsOpen(!isOpen)
-        }}
-        className={`p-2 rounded-lg shadow-md border ${buttonBaseClass} transition-colors`}
-        title="Auto-arrange nodes"
-        disabled={store.adaptedNodes.length === 0}
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-          />
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={1.5}
-            d="M10 8h4M8 14v-4M16 10v4"
-          />
-        </svg>
-      </button>
-
-      {/* Dropdown menu */}
-      {isOpen && (
-        <div
-          className={`absolute top-full mt-2 right-0 rounded-lg shadow-lg border p-3 min-w-[180px] z-50 ${
-            isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-          }`}
-        >
-          <div className="mb-3">
-            <label
-              className={`text-xs font-medium mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}
-            >
-              Direction
-            </label>
-            <select
-              value={direction}
-              onChange={e => setDirection(e.target.value as LayoutDirection)}
-              className={`w-full px-2 py-1.5 rounded text-sm border ${
-                isDark
-                  ? 'bg-gray-700 border-gray-600 text-gray-200'
-                  : 'bg-white border-gray-300 text-gray-700'
-              }`}
-            >
-              {LAYOUT_DIRECTIONS.map(d => (
-                <option key={d.value} value={d.value}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={handleAutoLayout}
-            disabled={isLayouting || store.adaptedNodes.length === 0}
-            className={`w-full py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-              isDark
-                ? 'bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-600 disabled:text-gray-400'
-                : 'bg-blue-500 hover:bg-blue-600 text-white disabled:bg-gray-300 disabled:text-gray-500'
-            }`}
-          >
-            {isLayouting ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Arranging...
-              </span>
-            ) : (
-              'Auto-arrange'
-            )}
-          </button>
-
-          <p className={`mt-2 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            {store.adaptedNodes.length} node{store.adaptedNodes.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-      )}
-    </div>
-  )
-})
 
 // Component to handle auto-fit functionality from within ReactFlow context
 const AutoFitHandler: React.FC = observer(() => {
@@ -303,99 +121,15 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
     return () => observer.disconnect()
   }, [])
 
-  // Keyboard shortcuts for copy/cut/paste
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when not in an input field
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return
-      }
-
-      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
-      const isInSelectableArea = target.closest('.select-text') !== null
-      if (isInSelectableArea) {
-        // Always allow normal text operations in chat area
-        return
-      }
-
-      // Check if there's an active text selection anywhere
-      const selection = window.getSelection()
-      if (selection && selection.toString().length > 0) {
-        // If there's selected text anywhere, allow normal copy/paste behavior
-        return
-      }
-
-      // Delete: Delete key
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          selectedNodeIds.forEach(nodeId => {
-            store.removeNode(nodeId)
-          })
-        }
-
-        if (selectedEdgeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          selectedEdgeIds.forEach(edgeId => {
-            store.removeEdge(edgeId)
-          })
-        }
-        return
-      }
-
-      // Copy: Ctrl/Cmd + C
-      if ((event.metaKey || event.ctrlKey) && event.key === 'c' && !event.shiftKey) {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          store.copySelectedNodes(selectedNodeIds)
-
-          // Check clipboard permission after copy attempt
-          setTimeout(() => {
-            store.checkClipboardPermission()
-          }, 100)
-        }
-        return
-      }
-
-      // Cut: Ctrl/Cmd + X
-      if ((event.metaKey || event.ctrlKey) && event.key === 'x' && !event.shiftKey) {
-        if (selectedNodeIds.length > 0) {
-          event.preventDefault()
-          event.stopPropagation()
-          store.cutSelectedNodes(selectedNodeIds)
-        }
-        return
-      }
-
-      // Paste: Ctrl/Cmd + V
-      if ((event.metaKey || event.ctrlKey) && event.key === 'v' && !event.shiftKey) {
-        if (store.canPaste) {
-          event.preventDefault()
-          event.stopPropagation()
-          store
-            .pasteNodes()
-            .then(() => {})
-            .catch(error => {
-              console.error('Error pasting nodes:', error)
-            })
-        }
-        return
-      }
-    }
-
-    // Use capture phase for keyboard shortcuts
-    document.addEventListener('keydown', handleKeyDown, true)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-    }
-  }, [selectedNodeIds, selectedEdgeIds, store])
+  // Register with unified keyboard handler
+  useMainGraphOperations({
+    store,
+    selectedNodeIds,
+    selectedEdgeIds,
+  })
   // Track last forceUpdate value to detect when we need to re-sync regardless of node count
   const lastForceUpdateRef = useRef(forceUpdate)
+  const lastGraphChangeCounterRef = useRef(rootStore.graphChangeCounter)
 
   // Sync store with React Flow state - Support both systems
   useEffect(() => {
@@ -406,14 +140,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
 
     const totalNodes = store.adaptedNodes.length
     const forceUpdateChanged = forceUpdate !== lastForceUpdateRef.current
+    const graphChangeCounterChanged =
+      rootStore.graphChangeCounter !== lastGraphChangeCounterRef.current
     lastForceUpdateRef.current = forceUpdate
+    lastGraphChangeCounterRef.current = rootStore.graphChangeCounter
 
-    // Skip if we've already synced this exact state AND forceUpdate hasn't changed
-    // When forceUpdate changes, we need to re-sync to pick up position changes
+    // Skip if we've already synced this exact state AND neither forceUpdate nor graphChangeCounter changed
+    // When forceUpdate or graphChangeCounter changes, we need to re-sync to pick up changes
     if (
       totalNodes === lastSyncedNodesLength.current &&
       nodes.length === totalNodes &&
-      !forceUpdateChanged
+      !forceUpdateChanged &&
+      !graphChangeCounterChanged
     ) {
       return
     }
@@ -571,6 +309,66 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
       onNodeClick?.(node.id)
     },
     [store, onNodeClick]
+  )
+
+  /******************* COMPOSITE NODE DOUBLE-CLICK HANDLER ***********************/
+
+  const onNodeDoubleClickHandler = useCallback((_event: React.MouseEvent, node: Node) => {
+    // Check if this is a composite node
+    const nodeData = node.data as {
+      nodeAdapter?: { nodeType?: string; properties?: Map<string, unknown> }
+    }
+    const nodeType = nodeData?.nodeAdapter?.nodeType
+
+    if (nodeType?.startsWith('Composite_')) {
+      // Extract definition ID from node type (e.g., "Composite_DelayEffect" -> "DelayEffect")
+      const definitionId = nodeType.replace('Composite_', '')
+      // Pass the node.id so we can update it after "Save As"
+      compositeEditorStore.openEditor(definitionId, node.id)
+    } else if (nodeData?.nodeAdapter?.properties) {
+      // Check if this node has a definitionId property (for nodes already created)
+      const definitionId = nodeData.nodeAdapter.properties.get('definitionId') as string
+      if (definitionId) {
+        compositeEditorStore.openEditor(definitionId, node.id)
+      }
+    }
+  }, [])
+
+  const handleCompositeEditorSave = useCallback(
+    (_definitionId: string) => {
+      // Optionally refresh the graph or update nodes
+      rootStore.forceRerender()
+    },
+    [rootStore]
+  )
+
+  // Auto-layout handler for the new AutoLayoutPanel
+  const handleAutoLayout = useCallback(
+    (direction: LayoutDirection) => {
+      if (store.adaptedNodes.length === 0) return
+
+      // Prepare nodes for layout
+      const layoutNodes = store.adaptedNodes.map(node => ({
+        id: node.id,
+        width: 280,
+        height: 200,
+      }))
+
+      // Get edges
+      const layoutEdges = store.visualEdges.map(edge => ({
+        source: edge.source,
+        target: edge.target,
+      }))
+
+      // Calculate new positions
+      const newPositions = autoLayoutNodes(layoutNodes, layoutEdges, { direction })
+
+      // Update positions in store
+      for (const pos of newPositions) {
+        store.updateNodePosition(pos.id, { x: pos.x, y: pos.y })
+      }
+    },
+    [store]
   )
 
   const onPaneClick = useCallback(() => {
@@ -771,6 +569,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         onConnect={onConnect}
         isValidConnection={isValidConnection}
         onNodeClick={onNodeClickHandler}
+        onNodeDoubleClick={onNodeDoubleClickHandler}
         onPaneClick={onPaneClick}
         onDragOver={onDragOver}
         onDrop={onDrop}
@@ -789,9 +588,17 @@ const GraphCanvas: React.FC<GraphCanvasProps> = observer(({ onNodeClick }) => {
         <Controls />
         <MiniMap />
         <Panel position="top-right" className="!right-4 !top-16">
-          <AutoLayoutPanel isDark={isDark} onLayoutComplete={handleForceUpdate} />
+          <AutoLayoutPanelWithContext
+            isDark={isDark}
+            nodeCount={store.adaptedNodes.length}
+            onAutoLayout={handleAutoLayout}
+            onLayoutComplete={handleForceUpdate}
+          />
         </Panel>
       </ReactFlow>
+
+      {/* Composite Node Editor Panel */}
+      <CompositeEditorPanel onSave={handleCompositeEditorSave} />
     </div>
   )
 })

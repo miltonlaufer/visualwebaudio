@@ -5,15 +5,30 @@ import { observer } from 'mobx-react-lite'
 import { rootStore } from '~/stores/RootStore'
 import { AudioGraphStoreContext, useAudioGraphStore } from '~/stores/AudioGraphStore'
 import { createThemeStore, ThemeStoreContext } from '~/stores/ThemeStore'
+import { compositeNodeDefinitionStore } from '~/stores/CompositeNodeDefinitionStore'
+import { useUnifiedKeyboardShortcuts } from '~/hooks'
 import NodePalette from '~/components/NodePalette'
 import PropertyPanel from '~/components/PropertyPanel'
 import Header from '~/components/Header'
 import GraphCanvas from '~/components/GraphCanvas'
 import UpdateNotification from '~/components/UpdateNotification'
 import OfflineIndicator from '~/components/OfflineIndicator'
+import prebuiltCompositeNodes from '~/types/composite-nodes-prebuilt.json'
+import type { CompositeNodeDefinition } from '~/types'
 
 // Lazy load AI Chat to reduce initial bundle size (loads LangChain libs)
 const AIChat = lazy(() => import('~/components/AIChat'))
+
+// Initialize composite node definitions at app startup
+const initializeCompositeNodes = () => {
+  if (!compositeNodeDefinitionStore.isLoaded && !compositeNodeDefinitionStore.isLoading) {
+    const prebuiltDefs = Object.values(prebuiltCompositeNodes) as CompositeNodeDefinition[]
+    compositeNodeDefinitionStore.initialize(prebuiltDefs)
+  }
+}
+
+// Initialize immediately when module loads
+initializeCompositeNodes()
 
 const App: React.FC = observer(() => {
   const themeStore = useMemo(() => createThemeStore(), [])
@@ -34,55 +49,8 @@ const AppContent: React.FC = observer(() => {
   const [isNodePaletteOpen, setIsNodePaletteOpen] = useState(false)
   const [isPropertyPanelOpen, setIsPropertyPanelOpen] = useState(false)
 
-  // Keyboard shortcuts for undo/redo
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle shortcuts when not in an input field
-      const target = event.target as HTMLElement
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return
-      }
-
-      // Check if we're in the AI chat area (has select-text class or is a descendant of it)
-      const isInSelectableArea = target.closest('.select-text') !== null
-      if (isInSelectableArea) {
-        // Always allow normal text operations in chat area
-        return
-      }
-
-      // Check if there's an active text selection anywhere
-      const selection = window.getSelection()
-      if (selection && selection.toString().length > 0) {
-        // If there's selected text anywhere, allow normal text operations
-        return
-      }
-
-      // Undo: Cmd/Ctrl + Z (without Shift)
-      if ((event.metaKey || event.ctrlKey) && event.key === 'z' && !event.shiftKey) {
-        event.preventDefault()
-        event.stopPropagation()
-        store.undo()
-        return
-      }
-
-      // Redo: Cmd/Ctrl + Y (primary and most reliable redo shortcut)
-      if ((event.metaKey || event.ctrlKey) && event.key === 'y' && !event.shiftKey) {
-        event.preventDefault()
-        event.stopPropagation()
-        store.redo()
-        return
-      }
-    }
-
-    // Use capture phase and multiple event listeners for maximum compatibility
-    document.addEventListener('keydown', handleKeyDown, true)
-    window.addEventListener('keydown', handleKeyDown, true)
-
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true)
-      window.removeEventListener('keydown', handleKeyDown, true)
-    }
-  }, [store])
+  // Unified keyboard shortcuts for copy/paste/undo/redo across all graph contexts
+  useUnifiedKeyboardShortcuts({ enabled: true })
 
   // Load metadata on mount
   useEffect(() => {
